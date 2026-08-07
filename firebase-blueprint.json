@@ -1,0 +1,29 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "Smartphones and premium gadgets in stock",
+      "type": "object",
+      "properties": {
+        "brand": { "type": "string", "description": "Device brand (e.g., Apple, Samsung)" },
+        "model": { "type": "string", "description": "Device model name (e.g., iPhone 15 Pro Max)" },
+        "condition": { "type": "string", "description": "Physical condition grade (e.g., Brand New, Premium UK Used)" },
+        "price": { "type": "number", "description": "Product price in Nigerian Naira" },
+        "status": { "type": "string", "description": "Availability state (e.g., In Stock, Reserved, Sold Out)" },
+        "featured": { "type": "boolean", "description": "Whether the product is highlighted on the front page" },
+        "storage": { "type": "array", "description": "List of available storage capacities" },
+        "color": { "type": "array", "description": "List of available color options" },
+        "description": { "type": "string", "description": "Marketing and condition description" },
+        "imageUrl": { "type": "string", "description": "Primary display image URL" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the document was published" }
+      },
+      "required": ["brand", "model", "condition", "price", "status", "featured", "storage", "color", "description", "imageUrl", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Collection of all smartphones and products"
+    }
+  }
+}

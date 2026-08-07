@@ -1,0 +1,6 @@
+{
+  "name": "MILITO TECH HOME",
+  "description": "Premium devices. Protected payments. Trusted delivery. Nigeria's premier gateway for new and premium UK-used smartphones, seamless trade-ins, and trusted vehicle importation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
