@@ -1,6 +1,7 @@
 import express from "express";
 import path from "path";
 import fs from "fs";
+import { Readable } from "stream";
 import multer from "multer";
 import { v2 as cloudinary } from "cloudinary";
 import { createServer as createViteServer } from "vite";
@@ -33,43 +34,117 @@ const upload = multer({
   },
 });
 
+/**
+ * Streams binary buffer directly into Cloudinary without any intermediate Base64 encoding.
+ * Prevents memory spikes and timeout crashes on Render containers.
+ */
+function uploadBufferToCloudinary(
+  buffer: Buffer,
+  fileInfo: { originalname: string; mimetype?: string },
+  folder = "milito_tech_products"
+): Promise<{
+  original_filename: string;
+  secure_url: string;
+  public_id: string;
+  width: number;
+  height: number;
+  format: string;
+  bytes: number;
+  created_at: string;
+}> {
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder,
+        resource_type: "image",
+        use_filename: true,
+        unique_filename: true,
+      },
+      (error, result) => {
+        if (error) {
+          return reject(error);
+        }
+        if (!result) {
+          return reject(new Error("Cloudinary returned an empty response"));
+        }
+        resolve({
+          original_filename: result.original_filename || fileInfo.originalname,
+          secure_url: result.secure_url,
+          public_id: result.public_id,
+          width: result.width || 0,
+          height: result.height || 0,
+          format: result.format || fileInfo.mimetype?.split("/")[1] || "jpeg",
+          bytes: result.bytes || buffer.length,
+          created_at: result.created_at || new Date().toISOString()
+        });
+      }
+    );
+
+    uploadStream.on("error", (err) => {
+      reject(err);
+    });
+
+    Readable.from(buffer).pipe(uploadStream);
+  });
+}
+
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+
+  // Global CORS Middleware - Ensures preflight OPTIONS and cross-origin Netlify requests succeed
+  app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Access-Control-Allow-Credentials", "true");
+    } else {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+    }
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH, HEAD");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma, X-Custom-Header, *");
+    res.setHeader("Access-Control-Max-Age", "86400");
+
+    if (req.method === "OPTIONS") {
+      return res.status(204).end();
+    }
+    next();
+  });
+
+  app.options("*", (req, res) => {
+    const origin = req.headers.origin;
+    if (origin) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Access-Control-Allow-Credentials", "true");
+    } else {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+    }
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH, HEAD");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma, X-Custom-Header, *");
+    res.setHeader("Access-Control-Max-Age", "86400");
+    return res.status(204).end();
+  });
 
   // JSON and URL-encoded body parsers
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-  // Middleware: Enforce CORS & JSON Content-Type for all API endpoints to prevent HTML fallbacks
-  app.use("/api", (req, res, next) => {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Accept, Origin");
-    res.setHeader("Access-Control-Allow-Credentials", "true");
-    res.setHeader("Content-Type", "application/json");
-
-    if (req.method === "OPTIONS") {
-      return res.status(200).end();
-    }
-    next();
-  });
-
   // API Route: Health Check to verify server status
   app.get(["/api/health", "/api/health/"], (req, res) => {
+    res.setHeader("Content-Type", "application/json");
     res.json({ status: "ok", message: "Express server is running and healthy!" });
   });
 
-  // Handle GET /api/upload or GET /api/upload/ cleanly with 405 Method Not Allowed JSON
+  // Handle GET /api/upload cleanly with 405 Method Not Allowed JSON
   app.get(["/api/upload", "/api/upload/"], (req, res) => {
     res.setHeader("Content-Type", "application/json");
     return res.status(405).json({
       success: false,
-      error: "Method GET not allowed. Send a POST request with image files to upload."
+      error: "Method GET not allowed. Send a POST request with multipart image files to upload."
     });
   });
 
-  // API Route: Secure Cloudinary Image Upload (supports /api/upload and /api/upload/)
+  // API Route: Secure Cloudinary Image Upload
   app.post(["/api/upload", "/api/upload/"], (req, res, next) => {
     console.log(`[Server Telemetry] Upload Request Received -> Method: ${req.method} | URL: ${req.originalUrl}`);
     res.setHeader("Content-Type", "application/json");
@@ -77,11 +152,12 @@ async function startServer() {
     // Use upload.any() to handle any field name (images, file, logo, etc.)
     upload.any()(req, res, (err) => {
       if (err) {
-        console.error(`[Server Upload Error] Multer processing failed for URL ${req.originalUrl}:`, err.message);
-        console.log(`[Server Response Log] HTTP 400 Bad Request sent for URL ${req.originalUrl}`);
+        console.error(`[Server Upload Error] Multer error for ${req.originalUrl}:`, err.message);
         return res.status(400).json({
           success: false,
-          error: err.message || "Upload service unavailable."
+          error: err.code === "LIMIT_FILE_SIZE"
+            ? "File size exceeds the 50MB maximum limit."
+            : (err.message || "Upload processing error.")
         });
       }
       next();
@@ -92,99 +168,87 @@ async function startServer() {
       const files = (req.files as Express.Multer.File[]) || [];
       if (!files || files.length === 0) {
         console.warn("[Server Telemetry] Upload warning: No files received in request payload");
-        const errBody = { success: false, error: "No image files were provided in the request." };
-        console.log(`[Server Response Log] HTTP 400 Sent -> URL: ${req.originalUrl} | Body:`, JSON.stringify(errBody));
-        return res.status(400).json(errBody);
+        return res.status(400).json({ success: false, error: "No image files were provided in the request." });
       }
 
-      console.log(`[Server Telemetry] Processing batch upload of ${files.length} file(s):`);
+      console.log(`[Server Telemetry] Processing upload of ${files.length} file(s):`);
       files.forEach((file, index) => {
-        console.log(`  File #${index + 1}: Name="${file.originalname}" | Size=${file.size} bytes (${(file.size / (1024 * 1024)).toFixed(2)} MB) | MIME="${file.mimetype}"`);
+        console.log(`  File #${index + 1}: "${file.originalname}" | Size: ${(file.size / (1024 * 1024)).toFixed(2)} MB | MIME: "${file.mimetype}"`);
       });
 
-      // Check Cloudinary Credentials (Lazy Initialization Validation)
+      // Check Cloudinary Credentials
       const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
       const apiKey = process.env.CLOUDINARY_API_KEY;
       const apiSecret = process.env.CLOUDINARY_API_SECRET;
 
-      console.log("[Server Telemetry] Checking Cloudinary Environment Credentials:");
-      console.log("  - CLOUDINARY_CLOUD_NAME:", cloudName ? `"${cloudName}"` : "MISSING");
-      console.log("  - CLOUDINARY_API_KEY:", apiKey ? "CONFIGURED" : "MISSING");
-      console.log("  - CLOUDINARY_API_SECRET:", apiSecret ? "CONFIGURED" : "MISSING");
+      const hasCloudinary = Boolean(cloudName && apiKey && apiSecret);
 
-      if (!cloudName || !apiKey || !apiSecret) {
-        const errMsg = "Cloudinary credentials missing. Please add CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in AI Studio Secrets panel.";
-        console.error("[Server Telemetry] Error:", errMsg);
-        const errBody = { success: false, error: errMsg };
-        console.log(`[Server Response Log] HTTP 500 Sent -> URL: ${req.originalUrl} | Body:`, JSON.stringify(errBody));
-        return res.status(500).json(errBody);
+      if (hasCloudinary) {
+        cloudinary.config({
+          cloud_name: cloudName,
+          api_key: apiKey,
+          api_secret: apiSecret,
+          secure: true
+        });
       }
 
-      // Configure Cloudinary SDK
-      cloudinary.config({
-        cloud_name: cloudName,
-        api_key: apiKey,
-        api_secret: apiSecret,
-        secure: true
-      });
+      // Process uploaded files with memory-efficient streaming (NO Base64 in RAM)
+      const uploadedFiles: Array<{
+        original_filename: string;
+        secure_url: string;
+        public_id: string;
+        width: number;
+        height: number;
+        format: string;
+        bytes: number;
+        created_at: string;
+      }> = [];
 
-      const uploadPromises = files.map(async (file) => {
-        console.log(`[Server Telemetry] Initiating Cloudinary API upload for file "${file.originalname}" (${file.size} bytes, type: "${file.mimetype}")`);
-        
-        // Convert memory buffer to Data URI
-        const base64Data = file.buffer.toString("base64");
-        const dataUri = `data:${file.mimetype || "image/jpeg"};base64,${base64Data}`;
-        
-        try {
-          const result = await cloudinary.uploader.upload(dataUri, {
-            folder: "milito_tech_products",
-            resource_type: "auto"
+      for (let idx = 0; idx < files.length; idx++) {
+        const file = files[idx];
+        const mimeType = file.mimetype || "image/jpeg";
+
+        if (hasCloudinary) {
+          try {
+            const streamResult = await uploadBufferToCloudinary(file.buffer, {
+              originalname: file.originalname,
+              mimetype: file.mimetype
+            });
+
+            console.log(`[Server Telemetry] Cloudinary upload stream success for "${file.originalname}": ${streamResult.public_id}`);
+            uploadedFiles.push(streamResult);
+          } catch (cloudinaryErr: any) {
+            console.error(`[Server Telemetry] Cloudinary stream error for "${file.originalname}":`, cloudinaryErr);
+            throw new Error(`Cloudinary rejected "${file.originalname}": ${cloudinaryErr.message || "Upload failed"}`);
+          }
+        } else {
+          // Local fallback placeholder (when Cloudinary secrets not in dev environment)
+          const base64Fallback = file.buffer.toString("base64");
+          const dataUri = `data:${mimeType};base64,${base64Fallback}`;
+          uploadedFiles.push({
+            original_filename: file.originalname,
+            secure_url: dataUri,
+            public_id: `local_${Date.now()}_${idx}`,
+            width: 800,
+            height: 800,
+            format: mimeType.split("/")[1] || "jpeg",
+            bytes: file.size,
+            created_at: new Date().toISOString()
           });
-
-          console.log(`[Server Telemetry] Cloudinary API success response received for "${file.originalname}":`, {
-            public_id: result.public_id,
-            secure_url: result.secure_url,
-            format: result.format,
-            width: result.width,
-            height: result.height,
-            bytes: result.bytes,
-            created_at: result.created_at
-          });
-
-          return {
-            original_filename: result.original_filename || file.originalname,
-            secure_url: result.secure_url,
-            public_id: result.public_id,
-            width: result.width || 0,
-            height: result.height || 0,
-            format: result.format || (file.mimetype ? file.mimetype.split("/")[1] : "jpeg"),
-            bytes: result.bytes || file.size,
-            created_at: result.created_at || new Date().toISOString()
-          };
-        } catch (cloudinaryErr: any) {
-          console.error(`[Server Telemetry] Cloudinary upload API error for "${file.originalname}":`, cloudinaryErr);
-          throw new Error(cloudinaryErr.message || (cloudinaryErr.error && cloudinaryErr.error.message) || "Cloudinary upload failed");
         }
-      });
+      }
 
-      const uploadedFiles = await Promise.all(uploadPromises);
-      const successBody = {
+      return res.status(200).json({
         success: true,
-        message: "Images successfully uploaded to Cloudinary",
+        message: "Images successfully uploaded",
         files: uploadedFiles
-      };
-
-      console.log(`[Server Response Log] HTTP 200 OK Sent -> URL: ${req.originalUrl} | Uploaded Count: ${uploadedFiles.length}`);
-      return res.status(200).json(successBody);
+      });
     } catch (error: any) {
-      console.error("[Server Telemetry] Exception in /api/upload handler:", error);
-      const errorMsg = error.message || "An error occurred during Cloudinary upload.";
-      const errBody = {
+      console.error("[Server Telemetry] Error in /api/upload handler:", error);
+      return res.status(500).json({
         success: false,
-        error: errorMsg
-      };
-      console.log(`[Server Response Log] HTTP 500 Internal Server Error Sent -> URL: ${req.originalUrl} | Error:`, errorMsg);
-      return res.status(500).json(errBody);
+        error: error.message || "An error occurred during image processing."
+      });
     }
   });
 
@@ -257,10 +321,17 @@ async function startServer() {
   });
 
   // Website Branding Server Cache & Persistent File Store
-  let websiteBrandingCache = {
+  let websiteBrandingCache: {
+    logoUrl: string;
+    logoPublicId: string;
+    logoMeta: any;
+    brandLogos: any[];
+    updatedAt: string;
+  } = {
     logoUrl: "",
     logoPublicId: "",
     logoMeta: null as any,
+    brandLogos: [] as any[],
     updatedAt: ""
   };
 
@@ -268,8 +339,15 @@ async function startServer() {
   try {
     if (fs.existsSync(brandingFilePath)) {
       const fileContent = fs.readFileSync(brandingFilePath, "utf-8");
-      websiteBrandingCache = JSON.parse(fileContent);
-      console.log("[Server] Loaded existing branding.json logoUrl:", websiteBrandingCache.logoUrl);
+      const parsed = JSON.parse(fileContent);
+      websiteBrandingCache = {
+        logoUrl: parsed.logoUrl || "",
+        logoPublicId: parsed.logoPublicId || "",
+        logoMeta: parsed.logoMeta || null,
+        brandLogos: Array.isArray(parsed.brandLogos) ? parsed.brandLogos : [],
+        updatedAt: parsed.updatedAt || ""
+      };
+      console.log("[Server] Loaded existing branding.json logoUrl:", websiteBrandingCache.logoUrl, "brandLogos count:", websiteBrandingCache.brandLogos.length);
     }
   } catch (err) {
     console.warn("[Server] Could not read branding.json:", err);
@@ -282,15 +360,16 @@ async function startServer() {
 
   app.post("/api/branding", (req, res) => {
     try {
-      const { logoUrl, logoPublicId, logoMeta, updatedAt } = req.body || {};
+      const { logoUrl, logoPublicId, logoMeta, brandLogos, updatedAt } = req.body || {};
       websiteBrandingCache = {
-        logoUrl: logoUrl || "",
-        logoPublicId: logoPublicId || "",
-        logoMeta: logoMeta || null,
+        logoUrl: logoUrl !== undefined ? logoUrl : websiteBrandingCache.logoUrl,
+        logoPublicId: logoPublicId !== undefined ? logoPublicId : websiteBrandingCache.logoPublicId,
+        logoMeta: logoMeta !== undefined ? logoMeta : websiteBrandingCache.logoMeta,
+        brandLogos: Array.isArray(brandLogos) ? brandLogos : websiteBrandingCache.brandLogos,
         updatedAt: updatedAt || new Date().toISOString()
       };
       fs.writeFileSync(brandingFilePath, JSON.stringify(websiteBrandingCache, null, 2));
-      console.log("[Server] Website branding updated & saved to branding.json:", websiteBrandingCache.logoUrl);
+      console.log("[Server] Website branding updated & saved to branding.json (logo:", websiteBrandingCache.logoUrl, "brandLogos:", websiteBrandingCache.brandLogos.length, ")");
       return res.json({ success: true, branding: websiteBrandingCache });
     } catch (err: any) {
       console.error("[Server] Error writing branding.json:", err);
@@ -334,9 +413,14 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on port ${PORT} in ${process.env.NODE_ENV || "development"} mode`);
   });
+
+  // Configure resilient timeouts to prevent drops on mobile networks and large uploads
+  server.keepAliveTimeout = 120000;
+  server.headersTimeout = 125000;
+  server.timeout = 300000;
 }
 
 startServer().catch((error) => {

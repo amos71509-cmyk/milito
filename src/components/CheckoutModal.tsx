@@ -65,14 +65,14 @@ export default function CheckoutModal({ cart, onClose, onClearCart }: CheckoutMo
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto">
-      <div className="bg-white rounded-3xl max-w-3xl w-full border border-gray-250 overflow-hidden shadow-2xl animate-scaleUp my-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 md:p-6 bg-black/85 backdrop-blur-md overflow-y-auto">
+      <div className="relative w-full max-w-3xl max-h-[92vh] sm:max-h-[90vh] bg-white rounded-2xl sm:rounded-3xl border border-gray-250 shadow-2xl flex flex-col overflow-hidden my-auto animate-scaleUp">
         
         {/* Header */}
-        <div className="px-6 py-5 border-b border-gray-150 bg-gray-50 flex justify-between items-center">
+        <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-gray-150 bg-gray-50 flex justify-between items-center shrink-0">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-5 h-5 text-milito-green" />
-            <h3 className="font-bold text-gray-900 text-sm font-sans">Escrow Protection Checkout</h3>
+            <h3 className="font-bold text-gray-900 text-xs sm:text-sm font-sans">Escrow Protection Checkout</h3>
           </div>
           <button
             onClick={onClose}
@@ -82,8 +82,10 @@ export default function CheckoutModal({ cart, onClose, onClearCart }: CheckoutMo
           </button>
         </div>
 
+        {/* Modal Body Container - Unified Scroll Area */}
+        <div className="flex-1 overflow-y-auto">
         {isSubmitDone ? (
-          <div className="p-10 text-center space-y-6 animate-scaleUp">
+          <div className="p-6 sm:p-10 text-center space-y-6 animate-scaleUp">
             <div className="w-16 h-16 rounded-full bg-milito-green/10 text-milito-green flex items-center justify-center mx-auto border border-milito-green/20">
               <CheckCircle className="w-9 h-9 animate-bounce" />
             </div>
@@ -138,7 +140,7 @@ export default function CheckoutModal({ cart, onClose, onClearCart }: CheckoutMo
           <div className="grid grid-cols-1 md:grid-cols-12">
             
             {/* Left Box: Information fields */}
-            <form onSubmit={handleOrderSubmit} className="md:col-span-7 p-6 border-r border-gray-150 space-y-4">
+            <form onSubmit={handleOrderSubmit} className="md:col-span-7 p-4 sm:p-6 md:border-r border-gray-150 space-y-4">
               <span className="block text-xs font-bold text-gray-700 uppercase tracking-widest border-b border-gray-200 pb-2">
                 Recipient Delivery Parameters
               </span>
@@ -303,6 +305,7 @@ export default function CheckoutModal({ cart, onClose, onClearCart }: CheckoutMo
           </div>
         )}
 
+        </div>
       </div>
     </div>
   );

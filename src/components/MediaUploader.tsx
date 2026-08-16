@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Upload,
   X,
@@ -11,57 +11,147 @@ import {
   ArrowLeft,
   ArrowRight,
   ImageIcon,
-  Maximize2
+  Maximize2,
+  Images,
+  Sparkles
 } from "lucide-react";
 import { CloudinaryImageMeta } from "../types";
-import { UploadService } from "../services/UploadService";
 
-interface UploadingQueueItem {
+export interface MediaItem {
   id: string;
-  file: File;
-  progress: number;
-  status: "uploading" | "success" | "error";
+  file?: File;
+  previewUrl: string;
+  isLocal: boolean;
+  meta?: CloudinaryImageMeta;
+  original_filename?: string;
+  bytes?: number;
+  width?: number;
+  height?: number;
+  format?: string;
+  status?: "waiting" | "uploading" | "success" | "error";
   errorMessage?: string;
-  controller?: AbortController;
 }
 
 interface MediaUploaderProps {
-  galleryImages: CloudinaryImageMeta[];
+  galleryImages?: CloudinaryImageMeta[];
   thumbnail?: { secure_url: string; public_id: string };
-  onChange: (data: {
+  initialItems?: MediaItem[];
+  onChange?: (data: {
     galleryImages: CloudinaryImageMeta[];
     thumbnail: { secure_url: string; public_id: string };
+    mediaItems?: MediaItem[];
+    localFiles?: File[];
   }) => void;
+  onItemsChange?: (items: MediaItem[]) => void;
   onCloudinaryDelete?: (publicId: string) => Promise<void>;
   onUploadSuccess?: (
     uploadedFile: CloudinaryImageMeta,
     newGalleryImages: CloudinaryImageMeta[],
     newThumbnail: { secure_url: string; public_id: string }
   ) => Promise<void> | void;
+  uploadStatus?: {
+    isUploading: boolean;
+    current: number;
+    total: number;
+    stageText?: string;
+    isSuccess?: boolean;
+    errorMessage?: string | null;
+  };
 }
+
+const MAX_IMAGES = 10;
 
 export const MediaUploader: React.FC<MediaUploaderProps> = ({
   galleryImages = [],
   thumbnail,
+  initialItems,
   onChange,
+  onItemsChange,
   onCloudinaryDelete,
-  onUploadSuccess
+  uploadStatus
 }) => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const replaceInputRef = useRef<HTMLInputElement | null>(null);
+  const createdBlobUrlsRef = useRef<Set<string>>(new Set());
 
-  const [queue, setQueue] = useState<UploadingQueueItem[]>([]);
+  // Convert initial props to unified MediaItem array
+  const buildInitialItems = (): MediaItem[] => {
+    if (initialItems && initialItems.length > 0) {
+      return initialItems;
+    }
+    if (galleryImages && galleryImages.length > 0) {
+      return galleryImages.map((img, idx) => ({
+        id: img.public_id || `existing_${idx}_${Date.now()}`,
+        previewUrl: img.secure_url,
+        isLocal: false,
+        meta: img,
+        original_filename: img.original_filename || `Photo ${idx + 1}`,
+        bytes: img.bytes,
+        width: img.width,
+        height: img.height,
+        format: img.format || "jpg",
+        status: "success"
+      }));
+    }
+    if (thumbnail?.secure_url) {
+      return [
+        {
+          id: thumbnail.public_id || `thumb_${Date.now()}`,
+          previewUrl: thumbnail.secure_url,
+          isLocal: false,
+          meta: {
+            secure_url: thumbnail.secure_url,
+            public_id: thumbnail.public_id || "main_cover",
+            original_filename: "Main Cover Photo"
+          },
+          original_filename: "Main Cover Photo",
+          format: "jpg",
+          status: "success"
+        }
+      ];
+    }
+    return [];
+  };
+
+  const [items, setItems] = useState<MediaItem[]>(buildInitialItems);
   const [isDragging, setIsDragging] = useState(false);
-  const [zoomedImage, setZoomedImage] = useState<CloudinaryImageMeta | null>(null);
+  const [zoomedItem, setZoomedItem] = useState<MediaItem | null>(null);
   const [replacingIndex, setReplacingIndex] = useState<number | null>(null);
-  const [deletingPublicIds, setDeletingPublicIds] = useState<Set<string>>(new Set());
+  const [limitNotice, setLimitNotice] = useState<string | null>(null);
+  const [retryingIndex, setRetryingIndex] = useState<number | null>(null);
 
-  // Determine active primary thumbnail
-  const activeThumbnail = thumbnail?.secure_url
-    ? thumbnail
-    : galleryImages[0]
-    ? { secure_url: galleryImages[0].secure_url, public_id: galleryImages[0].public_id }
-    : { secure_url: "", public_id: "" };
+  // Sync items if external initial gallery changes and local state is empty
+  useEffect(() => {
+    if (items.length === 0 && galleryImages.length > 0) {
+      const newItems: MediaItem[] = galleryImages.map((img, idx) => ({
+        id: img.public_id || `existing_${idx}_${Date.now()}`,
+        previewUrl: img.secure_url,
+        isLocal: false,
+        meta: img,
+        original_filename: img.original_filename || `Photo ${idx + 1}`,
+        bytes: img.bytes,
+        width: img.width,
+        height: img.height,
+        format: img.format || "jpg",
+        status: "success"
+      }));
+      setItems(newItems);
+    }
+  }, [galleryImages]);
+
+  // Clean up any generated blob URLs when component unmounts
+  useEffect(() => {
+    return () => {
+      createdBlobUrlsRef.current.forEach(url => {
+        try {
+          URL.revokeObjectURL(url);
+        } catch (err) {
+          // ignore
+        }
+      });
+      createdBlobUrlsRef.current.clear();
+    };
+  }, []);
 
   // Helper to format bytes to human-readable string
   const formatBytes = (bytes?: number): string => {
@@ -72,109 +162,129 @@ export const MediaUploader: React.FC<MediaUploaderProps> = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
   };
 
-  // Helper to trigger parent state update with new gallery images & thumbnail
-  const updateParent = (newImages: CloudinaryImageMeta[], customThumb?: { secure_url: string; public_id: string }) => {
-    const nextThumb = customThumb || (newImages.length > 0
-      ? { secure_url: newImages[0].secure_url, public_id: newImages[0].public_id }
-      : { secure_url: "", public_id: "" });
+  // Notify parent component of items state changes
+  const notifyParent = (newItems: MediaItem[]) => {
+    if (onItemsChange) {
+      onItemsChange(newItems);
+    }
 
-    onChange({
-      galleryImages: newImages,
-      thumbnail: nextThumb
-    });
+    if (onChange) {
+      const finalGalleryImages: CloudinaryImageMeta[] = newItems
+        .filter(item => !item.isLocal && item.meta)
+        .map(item => item.meta as CloudinaryImageMeta);
 
-    return nextThumb;
-  };
-
-  // Upload single file via centralized UploadService
-  const uploadSingleFile = async (
-    queueId: string,
-    file: File,
-    replaceIdx?: number
-  ) => {
-    setQueue(prev =>
-      prev.map(q =>
-        q.id === queueId
-          ? { ...q, progress: 35, status: "uploading" }
-          : q
-      )
-    );
-
-    try {
-      const uploadedMetas = await UploadService.uploadToCloudinary([file], (prog) => {
-        setQueue(prev =>
-          prev.map(q => (q.id === queueId ? { ...q, progress: Math.min(prog, 90) } : q))
-        );
-      });
-
-      if (!uploadedMetas || uploadedMetas.length === 0) {
-        throw new Error("Upload service unavailable.");
-      }
-
-      const uploadedFile = uploadedMetas[0];
-
-      setQueue(prev =>
-        prev.map(q => (q.id === queueId ? { ...q, progress: 100, status: "success" } : q))
-      );
-
-      // Clear completed queue item after delay
-      setTimeout(() => {
-        setQueue(prev => prev.filter(q => q.id !== queueId));
-      }, 1200);
-
-      if (replaceIdx !== undefined && replaceIdx >= 0 && replaceIdx < galleryImages.length) {
-        // Replacing existing image
-        const oldImage = galleryImages[replaceIdx];
-        if (oldImage?.public_id) {
-          UploadService.deleteCloudinaryImages([oldImage.public_id]).catch(console.warn);
-          if (onCloudinaryDelete) {
-            onCloudinaryDelete(oldImage.public_id).catch(console.warn);
+      const mainItem = newItems[0];
+      const nextThumb = mainItem
+        ? {
+            secure_url: mainItem.meta?.secure_url || mainItem.previewUrl,
+            public_id: mainItem.meta?.public_id || mainItem.id
           }
-        }
-        const updated = [...galleryImages];
-        updated[replaceIdx] = uploadedFile;
-        const nextThumb = updateParent(updated);
-        if (onUploadSuccess) {
-          onUploadSuccess(uploadedFile, updated, nextThumb);
-        }
-      } else {
-        // Appending to gallery
-        const updated = [...galleryImages, uploadedFile];
-        const nextThumb = updateParent(updated);
-        if (onUploadSuccess) {
-          onUploadSuccess(uploadedFile, updated, nextThumb);
-        }
-      }
-    } catch (err: any) {
-      console.error("[MediaUploader] Upload Error:", err);
-      const userErr = err.message || "Upload service unavailable.";
-      setQueue(prev =>
-        prev.map(q =>
-          q.id === queueId
-            ? { ...q, status: "error", errorMessage: userErr }
-            : q
-        )
-      );
+        : { secure_url: "", public_id: "" };
+
+      const localFiles = newItems
+        .filter(item => item.isLocal && item.file)
+        .map(item => item.file as File);
+
+      onChange({
+        galleryImages: finalGalleryImages,
+        thumbnail: nextThumb,
+        mediaItems: newItems,
+        localFiles
+      });
     }
   };
 
-  // Handle file selection
+  // Handle instant selection of multiple files (1 to 10 photos)
   const handleFilesAdded = (files: FileList | File[]) => {
+    setLimitNotice(null);
     const fileArray = Array.from(files).filter(f => f.type.startsWith("image/"));
     if (fileArray.length === 0) return;
 
-    fileArray.forEach(file => {
-      const queueId = `upload_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
-      const queueItem: UploadingQueueItem = {
-        id: queueId,
-        file,
-        progress: 10,
-        status: "uploading"
-      };
+    // Filter duplicates by name & size against current items
+    const existingSignatures = new Set(
+      items.map(it => `${it.original_filename || ""}_${it.bytes || 0}`.toLowerCase())
+    );
 
-      setQueue(prev => [...prev, queueItem]);
-      uploadSingleFile(queueId, file);
+    const uniqueFiles = fileArray.filter(
+      f => !existingSignatures.has(`${f.name}_${f.size}`.toLowerCase())
+    );
+
+    const availableSlots = MAX_IMAGES - items.length;
+
+    if (availableSlots <= 0) {
+      setLimitNotice(
+        `Maximum of ${MAX_IMAGES} photos reached per product. Please delete an existing photo to upload new ones.`
+      );
+      return;
+    }
+
+    let filesToProcess = uniqueFiles;
+    if (uniqueFiles.length > availableSlots) {
+      filesToProcess = uniqueFiles.slice(0, availableSlots);
+      setLimitNotice(
+        `Added first ${availableSlots} photo(s) to stay within the ${MAX_IMAGES} photo maximum.`
+      );
+    }
+
+    // Instantly generate browser object URLs for every selected image
+    const newItems: MediaItem[] = filesToProcess.map((file, idx) => {
+      const objUrl = URL.createObjectURL(file);
+      createdBlobUrlsRef.current.add(objUrl);
+
+      const ext = file.name.split(".").pop() || "JPG";
+      return {
+        id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 6)}_${idx}`,
+        file,
+        previewUrl: objUrl,
+        isLocal: true,
+        original_filename: file.name,
+        bytes: file.size,
+        format: ext.toUpperCase(),
+        status: "waiting"
+      };
     });
+
+    const updated = [...items, ...newItems];
+    setItems(updated);
+    notifyParent(updated);
+  };
+
+  // Dedicated single-file retry handler
+  const handleRetrySingle = async (index: number) => {
+    const target = items[index];
+    if (!target || !target.file) return;
+
+    setRetryingIndex(index);
+    const updated = [...items];
+    updated[index] = { ...target, status: "uploading", errorMessage: undefined };
+    setItems(updated);
+
+    try {
+      const { UploadService } = await import("../services/UploadService");
+      const meta = await UploadService.uploadSingleFile(target.file, index, items.length);
+
+      const successUpdated = [...items];
+      successUpdated[index] = {
+        ...target,
+        isLocal: false,
+        meta,
+        previewUrl: meta.secure_url,
+        status: "success",
+        errorMessage: undefined
+      };
+      setItems(successUpdated);
+      notifyParent(successUpdated);
+    } catch (err: any) {
+      const failUpdated = [...items];
+      failUpdated[index] = {
+        ...target,
+        status: "error",
+        errorMessage: err.message || "Upload failed"
+      };
+      setItems(failUpdated);
+    } finally {
+      setRetryingIndex(null);
+    }
   };
 
   // Drag & Drop handlers
@@ -199,76 +309,91 @@ export const MediaUploader: React.FC<MediaUploaderProps> = ({
     }
   };
 
-  // Cancel queued upload
-  const handleCancelUpload = (queueId: string) => {
-    const item = queue.find(q => q.id === queueId);
-    if (item?.controller) {
-      item.controller.abort();
-    }
-    setQueue(prev => prev.filter(q => q.id !== queueId));
+  // Set an image as the MAIN product image (promoted to index 0)
+  const handleSetMain = (index: number) => {
+    if (index <= 0 || index >= items.length) return;
+    const target = items[index];
+    const remaining = items.filter((_, idx) => idx !== index);
+    const updated = [target, ...remaining];
+    setItems(updated);
+    notifyParent(updated);
   };
 
-  // Set as Primary Thumbnail
-  const handleSetThumbnail = (img: CloudinaryImageMeta, index: number) => {
-    const customThumb = { secure_url: img.secure_url, public_id: img.public_id };
-    // Move selected image to position 0 for optimal gallery order
-    const remaining = galleryImages.filter((_, idx) => idx !== index);
-    const reordered = [img, ...remaining];
-    updateParent(reordered, customThumb);
-  };
-
-  // Delete image from Cloudinary & Gallery
-  const handleDeleteImage = async (index: number) => {
-    const target = galleryImages[index];
+  // Delete an individual image (instantly rearranges remaining images)
+  const handleRemoveItem = async (index: number) => {
+    const target = items[index];
     if (!target) return;
 
-    if (target.public_id) {
-      setDeletingPublicIds(prev => new Set(prev).add(target.public_id));
+    // Revoke object URL if it was a local file preview
+    if (target.isLocal && target.previewUrl.startsWith("blob:")) {
       try {
-        await UploadService.deleteCloudinaryImages([target.public_id]);
-        if (onCloudinaryDelete) {
-          await onCloudinaryDelete(target.public_id);
-        }
+        URL.revokeObjectURL(target.previewUrl);
+        createdBlobUrlsRef.current.delete(target.previewUrl);
       } catch (err) {
-        console.warn("Cloudinary delete error:", err);
-      } finally {
-        setDeletingPublicIds(prev => {
-          const next = new Set(prev);
-          next.delete(target.public_id);
-          return next;
-        });
+        // ignore
       }
+    } else if (!target.isLocal && target.meta?.public_id && onCloudinaryDelete) {
+      onCloudinaryDelete(target.meta.public_id).catch(console.warn);
     }
 
-    const nextGallery = galleryImages.filter((_, i) => i !== index);
-    updateParent(nextGallery);
+    const updated = items.filter((_, i) => i !== index);
+    setItems(updated);
+    notifyParent(updated);
   };
 
-  // Reorder Images
-  const handleMoveImage = (fromIdx: number, toIdx: number) => {
-    if (toIdx < 0 || toIdx >= galleryImages.length) return;
-    const copy = [...galleryImages];
+  // Reorder images
+  const handleMoveItem = (fromIdx: number, toIdx: number) => {
+    if (toIdx < 0 || toIdx >= items.length) return;
+    const copy = [...items];
     const [moved] = copy.splice(fromIdx, 1);
     copy.splice(toIdx, 0, moved);
-    updateParent(copy);
+    setItems(copy);
+    notifyParent(copy);
   };
 
-  // Handle Replacement File
+  // Handle single file replacement
   const handleReplaceFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || replacingIndex === null) return;
 
-    const queueId = `replace_${Date.now()}`;
-    setQueue(prev => [
-      ...prev,
-      { id: queueId, file, progress: 10, status: "uploading" }
-    ]);
-    uploadSingleFile(queueId, file, replacingIndex);
+    const oldItem = items[replacingIndex];
+    if (oldItem && oldItem.isLocal && oldItem.previewUrl.startsWith("blob:")) {
+      try {
+        URL.revokeObjectURL(oldItem.previewUrl);
+        createdBlobUrlsRef.current.delete(oldItem.previewUrl);
+      } catch (err) {
+        // ignore
+      }
+    } else if (oldItem && !oldItem.isLocal && oldItem.meta?.public_id && onCloudinaryDelete) {
+      onCloudinaryDelete(oldItem.meta.public_id).catch(console.warn);
+    }
+
+    const objUrl = URL.createObjectURL(file);
+    createdBlobUrlsRef.current.add(objUrl);
+
+    const ext = file.name.split(".").pop() || "JPG";
+    const replacedItem: MediaItem = {
+      id: `local_rep_${Date.now()}`,
+      file,
+      previewUrl: objUrl,
+      isLocal: true,
+      original_filename: file.name,
+      bytes: file.size,
+      format: ext.toUpperCase(),
+      status: "waiting"
+    };
+
+    const copy = [...items];
+    copy[replacingIndex] = replacedItem;
+    setItems(copy);
+    notifyParent(copy);
     setReplacingIndex(null);
   };
 
+  const totalCount = items.length;
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* Hidden File Input for Replace */}
       <input
         type="file"
@@ -278,244 +403,311 @@ export const MediaUploader: React.FC<MediaUploaderProps> = ({
         className="hidden"
       />
 
-      {/* Upload Zone */}
+      {/* HEADER COUNTER & STATUS BANNER */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3.5 bg-gray-900 border border-gray-800 rounded-xl">
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-lg bg-[#00B14F]/10 border border-[#00B14F]/30 flex items-center justify-center text-[#00B14F]">
+            <Images className="w-3.5 h-3.5" />
+          </div>
+          <div>
+            <span className="text-xs font-bold text-white block">Product Image Gallery</span>
+            <span className="text-[10px] text-gray-400">Select 1 to 10 photos • Previews appear instantly</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <div
+            className={`px-3 py-1 rounded-full text-xs font-black flex items-center gap-1.5 ${
+              totalCount >= MAX_IMAGES
+                ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                : totalCount > 0
+                ? "bg-[#00B14F]/20 text-[#00B14F] border border-[#00B14F]/30"
+                : "bg-gray-800 text-gray-400"
+            }`}
+          >
+            <span>{totalCount} / {MAX_IMAGES} photos selected</span>
+          </div>
+        </div>
+      </div>
+
+      {/* LIMIT NOTICE */}
+      {limitNotice && (
+        <div className="p-3 bg-amber-950/80 border border-amber-500/50 rounded-xl text-xs font-bold text-amber-300 flex items-center gap-2 animate-fadeIn">
+          <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+          <span>{limitNotice}</span>
+        </div>
+      )}
+
+      {/* UPLOAD & SELECTION DROP ZONE */}
       <div
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={`relative border-2 border-dashed rounded-2xl p-6 sm:p-8 text-center transition-all cursor-pointer group ${
+        className={`relative border-2 border-dashed rounded-2xl p-6 sm:p-7 text-center transition-all cursor-pointer group ${
           isDragging
             ? "border-[#00B14F] bg-[#00B14F]/10 scale-[1.01]"
+            : totalCount >= MAX_IMAGES
+            ? "border-gray-800 bg-gray-950/50 opacity-60 cursor-not-allowed"
             : "border-gray-700 hover:border-[#00B14F] bg-gray-900/60 hover:bg-gray-900/80"
         }`}
-        onClick={() => fileInputRef.current?.click()}
+        onClick={() => {
+          if (totalCount < MAX_IMAGES) {
+            fileInputRef.current?.click();
+          } else {
+            setLimitNotice(`Maximum of ${MAX_IMAGES} photos reached. Please delete an existing photo to add more.`);
+          }
+        }}
       >
         <input
           type="file"
           ref={fileInputRef}
           multiple
           accept="image/jpeg,image/png,image/webp,image/jpg"
-          onChange={e => e.target.files && handleFilesAdded(e.target.files)}
+          onChange={e => {
+            if (e.target.files) {
+              handleFilesAdded(e.target.files);
+              e.target.value = "";
+            }
+          }}
           className="hidden"
+          disabled={totalCount >= MAX_IMAGES}
         />
 
-        <div className="w-12 h-12 rounded-2xl bg-[#00B14F]/10 border border-[#00B14F]/30 text-[#00B14F] flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
+        <div className="w-12 h-12 rounded-2xl bg-[#00B14F]/10 border border-[#00B14F]/30 text-[#00B14F] flex items-center justify-center mx-auto mb-2.5 group-hover:scale-110 transition-transform">
           <Upload className="w-6 h-6" />
         </div>
 
         <h4 className="text-sm font-bold text-white mb-1">
-          Drag & Drop Product Photos Here
+          {totalCount >= MAX_IMAGES ? "Maximum 10 Photos Selected" : "Upload Product Images"}
         </h4>
         <p className="text-xs text-gray-400 mb-2">
-          or <span className="text-[#00B14F] font-bold underline">click to browse</span> from your computer or phone
+          {totalCount >= MAX_IMAGES
+            ? "Delete an image below to select a replacement"
+            : (
+              <>
+                Drag & drop or <span className="text-[#00B14F] font-bold underline">click to choose up to 10 photos</span>
+              </>
+            )}
         </p>
 
         <div className="flex flex-wrap items-center justify-center gap-2 text-[10px] text-gray-500 font-medium">
+          <span className="bg-gray-800/80 px-2.5 py-1 rounded-full border border-gray-700">Select multiple files at once</span>
+          <span className="bg-gray-800/80 px-2.5 py-1 rounded-full border border-gray-700">Instant Local Preview</span>
           <span className="bg-gray-800/80 px-2.5 py-1 rounded-full border border-gray-700">JPG, PNG, WEBP</span>
-          <span className="bg-gray-800/80 px-2.5 py-1 rounded-full border border-gray-700">Auto Cloudinary Optimization</span>
-          <span className="bg-gray-800/80 px-2.5 py-1 rounded-full border border-gray-700">Unlimited Photos</span>
         </div>
       </div>
 
-      {/* Live Upload Progress Queue */}
-      {queue.length > 0 && (
-        <div className="space-y-2 bg-gray-950 p-4 rounded-xl border border-gray-800">
-          <span className="text-xs font-bold text-gray-300 block mb-2 flex items-center gap-2">
-            <RefreshCw className="w-3.5 h-3.5 text-[#00B14F] animate-spin" />
-            Active Cloudinary Upload Queue ({queue.length})
-          </span>
-
-          {queue.map(item => (
-            <div
-              key={item.id}
-              className="p-3 bg-gray-900 rounded-lg border border-gray-800 flex items-center justify-between gap-3"
-            >
-              <div className="flex items-center gap-3 min-w-0 flex-1">
-                <div className="w-8 h-8 rounded-lg bg-gray-800 border border-gray-700 flex items-center justify-center text-gray-400 shrink-0">
-                  <ImageIcon className="w-4 h-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex justify-between items-center text-xs mb-1">
-                    <span className="font-semibold text-white truncate max-w-[200px]">
-                      {item.file.name}
-                    </span>
-                    <span
-                      className={`text-[10px] font-bold ${
-                        item.status === "error"
-                          ? "text-red-400"
-                          : item.status === "success"
-                          ? "text-emerald-400"
-                          : "text-[#00B14F]"
-                      }`}
-                    >
-                      {item.status === "error"
-                        ? "Failed"
-                        : item.status === "success"
-                        ? "Uploaded!"
-                        : `${item.progress}%`}
-                    </span>
-                  </div>
-
-                  {item.status === "error" ? (
-                    <div className="mt-1 p-2 bg-red-950/80 border border-red-500/50 rounded-lg text-xs font-mono space-y-0.5 animate-fadeIn">
-                      <div className="font-bold text-red-400 flex items-center gap-1.5 text-[11px]">
-                        <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0" />
-                        <span>✓ Upload failed.</span>
-                      </div>
-                      <div className="text-gray-300 font-semibold text-[10px]">Reason:</div>
-                      <div className="text-red-300 text-[10px] leading-relaxed break-words">
-                        {item.errorMessage || "Upload service unavailable."}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full transition-all duration-300 ${
-                          item.status === "success" ? "bg-emerald-500" : "bg-[#00B14F]"
-                        }`}
-                        style={{ width: `${item.progress}%` }}
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-1.5 shrink-0">
-                {item.status === "error" && (
-                  <button
-                    type="button"
-                    onClick={() => uploadSingleFile(item.id, item.file)}
-                    className="px-2.5 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500 hover:text-black rounded-lg text-[10px] font-bold transition-all"
-                  >
-                    Retry
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => handleCancelUpload(item.id)}
-                  className="p-1.5 text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Cancel Upload"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Gallery Showcase Grid */}
-      {galleryImages.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold text-white uppercase tracking-wider flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-[#00B14F]" />
-              Uploaded Gallery ({galleryImages.length} Photos)
+      {/* UPLOAD PROGRESS / PUBLISH STAGE INDICATOR (IF ACTIVE) */}
+      {uploadStatus?.isUploading && (
+        <div className="p-4 bg-gray-900 border border-[#00B14F]/40 rounded-xl space-y-2 animate-fadeIn">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-bold text-white flex items-center gap-2">
+              <RefreshCw className="w-3.5 h-3.5 text-[#00B14F] animate-spin" />
+              {uploadStatus.stageText || "Uploading images to Cloudinary..."}
             </span>
-            <span className="text-[11px] text-gray-400">
-              Drag or click arrows to reorder • 1st image is Thumbnail
+            <span className="font-mono font-bold text-[#00B14F]">
+              {uploadStatus.current} / {uploadStatus.total} uploaded
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-            {galleryImages.map((img, index) => {
-              const isThumbnail = activeThumbnail.public_id
-                ? activeThumbnail.public_id === img.public_id
-                : index === 0;
-              const isDeleting = deletingPublicIds.has(img.public_id);
+          <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-[#00B14F] transition-all duration-300"
+              style={{
+                width: `${uploadStatus.total > 0 ? (uploadStatus.current / uploadStatus.total) * 100 : 25}%`
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* SUCCESS BANNER AFTER UPLOAD */}
+      {uploadStatus?.isSuccess && (
+        <div className="p-3 bg-emerald-950/80 border border-emerald-500/40 rounded-xl text-xs font-bold text-emerald-300 flex items-center gap-2 animate-fadeIn">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>Images uploaded successfully</span>
+        </div>
+      )}
+
+      {/* SELECTED IMAGES PREVIEW AREA (RENDERED UNDERNEATH UPLOAD SECTION) */}
+      {items.length > 0 && (
+        <div className="space-y-3 pt-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-[#00B14F]" />
+              <span className="text-xs font-extrabold text-white uppercase tracking-wider">
+                Selected Images ({items.length} / {MAX_IMAGES})
+              </span>
+            </div>
+            <span className="text-[11px] text-gray-400">
+              First image is <strong className="text-emerald-400 font-bold">MAIN</strong> • Click "Set as Main" or arrows to change order
+            </span>
+          </div>
+
+          {/* RESPONSIVE GRID: 2 COLS ON MOBILE, 3-5 ON LARGER SCREENS (NO HORIZONTAL OVERFLOW) */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+            {items.map((item, index) => {
+              const isMain = index === 0;
 
               return (
                 <div
-                  key={img.public_id || index}
-                  className={`group relative bg-gray-900 border rounded-2xl overflow-hidden flex flex-col transition-all ${
-                    isThumbnail
-                      ? "border-[#00B14F] ring-2 ring-[#00B14F]/40 shadow-lg shadow-[#00B14F]/10"
-                      : "border-gray-800 hover:border-gray-700"
+                  key={item.id || index}
+                  className={`group relative bg-gray-900 border rounded-2xl overflow-hidden flex flex-col transition-all duration-200 ${
+                    isMain
+                      ? "border-[#00B14F] ring-2 ring-[#00B14F]/40 shadow-lg shadow-[#00B14F]/10 bg-gray-900/90"
+                      : "border-gray-800 hover:border-gray-700 bg-gray-900/60"
                   }`}
                 >
-                  {/* Image Canvas Container */}
-                  <div className="relative aspect-square bg-black overflow-hidden cursor-pointer">
+                  {/* Visual Header Badge: MAIN vs Gallery Image 2, 3, etc. */}
+                  <div className="px-2.5 py-1.5 bg-black/70 border-b border-gray-800/80 flex items-center justify-between gap-1 z-10">
+                    <div className="flex items-center gap-1.5">
+                      {isMain ? (
+                        <span className="bg-[#00B14F] text-black text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
+                          <Star className="w-2.5 h-2.5 fill-black" />
+                          MAIN
+                        </span>
+                      ) : (
+                        <span className="bg-gray-800 text-gray-300 border border-gray-700 text-[9px] font-bold px-2 py-0.5 rounded-full">
+                          Photo {index + 1}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Quick Remove Button (always accessible) */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveItem(index);
+                      }}
+                      className="p-1 text-gray-400 hover:text-white bg-gray-800 hover:bg-red-600 rounded-lg transition-colors cursor-pointer"
+                      title="Remove this image"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+
+                  {/* Image Display Container */}
+                  <div className="relative aspect-square bg-black overflow-hidden flex items-center justify-center p-2">
                     <img
-                      src={img.secure_url}
-                      alt={img.original_filename || `Product Photo ${index + 1}`}
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      src={item.previewUrl}
+                      alt={item.original_filename || `Selected image ${index + 1}`}
+                      className="max-h-full max-w-full object-contain transition-transform duration-300 group-hover:scale-105"
                       loading="lazy"
                     />
 
-                    {/* Thumbnail Badge */}
-                    {isThumbnail ? (
-                      <div className="absolute top-2 left-2 bg-[#00B14F] text-black text-[9px] font-black px-2 py-0.5 rounded-full shadow-lg flex items-center gap-1 z-10">
-                        <Star className="w-3 h-3 fill-black" />
-                        PRIMARY THUMBNAIL
+                    {/* Status Badge Overlays */}
+                    {retryingIndex === index || item.status === "uploading" ? (
+                      <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center gap-1.5 z-20">
+                        <RefreshCw className="w-6 h-6 text-[#00B14F] animate-spin" />
+                        <span className="text-[10px] font-bold text-[#00B14F]">Uploading...</span>
+                      </div>
+                    ) : item.status === "error" ? (
+                      <div className="absolute inset-0 bg-red-950/85 flex flex-col items-center justify-center p-2 text-center gap-1.5 z-20">
+                        <AlertTriangle className="w-5 h-5 text-red-400" />
+                        <span className="text-[10px] font-bold text-red-300">Upload failed</span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRetrySingle(index);
+                          }}
+                          className="px-2.5 py-1 bg-red-600 hover:bg-red-500 text-white rounded-lg text-[10px] font-extrabold flex items-center gap-1 shadow-md cursor-pointer transition-all"
+                        >
+                          <RefreshCw className="w-3 h-3" />
+                          Retry
+                        </button>
+                      </div>
+                    ) : !item.isLocal || item.status === "success" ? (
+                      <div className="absolute top-2 right-2 bg-emerald-950/90 border border-emerald-500/50 text-emerald-400 text-[8px] font-black px-1.5 py-0.5 rounded-md flex items-center gap-1 shadow-sm z-10">
+                        <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" />
+                        Cloudinary
                       </div>
                     ) : (
+                      <div className="absolute top-2 right-2 bg-amber-950/80 border border-amber-500/40 text-amber-300 text-[8px] font-black px-1.5 py-0.5 rounded-md flex items-center gap-1 z-10">
+                        Ready
+                      </div>
+                    )}
+
+                    {/* Promotion button: "Set as Main" for non-main items */}
+                    {!isMain && item.status !== "uploading" && retryingIndex !== index && (
                       <button
                         type="button"
-                        onClick={() => handleSetThumbnail(img, index)}
-                        className="absolute top-2 left-2 bg-black/60 hover:bg-[#00B14F] text-white hover:text-black text-[9px] font-extrabold px-2 py-1 rounded-full backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all flex items-center gap-1 z-10"
+                        onClick={() => handleSetMain(index)}
+                        className="absolute top-2 left-2 bg-black/75 hover:bg-[#00B14F] text-white hover:text-black text-[9px] font-extrabold px-2 py-1 rounded-full backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all flex items-center gap-1 z-10 shadow-md cursor-pointer"
+                        title="Promote to Main Product Image"
                       >
-                        <Star className="w-3 h-3" />
-                        Set Thumbnail
+                        <Star className="w-2.5 h-2.5" />
+                        Set as Main
                       </button>
                     )}
 
-                    {/* Action Overlay */}
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 p-2 backdrop-blur-[2px]">
-                      {/* Zoom Modal Button */}
-                      <button
-                        type="button"
-                        onClick={() => setZoomedImage(img)}
-                        className="p-2 bg-gray-900/90 hover:bg-white text-white hover:text-black rounded-xl transition-all shadow-md"
-                        title="Zoom / Preview Image"
-                      >
-                        <ZoomIn className="w-4 h-4" />
-                      </button>
+                    {/* Hover Action Overlay */}
+                    {item.status !== "uploading" && retryingIndex !== index && (
+                      <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 p-2 backdrop-blur-[1px]">
+                        {/* Zoom Lightbox Button */}
+                        <button
+                          type="button"
+                          onClick={() => setZoomedItem(item)}
+                          className="p-2 bg-gray-900/90 hover:bg-white text-white hover:text-black rounded-xl transition-all shadow-md cursor-pointer"
+                          title="View Large Preview"
+                        >
+                          <ZoomIn className="w-3.5 h-3.5" />
+                        </button>
 
-                      {/* Replace Button */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setReplacingIndex(index);
-                          replaceInputRef.current?.click();
-                        }}
-                        className="p-2 bg-gray-900/90 hover:bg-amber-500 text-white hover:text-black rounded-xl transition-all shadow-md"
-                        title="Replace Image"
-                      >
-                        <RefreshCw className="w-4 h-4" />
-                      </button>
-
-                      {/* Delete Button */}
-                      <button
-                        type="button"
-                        disabled={isDeleting}
-                        onClick={() => handleDeleteImage(index)}
-                        className="p-2 bg-red-600/90 hover:bg-red-500 text-white rounded-xl transition-all shadow-md disabled:opacity-50"
-                        title="Delete from Cloudinary"
-                      >
-                        {isDeleting ? (
-                          <RefreshCw className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="w-4 h-4" />
+                        {/* If local and not uploaded, allow direct single upload button */}
+                        {item.isLocal && item.file && (
+                          <button
+                            type="button"
+                            onClick={() => handleRetrySingle(index)}
+                            className="p-2 bg-gray-900/90 hover:bg-[#00B14F] text-white hover:text-black rounded-xl transition-all shadow-md cursor-pointer"
+                            title="Upload this photo now"
+                          >
+                            <Upload className="w-3.5 h-3.5" />
+                          </button>
                         )}
-                      </button>
-                    </div>
 
-                    {/* Reorder Arrows on Mobile / Hover */}
+                        {/* Replace File Button */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setReplacingIndex(index);
+                            replaceInputRef.current?.click();
+                          }}
+                          className="p-2 bg-gray-900/90 hover:bg-amber-500 text-white hover:text-black rounded-xl transition-all shadow-md cursor-pointer"
+                          title="Replace this image"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5" />
+                        </button>
+
+                        {/* Delete Button in Overlay */}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveItem(index)}
+                          className="p-2 bg-red-600/90 hover:bg-red-500 text-white rounded-xl transition-all shadow-md cursor-pointer"
+                          title="Delete image"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Reorder Arrows on Hover */}
                     <div className="absolute bottom-2 left-2 right-2 flex justify-between opacity-0 group-hover:opacity-100 transition-opacity z-10">
                       <button
                         type="button"
                         disabled={index === 0}
-                        onClick={() => handleMoveImage(index, index - 1)}
-                        className="p-1 bg-black/80 text-white rounded-lg hover:bg-[#00B14F] hover:text-black disabled:opacity-20 transition-all"
+                        onClick={() => handleMoveItem(index, index - 1)}
+                        className="p-1 bg-black/80 text-white rounded-lg hover:bg-[#00B14F] hover:text-black disabled:opacity-20 transition-all shadow-sm cursor-pointer"
                         title="Move Left"
                       >
                         <ArrowLeft className="w-3 h-3" />
                       </button>
                       <button
                         type="button"
-                        disabled={index === galleryImages.length - 1}
-                        onClick={() => handleMoveImage(index, index + 1)}
-                        className="p-1 bg-black/80 text-white rounded-lg hover:bg-[#00B14F] hover:text-black disabled:opacity-20 transition-all"
+                        disabled={index === items.length - 1}
+                        onClick={() => handleMoveItem(index, index + 1)}
+                        className="p-1 bg-black/80 text-white rounded-lg hover:bg-[#00B14F] hover:text-black disabled:opacity-20 transition-all shadow-sm cursor-pointer"
                         title="Move Right"
                       >
                         <ArrowRight className="w-3 h-3" />
@@ -523,17 +715,27 @@ export const MediaUploader: React.FC<MediaUploaderProps> = ({
                     </div>
                   </div>
 
-                  {/* Metadata Card Footer */}
-                  <div className="p-2.5 bg-gray-950/80 border-t border-gray-800/80 text-[10px] space-y-0.5">
-                    <p className="font-bold text-gray-200 truncate">
-                      {img.original_filename || `Photo #${index + 1}`}
+                  {/* Metadata Footer */}
+                  <div className="p-2 bg-gray-950/90 border-t border-gray-800 text-[10px] space-y-0.5">
+                    <p className="font-bold text-gray-200 truncate" title={item.original_filename}>
+                      {item.original_filename || `Photo #${index + 1}`}
                     </p>
-                    <div className="flex justify-between text-gray-500 font-mono">
-                      <span>{img.width && img.height ? `${img.width}x${img.height}` : "HD"}</span>
-                      <span>{formatBytes(img.bytes)}</span>
-                      <span className="uppercase text-[#00B14F] font-extrabold">{img.format || "WEBP"}</span>
+                    <div className="flex justify-between items-center text-gray-500 font-mono text-[9px]">
+                      <span>{formatBytes(item.bytes)}</span>
+                      <span
+                        className={`font-extrabold uppercase ${
+                          !item.isLocal || item.status === "success"
+                            ? "text-[#00B14F]"
+                            : item.status === "error"
+                            ? "text-red-400"
+                            : "text-amber-400"
+                        }`}
+                      >
+                        {!item.isLocal || item.status === "success" ? "Cloudinary ✓" : item.status === "error" ? "Failed" : "Ready"}
+                      </span>
                     </div>
                   </div>
+
                 </div>
               );
             })}
@@ -541,8 +743,8 @@ export const MediaUploader: React.FC<MediaUploaderProps> = ({
         </div>
       )}
 
-      {/* Zoom / Full Preview Lightbox Modal */}
-      {zoomedImage && (
+      {/* FULL PREVIEW LIGHTBOX MODAL */}
+      {zoomedItem && (
         <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
           <div className="relative max-w-4xl w-full bg-gray-900 border border-gray-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
             {/* Modal Header */}
@@ -550,13 +752,13 @@ export const MediaUploader: React.FC<MediaUploaderProps> = ({
               <div className="flex items-center gap-2">
                 <Maximize2 className="w-4 h-4 text-[#00B14F]" />
                 <span className="text-xs font-bold text-white truncate max-w-xs sm:max-w-md">
-                  {zoomedImage.original_filename || zoomedImage.public_id}
+                  {zoomedItem.original_filename || "Image Preview"}
                 </span>
               </div>
               <button
                 type="button"
-                onClick={() => setZoomedImage(null)}
-                className="p-1.5 text-gray-400 hover:text-white bg-gray-800 rounded-full transition-colors"
+                onClick={() => setZoomedItem(null)}
+                className="p-1.5 text-gray-400 hover:text-white bg-gray-800 rounded-full transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -565,29 +767,35 @@ export const MediaUploader: React.FC<MediaUploaderProps> = ({
             {/* Modal Image Display */}
             <div className="flex-1 bg-black flex items-center justify-center p-4 overflow-auto min-h-[300px]">
               <img
-                src={zoomedImage.secure_url}
+                src={zoomedItem.previewUrl}
                 alt="Full Preview"
-                className="max-h-[60vh] object-contain rounded-xl"
+                className="max-h-[65vh] object-contain rounded-xl"
               />
             </div>
 
             {/* Modal Specs Footer */}
-            <div className="p-4 bg-gray-950 border-t border-gray-800 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <div className="p-4 bg-gray-950 border-t border-gray-800 grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
               <div>
-                <span className="text-gray-500 block text-[10px] uppercase font-bold">Public ID</span>
-                <span className="font-mono text-gray-300 text-[11px] truncate block">{zoomedImage.public_id}</span>
-              </div>
-              <div>
-                <span className="text-gray-500 block text-[10px] uppercase font-bold">Dimensions</span>
-                <span className="font-mono text-gray-300 text-[11px]">{zoomedImage.width || 0} x {zoomedImage.height || 0} px</span>
+                <span className="text-gray-500 block text-[10px] uppercase font-bold">Filename</span>
+                <span className="font-mono text-gray-300 text-[11px] truncate block">
+                  {zoomedItem.original_filename || "Image"}
+                </span>
               </div>
               <div>
                 <span className="text-gray-500 block text-[10px] uppercase font-bold">File Size</span>
-                <span className="font-mono text-gray-300 text-[11px]">{formatBytes(zoomedImage.bytes)}</span>
+                <span className="font-mono text-gray-300 text-[11px]">
+                  {formatBytes(zoomedItem.bytes)}
+                </span>
               </div>
               <div>
-                <span className="text-gray-500 block text-[10px] uppercase font-bold">CDN Format</span>
-                <span className="font-mono text-[#00B14F] text-[11px] uppercase font-bold">{zoomedImage.format || "PNG/WEBP"}</span>
+                <span className="text-gray-500 block text-[10px] uppercase font-bold">Status</span>
+                <span
+                  className={`font-mono text-[11px] uppercase font-bold ${
+                    zoomedItem.isLocal ? "text-amber-400" : "text-[#00B14F]"
+                  }`}
+                >
+                  {zoomedItem.isLocal ? "Local Ready for Upload" : "Cloudinary Stored"}
+                </span>
               </div>
             </div>
           </div>

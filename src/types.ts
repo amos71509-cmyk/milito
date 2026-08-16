@@ -11,10 +11,19 @@ export interface CloudinaryImageMeta {
   created_at?: string;
 }
 
+export interface BrandItem {
+  id: string;
+  name: string;
+  logoUrl?: string;
+  logoPublicId?: string;
+  logoMeta?: CloudinaryImageMeta;
+}
+
 export interface WebsiteBranding {
   logoUrl: string;
   logoPublicId: string;
   logoMeta?: CloudinaryImageMeta;
+  brandLogos?: BrandItem[];
   updatedAt?: string;
 }
 
@@ -26,8 +35,10 @@ export interface Product {
   price: number; // in Naira (NGN)
   originalPrice?: number; // for discount badges
   featured?: boolean; // highlight on frontpage
-  batteryHealth?: string; // e.g. "100%", "95%+", "90%+", or "88% - 92%"
+  batteryHealth?: string; // e.g. "100%", "95%", "90%" for Apple/iPhone
   batteryHealthValue?: string; // e.g. "90%+", "95%+", "100%"
+  batteryCondition?: "Excellent" | "Very Good" | "Good" | "Normal" | "Fair" | "Needs Attention" | string; // For Android (Samsung, Tecno, Redmi, etc.)
+  deviceLockStatus?: "Unlocked" | "Carrier Locked" | "SIM Locked" | "Account Locked" | "Unknown" | string;
   availability?: "In Stock" | "Reserved" | "Sold Out";
   image: string;
   imagePublicId?: string;
@@ -123,16 +134,21 @@ export function resolveImageUrl(url: any): string {
   } else {
     strUrl = String(url);
   }
-  if (!strUrl) return "https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?auto=format&fit=crop&w=400&q=80";
+  if (!strUrl || strUrl === "[object Object]") {
+    return "https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?auto=format&fit=crop&w=400&q=80";
+  }
   const trimmed = strUrl.trim();
+  if (trimmed.startsWith("blob:") || trimmed.startsWith("data:")) {
+    return trimmed;
+  }
   let finalUrl = trimmed;
-  if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://") && !trimmed.startsWith("data:")) {
+  if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
     const cleanPath = trimmed.startsWith("/") ? trimmed.substring(1) : trimmed;
     finalUrl = `https://res.cloudinary.com/militotech/image/upload/${cleanPath}`;
   }
   
   // Inject f_auto,q_auto automatic optimization features for fast website loading
-  if (finalUrl.includes("res.cloudinary.com") && !finalUrl.includes("f_auto") && !finalUrl.includes("q_auto")) {
+  if (finalUrl.includes("res.cloudinary.com") && !finalUrl.includes("f_auto") && !finalUrl.includes("q_auto") && finalUrl.includes("/upload/")) {
     finalUrl = finalUrl.replace("/upload/", "/upload/f_auto,q_auto/");
   }
   

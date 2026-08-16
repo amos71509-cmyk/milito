@@ -17,6 +17,7 @@ import {
 import { useBranding } from "../context/BrandingContext";
 import { CloudinaryImageMeta } from "../types";
 import { UploadService } from "../services/UploadService";
+import BrandLogosManager from "./BrandLogosManager";
 
 export default function WebsiteBrandingManager() {
   const { branding, loading, updateLogo, deleteLogo } = useBranding();
@@ -437,6 +438,9 @@ export default function WebsiteBrandingManager() {
           </div>
         </div>
       </div>
+
+      {/* BRAND LOGOS MANAGEMENT SECTION */}
+      <BrandLogosManager />
     </div>
   );
 }

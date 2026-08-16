@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { X, Check, ShieldCheck, Award, Star, Info, Zap, ArrowLeft } from "lucide-react";
+import React, { useState, useMemo } from "react";
+import { X, Check, ShieldCheck, Award, Star, Info, Zap, ArrowLeft, ChevronLeft, ChevronRight, Images } from "lucide-react";
 import { Product, resolveImageUrl } from "../types";
 
 interface ProductDetailsModalProps {
@@ -12,6 +12,34 @@ export default function ProductDetailsModal({ product, onClose, onAddToCart }: P
   const [selectedStorage, setSelectedStorage] = useState(product.storageOptions[0]);
   const [selectedColor, setSelectedColor] = useState(product.colorOptions[0]);
   const [activeImageTab, setActiveImageTab] = useState(0);
+
+  // Extract all gallery images cleanly
+  const galleryList = useMemo<string[]>(() => {
+    const list: string[] = [];
+
+    if (Array.isArray(product.galleryImages)) {
+      product.galleryImages.forEach(g => {
+        if (g?.secure_url && !list.includes(g.secure_url)) {
+          list.push(g.secure_url);
+        }
+      });
+    }
+
+    if (Array.isArray(product.gallery)) {
+      product.gallery.forEach(item => {
+        const url = typeof item === "object" ? (item as any)?.secure_url : String(item);
+        if (url && !list.includes(url)) {
+          list.push(url);
+        }
+      });
+    }
+
+    if (product.image && !list.includes(product.image)) {
+      list.unshift(product.image);
+    }
+
+    return list.length > 0 ? list : [product.image || ""];
+  }, [product]);
 
   // Dynamic price delta depending on storage
   const getSelectedPrice = () => {
@@ -34,13 +62,21 @@ export default function ProductDetailsModal({ product, onClose, onAddToCart }: P
     }).format(p);
   };
 
+  const handlePrevImage = () => {
+    setActiveImageTab(prev => (prev > 0 ? prev - 1 : galleryList.length - 1));
+  };
+
+  const handleNextImage = () => {
+    setActiveImageTab(prev => (prev < galleryList.length - 1 ? prev + 1 : 0));
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto">
-      <div className="bg-white rounded-3xl max-w-4xl w-full border border-gray-250 overflow-hidden shadow-2xl animate-scaleUp my-8">
+    <div className="fixed inset-0 z-50 flex items-[stretch] sm:items-center justify-center p-0 sm:p-4 md:p-6 bg-black/85 backdrop-blur-md overflow-y-auto">
+      <div className="relative w-full max-w-4xl h-[100dvh] sm:h-auto sm:max-h-[92vh] bg-white sm:rounded-3xl border-0 sm:border border-gray-250 shadow-2xl flex flex-col overflow-hidden animate-scaleUp my-0 sm:my-auto">
         
         {/* Modal Header */}
-        <div className="px-6 py-5 border-b border-gray-150 flex justify-between items-center bg-gray-50">
-          <div className="flex items-center gap-3">
+        <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-gray-150 flex justify-between items-center bg-gray-50 shrink-0 sticky top-0 z-10">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
               onClick={onClose}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-gray-700 hover:text-black hover:bg-gray-100 hover:border-gray-300 transition-all duration-200 cursor-pointer shadow-xs text-xs font-bold font-sans"
@@ -51,10 +87,10 @@ export default function ProductDetailsModal({ product, onClose, onAddToCart }: P
               <span>Back</span>
             </button>
             <div className="h-5 w-px bg-gray-250 mx-1"></div>
-            <span className="text-[10px] uppercase font-bold tracking-widest bg-milito-green/10 text-milito-green border border-milito-green/30 px-2.5 py-0.5 rounded-full">
+            <span className="text-[10px] uppercase font-bold tracking-widest bg-milito-green/10 text-milito-green border border-milito-green/30 px-2 py-0.5 rounded-full">
               {product.condition}
             </span>
-            <h3 className="text-sm font-bold text-gray-750 font-sans">Device Specifications</h3>
+            <h3 className="text-xs sm:text-sm font-bold text-gray-750 font-sans truncate">Device Specifications</h3>
           </div>
           <button
             onClick={onClose}
@@ -66,41 +102,78 @@ export default function ProductDetailsModal({ product, onClose, onAddToCart }: P
           </button>
         </div>
 
-        {/* Modal Content */}
-        <div className="grid grid-cols-1 md:grid-cols-2">
+        {/* Modal Content - Unified Unrestricted Scroll Area */}
+        <div className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-6 md:p-8 pb-36 sm:pb-8 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 items-start">
           
-          {/* Left Column: Interactive Image Slider */}
-          <div className="p-8 bg-gray-50 flex flex-col justify-between border-r border-gray-150">
-            <div className="flex-1 flex items-center justify-center w-full aspect-square md:aspect-[4/3] rounded-3xl overflow-hidden bg-white border border-gray-150 shadow-md mb-6 group relative">
+          {/* Left Column: Prominent Large Image & Gallery Slider */}
+          <div className="p-3.5 sm:p-5 bg-gray-50 rounded-2xl border border-gray-150 flex flex-col justify-between items-center">
+            <div className="w-full flex items-center justify-center min-h-[280px] sm:min-h-[360px] md:min-h-[440px] rounded-2xl overflow-hidden bg-white border border-gray-150 shadow-xs mb-4 group relative p-3 sm:p-4">
               <img
-                src={resolveImageUrl(product.gallery[activeImageTab] || product.image || "")}
+                src={resolveImageUrl(galleryList[activeImageTab] || galleryList[0] || "")}
                 alt={product.name}
                 referrerPolicy="no-referrer"
-                className="w-full h-full object-cover rounded-3xl transition-all duration-500 group-hover:scale-105"
+                className="w-full h-auto max-h-[340px] sm:max-h-[440px] md:max-h-[500px] object-contain transition-all duration-300 group-hover:scale-105 filter drop-shadow-md"
               />
+
+              {/* Photo Index Badge */}
+              {galleryList.length > 1 && (
+                <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 z-10 shadow-sm">
+                  <Images className="w-3 h-3 text-milito-green" />
+                  <span>{activeImageTab + 1} / {galleryList.length}</span>
+                </div>
+              )}
+
+              {/* Left / Right Navigation Controls */}
+              {galleryList.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePrevImage();
+                    }}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/90 hover:bg-white text-gray-800 shadow-md transition-all hover:scale-110 cursor-pointer z-10"
+                    title="Previous Photo"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleNextImage();
+                    }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/90 hover:bg-white text-gray-800 shadow-md transition-all hover:scale-110 cursor-pointer z-10"
+                    title="Next Photo"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </>
+              )}
             </div>
 
             {/* Gallery Thumbs */}
-            {product.gallery && product.gallery.length > 1 && (
-              <div className="flex justify-center gap-3.5 flex-wrap">
-                {product.gallery.map((img, index) => (
+            {galleryList.length > 1 && (
+              <div className="flex justify-center gap-2 sm:gap-2.5 flex-wrap w-full max-h-36 overflow-y-auto p-1">
+                {galleryList.map((img, index) => (
                   <button
                     key={index}
                     onClick={() => setActiveImageTab(index)}
-                    className={`w-18 h-18 rounded-2xl overflow-hidden p-0 border transition-all duration-300 ${
+                    className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl overflow-hidden p-0.5 bg-white flex items-center justify-center border transition-all duration-200 cursor-pointer ${
                       activeImageTab === index
-                        ? "border-milito-green ring-4 ring-milito-green/20 scale-105"
-                        : "border-gray-250 hover:border-gray-450"
+                        ? "border-milito-green ring-3 ring-milito-green/30 scale-105 shadow-sm"
+                        : "border-gray-250 hover:border-gray-400 opacity-70 hover:opacity-100"
                     }`}
+                    title={`View Photo ${index + 1}`}
                   >
-                    <img src={resolveImageUrl(img)} alt="thumb" referrerPolicy="no-referrer" className="w-full h-full object-cover rounded-2xl" />
+                    <img src={resolveImageUrl(img)} alt={`Thumbnail ${index + 1}`} referrerPolicy="no-referrer" className="w-full h-full object-contain" />
                   </button>
                 ))}
               </div>
             )}
 
-            {/* Battery Quality Alert (Crucial specs context in Nigeria) */}
-            <div className="mt-6 p-4 rounded-2xl bg-milito-green/10 border border-milito-green/20 flex items-start gap-3 shadow-xs">
+            {/* Battery Quality Alert */}
+            <div className="mt-4 sm:mt-6 p-3.5 sm:p-4 rounded-2xl bg-milito-green/10 border border-milito-green/20 flex items-start gap-3 shadow-xs">
               <Zap className="w-5 h-5 text-milito-green flex-shrink-0 mt-0.5" />
               <div>
                 <h5 className="text-xs font-bold text-gray-900 uppercase tracking-wider">QC Battery Health Guard</h5>
@@ -114,7 +187,7 @@ export default function ProductDetailsModal({ product, onClose, onAddToCart }: P
           </div>
 
           {/* Right Column: Details & Purchasing */}
-          <div className="p-8 max-h-[580px] overflow-y-auto space-y-6">
+          <div className="space-y-5 sm:space-y-6">
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-milito-green font-bold tracking-wider">{product.brand} flagship</span>
@@ -189,6 +262,11 @@ export default function ProductDetailsModal({ product, onClose, onAddToCart }: P
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-gray-50 p-4 rounded-2xl border border-gray-200 shadow-sm">
                 {[
+                  ...(product.batteryHealth ? [{ label: "Battery Health", val: product.batteryHealth }] : []),
+                  ...(product.batteryCondition ? [{ label: "Battery Condition", val: product.batteryCondition }] : []),
+                  ...(product.network ? [{ label: "Network Status", val: product.network }] : []),
+                  ...(product.deviceLockStatus ? [{ label: "Device Lock", val: product.deviceLockStatus }] : []),
+                  ...(product.faceId ? [{ label: "Biometrics", val: product.faceId }] : []),
                   { label: "Display", val: product.specs.screen },
                   { label: "Processor", val: product.specs.chipset },
                   { label: "Main Cameras", val: product.specs.camera },
@@ -196,7 +274,7 @@ export default function ProductDetailsModal({ product, onClose, onAddToCart }: P
                   { label: "Platform OS", val: product.specs.os },
                   { label: "Sim Standard", val: product.specs.simType },
                   { label: "Store Warranty", val: product.specs.warranty }
-                ].map((spec) => (
+                ].filter(item => Boolean(item.val)).map((spec) => (
                   <div key={spec.label} className="border-b border-gray-200 pb-1.5 last:border-b-0">
                     <span className="text-[10px] uppercase font-bold text-gray-500 block">{spec.label}</span>
                     <span className="text-gray-800 font-semibold leading-relaxed mt-0.5 block">{spec.val}</span>
@@ -240,7 +318,7 @@ export default function ProductDetailsModal({ product, onClose, onAddToCart }: P
 
                 <button
                   onClick={onClose}
-                  className="w-full py-3 px-6 rounded-xl bg-gray-100 hover:bg-gray-250 text-gray-700 hover:text-black transition-colors duration-200 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="w-full py-3 px-6 rounded-xl bg-gray-100 hover:bg-gray-250 text-gray-700 hover:text-black transition-colors duration-200 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer mb-8 sm:mb-0"
                 >
                   <ArrowLeft className="w-3.5 h-3.5 text-milito-green" />
                   Go Back to Device Listings

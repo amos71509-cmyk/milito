@@ -93,113 +93,148 @@ export default function App() {
         const qProduct = query(collection(db, "product"));
         const qProducts = query(collection(db, "products"));
 
-        const handleSnapshot = (querySnapshot: any) => {
-          if (!querySnapshot || querySnapshot.empty) return;
+        // Master combined map across both 'product' and 'products' collections
+        const masterProductsMap = new Map<string, Product>();
 
-          const fsProductsMap = new Map<string, Product>();
+        const parseDocToProduct = (docSnap: any): Product => {
+          const data = docSnap.data();
+
+          // Safely extract main thumbnail URL as a string (thumbnail -> image -> galleryImages[0] -> gallery[0] -> imageUrl)
+          let mainImg = "";
+          if (data.thumbnail && typeof data.thumbnail === "object" && data.thumbnail.secure_url) {
+            mainImg = data.thumbnail.secure_url;
+          } else if (typeof data.thumbnail === "string" && data.thumbnail.trim().length > 0) {
+            mainImg = data.thumbnail;
+          } else if (data.image) {
+            mainImg = typeof data.image === "object" ? (data.image as any).secure_url || "" : String(data.image);
+          } else if (Array.isArray(data.galleryImages) && data.galleryImages.length > 0) {
+            const g0 = data.galleryImages[0];
+            mainImg = typeof g0 === "object" && g0 !== null ? g0.secure_url || "" : String(g0);
+          } else if (Array.isArray(data.gallery) && data.gallery.length > 0) {
+            const g0 = data.gallery[0];
+            mainImg = typeof g0 === "object" && g0 !== null ? g0.secure_url || "" : String(g0);
+          } else if (data.imageUrl) {
+            mainImg = String(data.imageUrl);
+          }
+
+          if (!mainImg || mainImg === "[object Object]") {
+            mainImg = "https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?auto=format&fit=crop&w=400&q=80";
+          }
+
+          // Parse thumbnail object
+          const parsedThumbnail = (data.thumbnail && typeof data.thumbnail === "object" && data.thumbnail.secure_url)
+            ? { secure_url: data.thumbnail.secure_url, public_id: data.thumbnail.public_id || "" }
+            : { secure_url: mainImg, public_id: data.imagePublicId || "" };
+
+          // Parse galleryImages array of CloudinaryImageMeta
+          let parsedGalleryImages: any[] = [];
+          if (Array.isArray(data.galleryImages) && data.galleryImages.length > 0) {
+            parsedGalleryImages = data.galleryImages.map((g: any, idx: number) => {
+              if (typeof g === "object" && g !== null) {
+                return {
+                  secure_url: g.secure_url || "",
+                  public_id: g.public_id || "",
+                  original_filename: g.original_filename || `Image ${idx + 1}`,
+                  width: Number(g.width) || 0,
+                  height: Number(g.height) || 0,
+                  format: g.format || "jpg",
+                  bytes: Number(g.bytes) || 0,
+                  created_at: g.created_at || new Date().toISOString()
+                };
+              }
+              return {
+                secure_url: String(g),
+                public_id: "",
+                original_filename: `Image ${idx + 1}`,
+                width: 0,
+                height: 0,
+                format: "jpg",
+                bytes: 0,
+                created_at: new Date().toISOString()
+              };
+            }).filter((g: any) => Boolean(g.secure_url));
+          }
+
+          let galUrls: string[] = [];
+          if (parsedGalleryImages.length > 0) {
+            galUrls = parsedGalleryImages.map(g => g.secure_url).filter(Boolean);
+          } else if (Array.isArray(data.gallery)) {
+            galUrls = data.gallery.map((g: any) => (typeof g === "object" && g !== null ? g.secure_url : String(g))).filter(Boolean);
+            parsedGalleryImages = galUrls.map((url, idx) => ({
+              secure_url: url,
+              public_id: data.galleryPublicIds?.[idx] || "",
+              original_filename: `Image ${idx + 1}`,
+              width: 0,
+              height: 0,
+              format: "jpg",
+              bytes: 0,
+              created_at: data.createdAt || new Date().toISOString()
+            }));
+          } else if (mainImg) {
+            galUrls = [mainImg];
+            parsedGalleryImages = [{
+              secure_url: mainImg,
+              public_id: parsedThumbnail.public_id || "",
+              original_filename: "Main Photo",
+              width: 0,
+              height: 0,
+              format: "jpg",
+              bytes: 0,
+              created_at: data.createdAt || new Date().toISOString()
+            }];
+          }
+
+          return {
+            id: docSnap.id,
+            name: data.model || data.name || "Unknown Model",
+            brand: data.brand || "Other",
+            condition: data.condition || "Premium UK Used",
+            price: Number(data.price) || 0,
+            originalPrice: Number(data.originalPrice) || Number(data.price) * 1.2,
+            badge: data.badge || "Verified Grade A++",
+            image: mainImg,
+            imagePublicId: parsedThumbnail.public_id || data.imagePublicId || "",
+            thumbnail: parsedThumbnail,
+            galleryImages: parsedGalleryImages,
+            gallery: galUrls,
+            galleryPublicIds: data.galleryPublicIds || parsedGalleryImages.map(g => g.public_id).filter(Boolean),
+            storageOptions: data.storage || (Array.isArray(data.storage) ? data.storage : [data.storage]) || ["128GB", "256GB"],
+            colorOptions: data.color || (Array.isArray(data.color) ? data.color : [{ name: data.color || "Space Premium", hex: "#1A2025" }]),
+            batteryHealth: data.batteryHealth || "100%",
+            batteryHealthValue: data.batteryHealthValue || "100%",
+            description: data.description || "",
+            specs: data.specs || {
+              screen: "6.7-inch OLED",
+              camera: "48MP Quad Pixel",
+              chipset: "Bionic CPU Logic",
+              batterySize: "3900 mAh",
+              os: "Latest Version Unlocked",
+              warranty: "1-Year Swap Escrow Check",
+              simType: "1 Physical SIM + active eSIM"
+            },
+            rating: Number(data.rating) || 4.9,
+            reviewsCount: Number(data.reviewsCount) || 1,
+            availability: data.status || data.availability || "In Stock",
+            featured: !!data.featured,
+            categorySlug: data.categorySlug || "",
+            createdAt: data.createdAt || "",
+            updatedAt: data.updatedAt || ""
+          };
+        };
+
+        const handleSnapshot = (querySnapshot: any, isPrimary: boolean) => {
+          if (!querySnapshot) return;
 
           querySnapshot.forEach((docSnap: any) => {
-            const data = docSnap.data();
-
-            // Safely extract main thumbnail URL as a string
-            let mainImg = "";
-            if (data.thumbnail && typeof data.thumbnail === "object" && data.thumbnail.secure_url) {
-              mainImg = data.thumbnail.secure_url;
-            } else if (typeof data.thumbnail === "string") {
-              mainImg = data.thumbnail;
-            } else if (data.image) {
-              mainImg = typeof data.image === "object" ? (data.image as any).secure_url || "" : String(data.image);
-            } else if (data.imageUrl) {
-              mainImg = String(data.imageUrl);
+            const product = parseDocToProduct(docSnap);
+            // Insert or update in master map (primary collection 'product' takes precedence)
+            if (isPrimary || !masterProductsMap.has(docSnap.id)) {
+              masterProductsMap.set(docSnap.id, product);
             }
-
-            if (!mainImg || mainImg === "[object Object]") {
-              mainImg = "https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?auto=format&fit=crop&w=400&q=80";
-            }
-
-            // Parse thumbnail object
-            const parsedThumbnail = (data.thumbnail && typeof data.thumbnail === "object" && data.thumbnail.secure_url)
-              ? { secure_url: data.thumbnail.secure_url, public_id: data.thumbnail.public_id || "" }
-              : { secure_url: mainImg, public_id: data.imagePublicId || "" };
-
-            // Parse galleryImages array of CloudinaryImageMeta
-            let parsedGalleryImages: any[] = [];
-            if (Array.isArray(data.galleryImages) && data.galleryImages.length > 0) {
-              parsedGalleryImages = data.galleryImages.map((g: any, idx: number) => {
-                if (typeof g === "object" && g !== null) {
-                  return {
-                    secure_url: g.secure_url || "",
-                    public_id: g.public_id || "",
-                    original_filename: g.original_filename || `Image ${idx + 1}`,
-                    width: Number(g.width) || 0,
-                    height: Number(g.height) || 0,
-                    format: g.format || "jpg",
-                    bytes: Number(g.bytes) || 0,
-                    created_at: g.created_at || new Date().toISOString()
-                  };
-                }
-                return {
-                  secure_url: String(g),
-                  public_id: "",
-                  original_filename: `Image ${idx + 1}`,
-                  width: 0,
-                  height: 0,
-                  format: "jpg",
-                  bytes: 0,
-                  created_at: new Date().toISOString()
-                };
-              }).filter((g: any) => Boolean(g.secure_url));
-            }
-
-            let galUrls: string[] = [];
-            if (parsedGalleryImages.length > 0) {
-              galUrls = parsedGalleryImages.map(g => g.secure_url);
-            } else if (Array.isArray(data.gallery)) {
-              galUrls = data.gallery.map((g: any) => typeof g === "object" ? g.secure_url : String(g)).filter(Boolean);
-            } else if (mainImg) {
-              galUrls = [mainImg];
-            }
-
-            fsProductsMap.set(docSnap.id, {
-              id: docSnap.id,
-              name: data.model || data.name || "Unknown Model",
-              brand: data.brand || "Other",
-              condition: data.condition || "Premium UK Used",
-              price: Number(data.price) || 0,
-              originalPrice: Number(data.originalPrice) || Number(data.price) * 1.2,
-              badge: data.badge || "Verified Grade A++",
-              image: mainImg,
-              imagePublicId: parsedThumbnail.public_id || data.imagePublicId || "",
-              thumbnail: parsedThumbnail,
-              galleryImages: parsedGalleryImages,
-              gallery: galUrls,
-              galleryPublicIds: data.galleryPublicIds || parsedGalleryImages.map(g => g.public_id).filter(Boolean),
-              storageOptions: data.storage || (Array.isArray(data.storage) ? data.storage : [data.storage]) || ["128GB", "256GB"],
-              colorOptions: data.color || (Array.isArray(data.color) ? data.color : [{ name: data.color || "Space Premium", hex: "#1A2025" }]),
-              batteryHealth: data.batteryHealth || "100%",
-              batteryHealthValue: data.batteryHealthValue || "100%",
-              description: data.description || "",
-              specs: data.specs || {
-                screen: "6.7-inch OLED",
-                camera: "48MP Quad Pixel",
-                chipset: "Bionic CPU Logic",
-                batterySize: "3900 mAh",
-                os: "Latest Version Unlocked",
-                warranty: "1-Year Swap Escrow Check",
-                simType: "1 Physical SIM + active eSIM"
-              },
-              rating: Number(data.rating) || 4.9,
-              reviewsCount: Number(data.reviewsCount) || 1,
-              availability: data.status || data.availability || "In Stock",
-              featured: !!data.featured,
-              categorySlug: data.categorySlug || "",
-              createdAt: data.createdAt || "",
-              updatedAt: data.updatedAt || ""
-            });
           });
 
-          if (fsProductsMap.size > 0) {
-            const fsProducts = Array.from(fsProductsMap.values());
+          if (masterProductsMap.size > 0) {
+            const fsProducts = Array.from(masterProductsMap.values());
             setConfig(prev => ({
               ...prev,
               products: fsProducts
@@ -207,10 +242,10 @@ export default function App() {
           }
         };
 
-        const unsub1 = onSnapshot(qProduct, handleSnapshot, (err) => {
+        const unsub1 = onSnapshot(qProduct, (snap) => handleSnapshot(snap, true), (err) => {
           console.warn("Realtime Firestore 'product' listener notice:", err);
         });
-        const unsub2 = onSnapshot(qProducts, handleSnapshot, (err) => {
+        const unsub2 = onSnapshot(qProducts, (snap) => handleSnapshot(snap, false), (err) => {
           console.warn("Realtime Firestore 'products' listener notice:", err);
         });
 
@@ -1003,17 +1038,49 @@ export default function App() {
                   availabilityFilter !== "All" ||
                   searchQuery.trim().length > 0;
 
+                // Robust Brand / Condition Matchers
+                const isAppleDevice = (p: Product) => {
+                  const b = (p.brand || "").toLowerCase().trim();
+                  return b.includes("apple") || b.includes("iphone");
+                };
+
+                const isSamsungDevice = (p: Product) => {
+                  const b = (p.brand || "").toLowerCase().trim();
+                  return b.includes("samsung") || b.includes("galaxy");
+                };
+
+                const isGoogleDevice = (p: Product) => {
+                  const b = (p.brand || "").toLowerCase().trim();
+                  return b.includes("google") || b.includes("pixel");
+                };
+
+                const isBrandNewDevice = (p: Product) => {
+                  const c = (p.condition || "").toLowerCase().trim();
+                  return c.includes("brand new") || c === "new" || c === "sealed";
+                };
+
                 // Segment products for the dynamic homepage organization
                 const featuredProducts = config.products.filter(p => p.featured).slice(0, 6);
                 
-                const brandNewIphones = config.products.filter(p => p.brand === "Apple" && p.condition === "Brand New");
-                const usedIphones = config.products.filter(p => p.brand === "Apple" && p.condition === "Premium UK Used");
+                const brandNewIphones = config.products.filter(p => isAppleDevice(p) && isBrandNewDevice(p));
+                const usedIphones = config.products.filter(p => isAppleDevice(p) && !isBrandNewDevice(p));
                 
-                const brandNewSamsungs = config.products.filter(p => p.brand === "Samsung" && p.condition === "Brand New");
-                const usedSamsungs = config.products.filter(p => p.brand === "Samsung" && p.condition === "Premium UK Used");
+                const brandNewSamsungs = config.products.filter(p => isSamsungDevice(p) && isBrandNewDevice(p));
+                const usedSamsungs = config.products.filter(p => isSamsungDevice(p) && !isBrandNewDevice(p));
                 
-                const googlePixels = config.products.filter(p => p.brand === "Google");
-                const otherDevices = config.products.filter(p => p.brand !== "Apple" && p.brand !== "Samsung" && p.brand !== "Google");
+                const googlePixels = config.products.filter(p => isGoogleDevice(p));
+
+                // Track all products categorized into specific brand shelves above
+                const categorizedIds = new Set([
+                  ...brandNewIphones.map(p => p.id),
+                  ...usedIphones.map(p => p.id),
+                  ...brandNewSamsungs.map(p => p.id),
+                  ...usedSamsungs.map(p => p.id),
+                  ...googlePixels.map(p => p.id)
+                ]);
+
+                // Catch-all shelf for any other devices (Xiaomi, Tecno, Infinix, Oppo, or unassigned items)
+                const otherDevices = config.products.filter(p => !categorizedIds.has(p.id));
 
                 // Helper to render shelf
                 const renderProductShelf = (title: string, subtitle: string, list: Product[]) => {
@@ -1029,7 +1096,7 @@ export default function App() {
                         </div>
                         <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 md:gap-5 items-start">
                         {list.map((prod) => (
                           <ProductCard
                             key={prod.id}
@@ -1077,7 +1144,7 @@ export default function App() {
                   // Render single flat grid when user is proactively searching or filtering
                   return (
                     <>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 md:gap-5 items-start">
                         {paginatedProducts.map((prod) => (
                           <ProductCard
                             key={prod.id}

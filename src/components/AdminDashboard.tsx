@@ -51,6 +51,7 @@ import { collection, addDoc, setDoc, getDocs, getDocsFromCache, updateDoc, delet
 import BrandProductForm from "./BrandProductForm";
 import DeleteProductModal from "./DeleteProductModal";
 import WebsiteBrandingManager from "./WebsiteBrandingManager";
+import BrandLogosManager from "./BrandLogosManager";
 import { useBranding } from "../context/BrandingContext";
 import { UploadService } from "../services/UploadService";
 
@@ -261,6 +262,18 @@ export default function AdminDashboard({
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [publishUploadStatus, setPublishUploadStatus] = useState<{
+    isUploading: boolean;
+    current: number;
+    total: number;
+    stageText?: string;
+    isSuccess?: boolean;
+    errorMessage?: string | null;
+  }>({
+    isUploading: false,
+    current: 0,
+    total: 0
+  });
   const [uploadQueue, setUploadQueue] = useState<any[]>([]);
   const uploadFilesMap = useRef<Record<string, File>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -320,14 +333,20 @@ export default function AdminDashboard({
       const parseDocToProduct = (docSnap: any): Product => {
         const data = docSnap.data();
 
-        // Safely extract main image string
+        // Safely extract main image string (thumbnail -> image -> galleryImages[0] -> gallery[0] -> imageUrl)
         let mainImg = "";
         if (data.thumbnail && typeof data.thumbnail === "object" && data.thumbnail.secure_url) {
           mainImg = data.thumbnail.secure_url;
-        } else if (typeof data.thumbnail === "string") {
+        } else if (typeof data.thumbnail === "string" && data.thumbnail.trim().length > 0) {
           mainImg = data.thumbnail;
         } else if (data.image) {
           mainImg = typeof data.image === "object" ? (data.image as any).secure_url || "" : String(data.image);
+        } else if (Array.isArray(data.galleryImages) && data.galleryImages.length > 0) {
+          const g0 = data.galleryImages[0];
+          mainImg = typeof g0 === "object" && g0 !== null ? g0.secure_url || "" : String(g0);
+        } else if (Array.isArray(data.gallery) && data.gallery.length > 0) {
+          const g0 = data.gallery[0];
+          mainImg = typeof g0 === "object" && g0 !== null ? g0.secure_url || "" : String(g0);
         } else if (data.imageUrl) {
           mainImg = String(data.imageUrl);
         }
@@ -525,25 +544,54 @@ export default function AdminDashboard({
 
   // Save Product (Add / Edit) - Centralized Atomic Transaction via UploadService
   const handleSaveProductForm = async (e: React.FormEvent) => {
-    e.preventDefault();
+    if (e && e.preventDefault) {
+      e.preventDefault();
+    }
+
     if (!productForm.brand) {
-      alert("Please select a brand first!");
+      const msg = "Please select a smartphone brand first.";
+      setUploadError(msg);
+      setToastNotification({ type: "error", message: msg });
       return;
     }
-    if (!productForm.name) {
-      alert("Please enter the model name!");
+    if (!productForm.name || !productForm.name.trim()) {
+      const msg = "Please select or enter the smartphone model name.";
+      setUploadError(msg);
+      setToastNotification({ type: "error", message: msg });
+      return;
+    }
+    if (productForm.price === undefined || productForm.price === null || isNaN(Number(productForm.price)) || Number(productForm.price) <= 0) {
+      const msg = "Please enter a valid selling price in Naira (₦).";
+      setUploadError(msg);
+      setToastNotification({ type: "error", message: msg });
       return;
     }
 
     setIsFirebaseLoading(true);
     setUploadError(null);
+    setPublishUploadStatus({
+      isUploading: true,
+      current: 0,
+      total: ((productForm as any)._mediaItems?.filter((m: any) => m.isLocal)?.length) || 0,
+      stageText: "Publishing product to catalog..."
+    });
 
     try {
       const updatedProduct = await UploadService.publishProduct({
         productForm,
         editingProduct,
+        mediaItems: (productForm as any)._mediaItems,
         existingGalleryImages: productForm.galleryImages,
         existingThumbnail: productForm.thumbnail,
+        onProgress: (stageText, progressPercent, currentUploaded, totalToUpload) => {
+          setPublishUploadStatus({
+            isUploading: progressPercent < 100,
+            current: currentUploaded || 0,
+            total: totalToUpload || 0,
+            stageText,
+            isSuccess: progressPercent >= 100
+          });
+        },
         onRefreshWebsite: (publishedProduct) => {
           const updatedList = editingProduct
             ? config.products.map(p => p.id === editingProduct.id ? publishedProduct : p)
@@ -556,12 +604,13 @@ export default function AdminDashboard({
 
       setToastNotification({
         type: "success",
-        message: "Product published successfully."
+        message: `${updatedProduct.name || "Product"} published successfully to catalog.`
       });
       setTimeout(() => setToastNotification(null), 4000);
 
       setIsAddingProduct(false);
       setEditingProduct(null);
+      setPublishUploadStatus({ isUploading: false, current: 0, total: 0 });
     } catch (err: any) {
       console.error("[Publish Workflow] Execution error:", err);
       const userMessage = err.message || "Image upload failed. Product was NOT published.";
@@ -707,8 +756,8 @@ export default function AdminDashboard({
 
       {/* View Product Details Modal */}
       {viewingProduct && (
-        <div className="fixed inset-0 z-[10010] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="relative w-full max-w-2xl bg-[#111827] border border-gray-800 rounded-2xl shadow-2xl overflow-hidden p-6 text-white space-y-4">
+        <div className="fixed inset-0 z-[10010] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
+          <div className="relative w-full max-w-2xl max-h-[92vh] sm:max-h-[90vh] overflow-y-auto bg-[#111827] border border-gray-800 rounded-2xl shadow-2xl p-4 sm:p-6 text-white space-y-4 my-auto">
             <div className="flex items-center justify-between pb-3 border-b border-gray-800">
               <div className="flex items-center gap-2">
                 <span className="text-xs uppercase font-extrabold px-2.5 py-1 rounded bg-[#00B14F]/20 text-[#00B14F]">
@@ -722,7 +771,9 @@ export default function AdminDashboard({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <img src={resolveImageUrl(viewingProduct.image)} alt={viewingProduct.name} className="w-full h-48 rounded-xl object-cover border border-gray-800" />
+              <div className="w-full h-48 rounded-xl bg-gray-900 border border-gray-800 flex items-center justify-center p-2">
+                <img src={resolveImageUrl(viewingProduct.image)} alt={viewingProduct.name} className="max-h-full max-w-full object-contain rounded-lg" />
+              </div>
               <div className="space-y-2 text-xs">
                 <p><strong className="text-gray-400">Price:</strong> <span className="text-[#00B14F] font-bold text-sm">₦{viewingProduct.price?.toLocaleString()}</span></p>
                 <p><strong className="text-gray-400">Stock Quantity:</strong> {viewingProduct.quantity ?? 1}</p>
@@ -759,10 +810,18 @@ export default function AdminDashboard({
         </div>
       )}
 
+      {/* MOBILE BACKDROP OVERLAY */}
+      {isSidebarOpen && (
+        <div
+          onClick={() => setIsSidebarOpen(false)}
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 lg:hidden"
+        />
+      )}
+
       {/* COLLAPSIBLE SIDEBAR */}
       <aside
         className={`fixed lg:static inset-y-0 left-0 z-50 bg-[#0E131F] border-r border-gray-800/80 transition-all duration-300 flex flex-col ${
-          isSidebarOpen ? "w-64" : "w-20"
+          isSidebarOpen ? "translate-x-0 w-64" : "-translate-x-full lg:translate-x-0 lg:w-20"
         }`}
       >
         {/* Sidebar Header Logo */}
@@ -818,6 +877,9 @@ export default function AdminDashboard({
                     setIsAddingProduct(false);
                     setEditingProduct(null);
                   }
+                  if (typeof window !== "undefined" && window.innerWidth < 1024) {
+                    setIsSidebarOpen(false);
+                  }
                 }}
                 className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-extrabold transition-all group ${
                   isActive
@@ -844,7 +906,12 @@ export default function AdminDashboard({
         {/* Sidebar Footer */}
         <div className="p-3 border-t border-gray-800 space-y-2">
           <button
-            onClick={() => setIsCustomizerOpen(true)}
+            onClick={() => {
+              setIsCustomizerOpen(true);
+              if (typeof window !== "undefined" && window.innerWidth < 1024) {
+                setIsSidebarOpen(false);
+              }
+            }}
             className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl bg-purple-600/20 text-purple-300 border border-purple-500/30 text-xs font-bold hover:bg-purple-600 hover:text-white transition-all"
           >
             <Sparkles className="w-4 h-4 shrink-0" />
@@ -861,18 +928,19 @@ export default function AdminDashboard({
       </aside>
 
       {/* MAIN CONTENT AREA */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden bg-[#0B0F17]">
+      <main className="flex-1 flex flex-col h-full overflow-hidden bg-[#0B0F17] min-w-0">
         {/* Top Header Bar */}
-        <header className="px-6 py-4 bg-[#0E131F] border-b border-gray-800/80 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+        <header className="px-4 sm:px-6 py-3.5 bg-[#0E131F] border-b border-gray-800/80 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="lg:hidden p-2 rounded-xl bg-gray-800 text-gray-300 hover:text-white"
+              className="lg:hidden p-2 rounded-xl bg-gray-800 text-gray-300 hover:text-white shrink-0"
+              aria-label="Toggle Navigation Menu"
             >
               <Menu className="w-5 h-5" />
             </button>
-            <div>
-              <h2 className="text-base font-black text-white capitalize">
+            <div className="min-w-0">
+              <h2 className="text-sm sm:text-base font-black text-white capitalize truncate">
                 {activeTab === "dashboard" && "Dashboard Overview"}
                 {activeTab === "products" && "Smartphone Catalog Storefront"}
                 {activeTab === "branding" && "Website Branding & Asset Management"}
@@ -883,15 +951,15 @@ export default function AdminDashboard({
                 {activeTab === "messages" && "Customer Support Inbox"}
                 {activeTab === "profile" && "Portal Settings"}
               </h2>
-              <p className="text-xs text-gray-400">MILITO TECH Central Inventory Engine</p>
+              <p className="text-[10px] sm:text-xs text-gray-400 truncate hidden xs:block">MILITO TECH Central Inventory Engine</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 shrink-0">
             {/* Quick Refresh Firestore */}
             <button
               onClick={loadProductsFromFirestore}
-              className="p-2 rounded-xl bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 transition-all flex items-center gap-1.5 text-xs font-bold"
+              className="p-2 sm:px-3 sm:py-2 rounded-xl bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 transition-all flex items-center gap-1.5 text-xs font-bold"
               title="Refresh catalog from Firestore"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isFirebaseLoading ? "animate-spin text-[#00B14F]" : ""}`} />
@@ -919,23 +987,24 @@ export default function AdminDashboard({
                   });
                   setIsAddingProduct(true);
                 }}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#00B14F] text-black font-extrabold text-xs shadow-lg shadow-[#00B14F]/20 hover:bg-[#009241] transition-all"
+                className="flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2 rounded-xl bg-[#00B14F] text-black font-extrabold text-xs shadow-lg shadow-[#00B14F]/20 hover:bg-[#009241] transition-all"
               >
                 <Plus className="w-4 h-4" />
-                Add Smartphone
+                <span className="hidden sm:inline">Add Smartphone</span>
+                <span className="sm:hidden">Add</span>
               </button>
             )}
           </div>
         </header>
 
         {/* Tab Content Panels */}
-        <div className="flex-1 p-6 overflow-y-auto space-y-6">
+        <div className="flex-1 p-3.5 sm:p-6 overflow-y-auto space-y-4 sm:space-y-6">
 
           {/* TAB 1: OVERVIEW */}
           {activeTab === "dashboard" && (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               {/* Stat Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-4">
                 {[
                   { label: "Total Products", value: metrics.total, color: "from-blue-500/20 to-blue-600/10", border: "border-blue-500/30", text: "text-blue-400", icon: ShoppingBag },
                   { label: "Available Stock", value: metrics.available, color: "from-emerald-500/20 to-emerald-600/10", border: "border-emerald-500/30", text: "text-emerald-400", icon: PackageCheck },
@@ -945,13 +1014,13 @@ export default function AdminDashboard({
                 ].map((stat, i) => {
                   const StatIcon = stat.icon;
                   return (
-                    <div key={i} className={`p-5 rounded-2xl bg-gradient-to-br ${stat.color} border ${stat.border} shadow-xl flex items-center justify-between`}>
+                    <div key={i} className={`p-3.5 sm:p-5 rounded-2xl bg-gradient-to-br ${stat.color} border ${stat.border} shadow-xl flex items-center justify-between`}>
                       <div>
-                        <p className="text-xs font-bold text-gray-400">{stat.label}</p>
-                        <h3 className={`text-2xl font-black ${stat.text} mt-1`}>{stat.value}</h3>
+                        <p className="text-[10px] sm:text-xs font-bold text-gray-400">{stat.label}</p>
+                        <h3 className={`text-lg sm:text-2xl font-black ${stat.text} mt-0.5 sm:mt-1`}>{stat.value}</h3>
                       </div>
-                      <div className={`p-3 rounded-xl bg-black/40 ${stat.text}`}>
-                        <StatIcon className="w-5 h-5" />
+                      <div className={`p-2.5 sm:p-3 rounded-xl bg-black/40 ${stat.text}`}>
+                        <StatIcon className="w-4 h-4 sm:w-5 sm:h-5" />
                       </div>
                     </div>
                   );
@@ -959,35 +1028,35 @@ export default function AdminDashboard({
               </div>
 
               {/* Quick Actions & Cloudinary Status */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 p-6 rounded-2xl bg-[#111827] border border-gray-800 space-y-4">
-                  <h3 className="text-sm font-extrabold text-white">Recently Added Smartphones</h3>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+                <div className="lg:col-span-2 p-4 sm:p-6 rounded-2xl bg-[#111827] border border-gray-800 space-y-4">
+                  <h3 className="text-xs sm:text-sm font-extrabold text-white">Recently Added Smartphones</h3>
                   <div className="divide-y divide-gray-800">
                     {config.products.slice(0, 5).map(p => (
                       <div key={p.id} className="py-3 flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                          <img src={resolveImageUrl(p.image)} alt={p.name} className="w-10 h-10 rounded-lg object-cover bg-gray-800 border border-gray-700" />
-                          <div>
-                            <h4 className="text-xs font-bold text-white">{p.name}</h4>
-                            <span className="text-[10px] text-gray-400">{p.brand} • {p.condition}</span>
+                        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                          <img src={resolveImageUrl(p.image)} alt={p.name} className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg object-contain bg-gray-800 border border-gray-700 p-0.5 shrink-0" />
+                          <div className="min-w-0">
+                            <h4 className="text-xs font-bold text-white truncate">{p.name}</h4>
+                            <span className="text-[10px] text-gray-400 block truncate">{p.brand} • {p.condition}</span>
                           </div>
                         </div>
-                        <span className="text-xs font-black text-[#00B14F]">₦{p.price?.toLocaleString()}</span>
+                        <span className="text-xs font-black text-[#00B14F] shrink-0">₦{p.price?.toLocaleString()}</span>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                <div className="p-6 rounded-2xl bg-[#111827] border border-gray-800 space-y-4">
-                  <h3 className="text-sm font-extrabold text-white">System Status</h3>
+                <div className="p-4 sm:p-6 rounded-2xl bg-[#111827] border border-gray-800 space-y-4">
+                  <h3 className="text-xs sm:text-sm font-extrabold text-white">System Status</h3>
                   <div className="space-y-3 text-xs">
                     <div className="p-3 rounded-xl bg-gray-900 border border-gray-800 flex items-center justify-between">
                       <span className="text-gray-300">Firestore Database</span>
-                      <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold">Connected</span>
+                      <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold text-[10px]">Connected</span>
                     </div>
                     <div className="p-3 rounded-xl bg-gray-900 border border-gray-800 flex items-center justify-between">
                       <span className="text-gray-300">Cloudinary Image Storage</span>
-                      <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold">Active CDN</span>
+                      <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold text-[10px]">Active CDN</span>
                     </div>
                   </div>
                 </div>
@@ -997,12 +1066,12 @@ export default function AdminDashboard({
 
           {/* TAB 2: PRODUCTS (CATALOG & ADD/EDIT) */}
           {activeTab === "products" && (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               {isAddingProduct ? (
                 /* DYNAMIC BRAND SPECIFIC FORM COMPONENT */
-                <div className="bg-[#0E131F] p-2 rounded-2xl">
+                <div className="bg-[#0E131F] p-2 sm:p-4 rounded-2xl">
                   <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-800">
-                    <h3 className="text-base font-extrabold text-white">
+                    <h3 className="text-xs sm:text-base font-extrabold text-white truncate pr-2">
                       {editingProduct ? `Edit Smartphone: ${editingProduct.name}` : "Add New Smartphone to Storefront"}
                     </h3>
                     <button
@@ -1011,9 +1080,9 @@ export default function AdminDashboard({
                         setIsAddingProduct(false);
                         setEditingProduct(null);
                       }}
-                      className="px-3 py-1.5 rounded-xl bg-gray-800 text-gray-300 text-xs font-bold hover:text-white"
+                      className="px-3 py-1.5 rounded-xl bg-gray-800 text-gray-300 text-xs font-bold hover:text-white shrink-0"
                     >
-                      ← Back to Product List
+                      ← Back to Catalog
                     </button>
                   </div>
 
@@ -1031,6 +1100,7 @@ export default function AdminDashboard({
                     isUploadingImage={isUploadingImage}
                     uploadProgress={uploadProgress}
                     uploadError={uploadError}
+                    uploadStatus={publishUploadStatus}
                     fileInputRef={fileInputRef}
                     handleFileSelect={handleFileSelect}
                     onImageUploadSuccess={trackImageUploadSuccess}
@@ -1040,93 +1110,97 @@ export default function AdminDashboard({
                 /* PRODUCT LISTING TABLE / GRID VIEW */
                 <div className="space-y-4">
                   {/* SEARCH & FILTERS BAR */}
-                  <div className="p-4 bg-[#111827] border border-gray-800 rounded-2xl flex flex-wrap items-center justify-between gap-3">
+                  <div className="p-3 sm:p-4 bg-[#111827] border border-gray-800 rounded-2xl flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center justify-between gap-2.5 sm:gap-3">
                     {/* Search Input */}
-                    <div className="relative flex-1 min-w-[200px]">
+                    <div className="relative flex-1 min-w-[180px]">
                       <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                       <input
                         type="text"
-                        placeholder="Search by Brand or Model name..."
+                        placeholder="Search Brand or Model..."
                         value={productSearchQuery}
                         onChange={(e) => setProductSearchQuery(e.target.value)}
                         className="w-full bg-gray-900 border border-gray-700 rounded-xl pl-9 pr-3.5 py-2 text-xs text-white focus:border-[#00B14F] focus:outline-none"
                       />
                     </div>
 
-                    {/* Filter by Brand */}
-                    <select
-                      value={adminBrandFilter}
-                      onChange={(e) => setAdminBrandFilter(e.target.value)}
-                      className="bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:border-[#00B14F] focus:outline-none"
-                    >
-                      <option value="All">All Brands</option>
-                      <option value="Apple">Apple</option>
-                      <option value="Samsung">Samsung</option>
-                      <option value="Google Pixel">Google Pixel</option>
-                      <option value="Xiaomi">Xiaomi</option>
-                      <option value="OnePlus">OnePlus</option>
-                      <option value="Infinix">Infinix</option>
-                      <option value="Tecno">Tecno</option>
-                      <option value="Other">Other</option>
-                    </select>
+                    <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
+                      {/* Filter by Brand */}
+                      <select
+                        value={adminBrandFilter}
+                        onChange={(e) => setAdminBrandFilter(e.target.value)}
+                        className="bg-gray-900 border border-gray-700 rounded-xl px-2.5 py-2 text-xs text-white focus:border-[#00B14F] focus:outline-none"
+                      >
+                        <option value="All">All Brands</option>
+                        <option value="Apple">Apple</option>
+                        <option value="Samsung">Samsung</option>
+                        <option value="Google Pixel">Google Pixel</option>
+                        <option value="Xiaomi">Xiaomi</option>
+                        <option value="OnePlus">OnePlus</option>
+                        <option value="Infinix">Infinix</option>
+                        <option value="Tecno">Tecno</option>
+                        <option value="Other">Other</option>
+                      </select>
 
-                    {/* Filter by Condition */}
-                    <select
-                      value={adminConditionFilter}
-                      onChange={(e) => setAdminConditionFilter(e.target.value)}
-                      className="bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:border-[#00B14F] focus:outline-none"
-                    >
-                      <option value="All">All Conditions</option>
-                      <option value="Brand New">Brand New</option>
-                      <option value="Premium UK Used">Premium UK Used</option>
-                    </select>
+                      {/* Filter by Condition */}
+                      <select
+                        value={adminConditionFilter}
+                        onChange={(e) => setAdminConditionFilter(e.target.value)}
+                        className="bg-gray-900 border border-gray-700 rounded-xl px-2.5 py-2 text-xs text-white focus:border-[#00B14F] focus:outline-none"
+                      >
+                        <option value="All">All Conditions</option>
+                        <option value="Brand New">Brand New</option>
+                        <option value="Premium UK Used">Premium UK Used</option>
+                      </select>
 
-                    {/* Filter by Availability */}
-                    <select
-                      value={productStatusFilter}
-                      onChange={(e) => setProductStatusFilter(e.target.value as any)}
-                      className="bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:border-[#00B14F] focus:outline-none"
-                    >
-                      <option value="All">All Availability</option>
-                      <option value="Available">Available (In Stock)</option>
-                      <option value="Sold">Out of Stock</option>
-                    </select>
+                      {/* Filter by Availability */}
+                      <select
+                        value={productStatusFilter}
+                        onChange={(e) => setProductStatusFilter(e.target.value as any)}
+                        className="bg-gray-900 border border-gray-700 rounded-xl px-2.5 py-2 text-xs text-white focus:border-[#00B14F] focus:outline-none"
+                      >
+                        <option value="All">All Status</option>
+                        <option value="Available">In Stock</option>
+                        <option value="Sold">Out of Stock</option>
+                      </select>
 
-                    {/* Sort Options */}
-                    <select
-                      value={adminSortBy}
-                      onChange={(e) => setAdminSortBy(e.target.value as any)}
-                      className="bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:border-[#00B14F] focus:outline-none"
-                    >
-                      <option value="newest">Sort: Newest First</option>
-                      <option value="oldest">Sort: Oldest First</option>
-                      <option value="price-asc">Sort: Price Low to High</option>
-                      <option value="price-desc">Sort: Price High to Low</option>
-                      <option value="brand">Sort: Brand A-Z</option>
-                    </select>
+                      {/* Sort Options */}
+                      <select
+                        value={adminSortBy}
+                        onChange={(e) => setAdminSortBy(e.target.value as any)}
+                        className="bg-gray-900 border border-gray-700 rounded-xl px-2.5 py-2 text-xs text-white focus:border-[#00B14F] focus:outline-none"
+                      >
+                        <option value="newest">Sort: Newest</option>
+                        <option value="oldest">Sort: Oldest</option>
+                        <option value="price-asc">Price Low-High</option>
+                        <option value="price-desc">Price High-Low</option>
+                        <option value="brand">Brand A-Z</option>
+                      </select>
+                    </div>
 
                     {/* View Mode Toggle */}
-                    <div className="flex items-center gap-1 bg-gray-900 p-1 rounded-xl border border-gray-800">
+                    <div className="flex items-center justify-end gap-1 bg-gray-900 p-1 rounded-xl border border-gray-800 self-end sm:self-auto">
                       <button
                         onClick={() => setAdminViewMode("table")}
                         className={`p-1.5 rounded-lg transition-colors ${adminViewMode === "table" ? "bg-[#00B14F] text-black" : "text-gray-400 hover:text-white"}`}
+                        title="Table View"
                       >
                         <Table className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => setAdminViewMode("grid")}
                         className={`p-1.5 rounded-lg transition-colors ${adminViewMode === "grid" ? "bg-[#00B14F] text-black" : "text-gray-400 hover:text-white"}`}
+                        title="Grid View"
                       >
                         <LayoutGrid className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
 
-                  {/* PRODUCTS TABLE */}
+                  {/* PRODUCTS TABLE / GRID */}
                   {adminViewMode === "table" ? (
                     <div className="bg-[#111827] border border-gray-800 rounded-2xl overflow-hidden shadow-xl">
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left text-xs text-gray-300">
+                      <div className="overflow-x-auto w-full scrollbar-thin">
+                        <table className="w-full min-w-[640px] text-left text-xs text-gray-300">
                           <thead className="bg-gray-900/80 uppercase text-[10px] font-black tracking-wider text-gray-400 border-b border-gray-800">
                             <tr>
                               <th className="p-3.5">Product Image</th>
@@ -1149,7 +1223,7 @@ export default function AdminDashboard({
                               paginatedProducts.map(p => (
                                 <tr key={p.id} className="hover:bg-gray-900/50 transition-colors">
                                   <td className="p-3.5">
-                                    <img src={resolveImageUrl(p.image)} alt={p.name} className="w-12 h-12 rounded-xl object-cover bg-gray-800 border border-gray-700" />
+                                    <img src={resolveImageUrl(p.image)} alt={p.name} className="w-12 h-12 rounded-xl object-contain bg-gray-800 border border-gray-700 p-0.5" />
                                   </td>
                                   <td className="p-3.5">
                                     <div className="font-extrabold text-white text-xs">{p.name}</div>
@@ -1211,10 +1285,12 @@ export default function AdminDashboard({
                     </div>
                   ) : (
                     /* GRID VIEW */
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                       {paginatedProducts.map(p => (
-                        <div key={p.id} className="p-4 bg-[#111827] border border-gray-800 rounded-2xl space-y-3">
-                          <img src={resolveImageUrl(p.image)} alt={p.name} className="w-full h-40 rounded-xl object-cover border border-gray-800" />
+                        <div key={p.id} className="p-3.5 sm:p-4 bg-[#111827] border border-gray-800 rounded-2xl space-y-3">
+                          <div className="w-full h-36 sm:h-40 rounded-xl bg-gray-900 border border-gray-800 flex items-center justify-center p-2">
+                            <img src={resolveImageUrl(p.image)} alt={p.name} className="max-h-full max-w-full object-contain rounded-lg" />
+                          </div>
                           <div>
                             <span className="text-[10px] uppercase tracking-wider font-extrabold text-gray-400">{p.brand}</span>
                             <h4 className="text-xs font-bold text-white truncate">{p.name}</h4>
@@ -1233,7 +1309,7 @@ export default function AdminDashboard({
                   )}
 
                   {/* Pagination Controls */}
-                  <div className="p-4 bg-[#111827] border border-gray-800 rounded-2xl flex items-center justify-between text-xs text-gray-400">
+                  <div className="p-3 sm:p-4 bg-[#111827] border border-gray-800 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-2.5 text-xs text-gray-400">
                     <span>Showing {filteredProducts.length} items (Page {adminPage} of {totalPages})</span>
                     <div className="flex items-center gap-2">
                       <button
@@ -1271,7 +1347,7 @@ export default function AdminDashboard({
                   {config.products.map(p => (
                     <div key={p.id} className="py-3 flex items-center justify-between gap-4">
                       <div className="flex items-center gap-3">
-                        <img src={resolveImageUrl(p.image)} alt={p.name} className="w-10 h-10 rounded-lg object-cover" />
+                        <img src={resolveImageUrl(p.image)} alt={p.name} className="w-10 h-10 rounded-lg object-contain bg-gray-800 p-0.5" />
                         <div>
                           <h4 className="text-xs font-bold text-white">{p.name}</h4>
                           <span className="text-[10px] text-gray-400">Current Stock: {p.quantity ?? 1}</span>
@@ -1313,8 +1389,8 @@ export default function AdminDashboard({
               <h3 className="text-sm font-extrabold text-white">Cloudinary Uploaded Images</h3>
               <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
                 {config.products.flatMap(p => [p.image, ...(p.gallery || [])]).filter(Boolean).map((url, idx) => (
-                  <div key={idx} className="relative group rounded-xl overflow-hidden border border-gray-800 bg-gray-900 aspect-square">
-                    <img src={resolveImageUrl(url)} alt={`Media ${idx}`} className="w-full h-full object-cover" />
+                  <div key={idx} className="relative group rounded-xl overflow-hidden border border-gray-800 bg-gray-900 aspect-square flex items-center justify-center p-1">
+                    <img src={resolveImageUrl(url)} alt={`Media ${idx}`} className="max-h-full max-w-full object-contain" />
                   </div>
                 ))}
               </div>
@@ -1481,6 +1557,9 @@ export default function AdminDashboard({
                   </button>
                 </div>
               </div>
+
+              {/* BRAND LOGOS MANAGEMENT SECTION */}
+              <BrandLogosManager />
             </div>
           )}
 

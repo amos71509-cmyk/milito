@@ -58,14 +58,14 @@ export default function OrderTrackerModal({ onClose }: OrderTrackerModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
-      <div className="bg-white rounded-3xl max-w-xl w-full border border-gray-250 overflow-hidden shadow-2xl animate-scaleUp">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
+      <div className="relative w-full max-w-xl max-h-[92vh] sm:max-h-[90vh] bg-white rounded-2xl sm:rounded-3xl border border-gray-250 shadow-2xl flex flex-col overflow-hidden my-auto animate-scaleUp">
         
         {/* Header */}
-        <div className="px-6 py-5 border-b border-gray-150 bg-gray-50 flex justify-between items-center">
+        <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-gray-150 bg-gray-50 flex justify-between items-center shrink-0">
           <div className="flex items-center gap-2">
             <Truck className="w-5 h-5 text-milito-green" />
-            <h3 className="font-bold text-gray-900 text-sm font-sans">MILITO Secure Parcel Tracker</h3>
+            <h3 className="font-bold text-gray-900 text-xs sm:text-sm font-sans">MILITO Secure Parcel Tracker</h3>
           </div>
           <button
             onClick={onClose}
@@ -75,7 +75,7 @@ export default function OrderTrackerModal({ onClose }: OrderTrackerModalProps) {
           </button>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
           {/* Tracker Search Bar form */}
           <form onSubmit={handleSearch} className="space-y-3">
             <label className="block text-xs font-bold text-gray-700 uppercase tracking-widest">

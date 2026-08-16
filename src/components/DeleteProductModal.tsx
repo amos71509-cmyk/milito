@@ -52,7 +52,7 @@ export default function DeleteProductModal({
           <img
             src={resolveImageUrl(product.image)}
             alt={product.name}
-            className="w-16 h-16 rounded-lg object-cover bg-gray-800 border border-gray-700"
+            className="w-16 h-16 rounded-lg object-contain bg-gray-800 border border-gray-700 p-0.5"
           />
           <div className="flex-1 min-w-0">
             <span className="text-[10px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded bg-gray-800 text-gray-300">
@@ -87,12 +87,12 @@ export default function DeleteProductModal({
         )}
 
         {/* Actions */}
-        <div className="flex items-center justify-end gap-3 pt-2">
+        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 sm:gap-3 pt-2">
           <button
             type="button"
             onClick={onClose}
             disabled={isDeleting}
-            className="px-4 py-2.5 rounded-xl text-xs font-bold bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white transition-all disabled:opacity-50"
+            className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white transition-all disabled:opacity-50 text-center"
           >
             Cancel
           </button>
@@ -100,7 +100,7 @@ export default function DeleteProductModal({
             type="button"
             onClick={() => onConfirmDelete(product)}
             disabled={isDeleting}
-            className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/30 transition-all disabled:opacity-50"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/30 transition-all disabled:opacity-50"
           >
             {isDeleting ? (
               <>
