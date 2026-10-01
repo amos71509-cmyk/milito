@@ -1,9 +1,10 @@
-import React, { useState, useRef, useEffect } from "react";
-import { ShoppingCart, Menu, X, User, Trash2, LogIn, LogOut, Check, Search, ShieldCheck } from "lucide-react";
-import { CartItem, resolveImageUrl } from "../types";
+import React, { useState, useRef, useEffect, useMemo } from "react";
+import { ShoppingCart, Menu, X, User, Trash2, LogIn, LogOut, Check, Search, ShieldCheck, Car, Sparkles, ArrowRight } from "lucide-react";
+import { CartItem, Product, resolveImageUrl } from "../types";
 import { useBranding } from "../context/BrandingContext";
 import { lockBodyScroll, unlockBodyScroll } from "../utils/scrollRetention";
 import WhatsAppOrderButton from "./WhatsAppOrderButton";
+import { searchStoreProducts } from "../utils/searchUtils";
 
 interface HeaderProps {
   cart: CartItem[];
@@ -15,6 +16,15 @@ interface HeaderProps {
   onOpenDashboard: () => void;
   activePage?: "gadgets" | "vehicles" | "swap-deals" | "store";
   onNavigatePage?: (page: "gadgets" | "vehicles" | "swap-deals" | "store", sectionId?: string) => void;
+  products?: Product[];
+  onSelectProduct?: (product: Product) => void;
+  onExecuteSearch?: (query: string) => void;
+  isCartOpen?: boolean;
+  onOpenCart?: () => void;
+  onCloseCart?: () => void;
+  isLoginModalOpen?: boolean;
+  onOpenLoginModal?: () => void;
+  onCloseLoginModal?: () => void;
 }
 
 export default function Header({
@@ -27,12 +37,49 @@ export default function Header({
   onOpenDashboard,
   activePage = "gadgets",
   onNavigatePage,
+  products = [],
+  onSelectProduct,
+  onExecuteSearch,
+  isCartOpen: controlledIsCartOpen,
+  onOpenCart: controlledOnOpenCart,
+  onCloseCart: controlledOnCloseCart,
+  isLoginModalOpen: controlledIsLoginModalOpen,
+  onOpenLoginModal: controlledOnOpenLoginModal,
+  onCloseLoginModal: controlledOnCloseLoginModal,
 }: HeaderProps) {
   const { branding } = useBranding();
   const [logoFailed, setLogoFailed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isCartOpen, setIsCartOpen] = useState(false);
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [localIsCartOpen, setLocalIsCartOpen] = useState(false);
+  const [localIsLoginModalOpen, setLocalIsLoginModalOpen] = useState(false);
+
+  // Search State
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const isCartOpen = controlledIsCartOpen !== undefined ? controlledIsCartOpen : localIsCartOpen;
+  const setIsCartOpen = (open: boolean) => {
+    if (open) {
+      if (controlledOnOpenCart) controlledOnOpenCart();
+      setLocalIsCartOpen(true);
+    } else {
+      if (controlledOnCloseCart) controlledOnCloseCart();
+      setLocalIsCartOpen(false);
+    }
+  };
+
+  const isLoginModalOpen = controlledIsLoginModalOpen !== undefined ? controlledIsLoginModalOpen : localIsLoginModalOpen;
+  const setIsLoginModalOpen = (open: boolean) => {
+    if (open) {
+      if (controlledOnOpenLoginModal) controlledOnOpenLoginModal();
+      setLocalIsLoginModalOpen(true);
+    } else {
+      if (controlledOnCloseLoginModal) controlledOnCloseLoginModal();
+      setLocalIsLoginModalOpen(false);
+    }
+  };
 
   useEffect(() => {
     if (isCartOpen || isLoginModalOpen) {
@@ -42,6 +89,73 @@ export default function Header({
       };
     }
   }, [isCartOpen, isLoginModalOpen]);
+
+  // Click outside and escape key handler for search dropdown
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setIsSearchOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsSearchOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
+  // Filter products for immediate search results
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim() || !products || products.length === 0) return [];
+    return searchStoreProducts(products, searchQuery).slice(0, 7);
+  }, [searchQuery, products]);
+
+  const handleSelectSearchResult = (product: Product) => {
+    setIsSearchOpen(false);
+    setSearchQuery("");
+    if (onSelectProduct) {
+      onSelectProduct(product);
+    } else if (onNavigatePage) {
+      if (product.productType === "vehicle") {
+        onNavigatePage("vehicles");
+      } else {
+        onNavigatePage("store");
+      }
+    }
+  };
+
+  const handleSearchSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const query = searchQuery.trim();
+    if (!query) return;
+
+    setIsSearchOpen(false);
+    const lower = query.toLowerCase();
+    const isVehicleQuery = ["car", "cars", "vehicle", "toyota", "lexus", "benz", "mercedes", "honda", "camry", "corolla", "prado", "tokunbo"].some((k) => lower.includes(k));
+
+    if (isVehicleQuery && onNavigatePage) {
+      onNavigatePage("vehicles");
+    } else if (onExecuteSearch) {
+      onExecuteSearch(query);
+    } else if (onNavigatePage) {
+      onNavigatePage("store");
+    }
+  };
+
+  const handleQuickTagClick = (tag: string) => {
+    setSearchQuery(tag);
+    setIsSearchOpen(true);
+    if (searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  };
+
   const logoClicksRef = useRef(0);
   const noticeTimeoutRef = useRef<any>(null);
   const lastScrollTimeRef = useRef(0);
@@ -159,48 +273,50 @@ export default function Header({
     { label: "Store", sectionId: "store", page: "store" },
     { label: "🚗 Vehicles", sectionId: "vehicles", page: "vehicles", isVehicleTab: true },
     { label: "Trade-In", sectionId: "trade-in", page: "swap-deals" },
-    { label: "Customs Clearing", sectionId: "vehicle-import", page: "vehicles" },
-    { label: "How It Works", sectionId: "how-it-works", page: "gadgets" },
+    { label: "Customs", sectionId: "vehicle-import", page: "vehicles" },
   ];
 
   return (
     <>
       {clickNotice && (
-        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[99] bg-black/90 text-milito-green text-xs font-bold px-4 py-2.5 rounded-full border border-milito-green/30 shadow-[0_4px_25px_rgba(0,177,79,0.2)] animate-pulse tracking-wide flex items-center gap-2">
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[99] bg-black/90 text-milito-green text-xs font-bold px-4 py-2.5 rounded-full border border-milito-green/30 shadow-[0_4px_25px_rgba(0,177,79,0.2)] animate-pulse tracking-wide flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-milito-green animate-ping"></div>
           {clickNotice}
         </div>
       )}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100 transition-colors duration-300 w-full">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20 sm:h-24 py-2">
-            {/* Logo */}
+
+      {/* Sticky Header with Logo on left, Prominent Search in center, and Controls on right */}
+      <header className="sticky top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-150/90 shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all duration-300 w-full">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between gap-2 sm:gap-4 h-16 sm:h-20 py-1.5 sm:py-2">
+            
+            {/* Top-Left: MILITO Logo */}
             <div 
-              className="flex-shrink-0 flex items-center gap-2 cursor-pointer select-none"
+              className="flex-shrink-0 flex items-center gap-1.5 sm:gap-2 cursor-pointer select-none"
               onClick={handleBrandClick}
             >
               {branding.logoUrl && !logoFailed ? (
-                <div className="flex items-center gap-2 py-1">
+                <div className="flex items-center gap-1.5 sm:gap-2 py-1">
                   <img 
-                    src={resolveImageUrl(branding.logoUrl, { width: 300 })} 
+                    src={resolveImageUrl(branding.logoUrl, { width: 240 })} 
                     alt="MILITO TECH HOME Logo" 
                     onError={() => setLogoFailed(true)}
-                    className="h-14 sm:h-16 md:h-18 lg:h-20 max-w-[220px] sm:max-w-[250px] md:max-w-[300px] w-auto object-contain bg-transparent p-0 border-0 shadow-none mix-blend-multiply transition-all duration-300"
+                    className="h-8 sm:h-11 md:h-14 max-w-[100px] sm:max-w-[140px] md:max-w-[200px] w-auto object-contain bg-transparent p-0 border-0 shadow-none mix-blend-multiply transition-all duration-200"
                   />
-                  <span className="font-extrabold text-[#1A2025] text-sm md:text-xl tracking-wider hidden md:inline">
+                  <span className="font-extrabold text-[#1A2025] text-xs sm:text-base md:text-lg tracking-wider hidden xl:inline">
                     MILITO <span className="text-milito-green">TECH</span>
                   </span>
                 </div>
               ) : (
                 <>
-                  <div className="w-10 h-10 rounded-lg bg-milito-green flex items-center justify-center font-extrabold text-[#1A2025] leading-none text-xl shadow-[0_4px_15px_rgba(0,177,79,0.25)]">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-milito-green flex items-center justify-center font-extrabold text-[#1A2025] leading-none text-base sm:text-xl shadow-[0_3px_10px_rgba(0,177,79,0.2)]">
                     M
                   </div>
                   <div className="flex flex-col">
-                    <span className="font-extrabold text-[#1A2025] md:text-gray-900 text-base md:text-lg tracking-wider">
+                    <span className="font-extrabold text-[#1A2025] text-xs sm:text-base tracking-wider leading-tight">
                       MILITO <span className="text-milito-green">TECH</span>
                     </span>
-                    <span className="text-[9px] tracking-[0.2em] uppercase text-gray-500 font-bold -mt-1">
+                    <span className="text-[7.5px] sm:text-[9px] tracking-[0.2em] uppercase text-gray-500 font-bold -mt-0.5">
                       HOME
                     </span>
                   </div>
@@ -208,8 +324,172 @@ export default function Header({
               )}
             </div>
 
-            {/* Desktop Nav */}
-            <nav className="hidden md:flex items-center space-x-2 lg:space-x-3">
+            {/* Prominent Search Bar (Between Logo and Hamburger/Menu Controls) */}
+            <div className="flex-1 max-w-xs sm:max-w-md md:max-w-lg lg:max-w-xl mx-1 sm:mx-3 relative min-w-0" ref={searchContainerRef}>
+              <form onSubmit={handleSearchSubmit} className="relative w-full">
+                <div className="relative flex items-center group">
+                  <Search className="absolute left-2.5 sm:left-3.5 w-3.5 sm:w-4 h-3.5 sm:h-4 text-gray-400 pointer-events-none transition-colors group-focus-within:text-milito-green" />
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setIsSearchOpen(true);
+                    }}
+                    onFocus={() => setIsSearchOpen(true)}
+                    placeholder="Search phones, cars, gadgets..."
+                    aria-label="Search catalogue"
+                    className="w-full pl-8 sm:pl-10 pr-7 sm:pr-8 py-1.5 sm:py-2 text-xs sm:text-sm bg-gray-100/90 hover:bg-gray-100 focus:bg-white text-gray-900 placeholder-gray-400 rounded-full border border-gray-200/90 focus:outline-none focus:border-milito-green focus:ring-2 focus:ring-milito-green/30 transition-all duration-200 shadow-inner"
+                  />
+                  {searchQuery ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery("");
+                        if (searchInputRef.current) searchInputRef.current.focus();
+                      }}
+                      className="absolute right-2 sm:right-2.5 p-1 text-gray-400 hover:text-gray-700 rounded-full cursor-pointer"
+                      title="Clear search"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  ) : null}
+                </div>
+              </form>
+
+              {/* Instant Search Results / Recommendations Dropdown */}
+              {isSearchOpen && (
+                <div className="fixed top-17 left-2 right-2 sm:absolute sm:top-full sm:left-0 sm:right-0 mt-1.5 sm:mt-2 bg-white rounded-2xl shadow-2xl border border-gray-200/90 overflow-hidden z-50 max-h-[70vh] sm:max-h-[60vh] flex flex-col animate-scaleUp">
+                  
+                  {/* Results Header */}
+                  {searchQuery.trim().length > 0 ? (
+                    <div className="p-3 bg-gray-50 border-b border-gray-150 flex items-center justify-between text-xs">
+                      <span className="font-bold text-gray-700">
+                        {searchResults.length > 0
+                          ? `Found ${searchResults.length} matching items`
+                          : "No direct match"}
+                      </span>
+                      <span className="text-[10px] text-gray-500">Press Enter for all</span>
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-gray-50 border-b border-gray-150 text-xs">
+                      <span className="font-extrabold text-gray-700 uppercase tracking-wider text-[10px]">
+                        Popular Searches in Catalogue
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Results Body */}
+                  <div className="overflow-y-auto divide-y divide-gray-100 flex-1">
+                    {searchQuery.trim().length === 0 ? (
+                      <div className="p-3.5 space-y-3">
+                        <div className="flex flex-wrap gap-1.5">
+                          {["iPhone 15 Pro", "Samsung S24", "🚗 Tokunbo Cars", "Foreign Used", "Google Pixel", "MacBook", "Grade A++"].map((tag) => (
+                            <button
+                              key={tag}
+                              type="button"
+                              onClick={() => handleQuickTagClick(tag.replace("🚗 ", ""))}
+                              className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-gray-100 hover:bg-milito-green hover:text-black text-gray-750 transition-colors cursor-pointer border border-gray-200"
+                            >
+                              {tag}
+                            </button>
+                          ))}
+                        </div>
+                        <p className="text-[11px] text-gray-400 italic">
+                          Search by brand, model, specs, price (e.g. "under 500k"), or vehicle make.
+                        </p>
+                      </div>
+                    ) : searchResults.length > 0 ? (
+                      searchResults.map((product) => {
+                        const isVehicle = product.productType === "vehicle";
+                        const thumbUrl = resolveImageUrl(
+                          product.thumbnail?.secure_url || product.thumbnail || product.image || product.galleryImages?.[0]?.secure_url || product.gallery?.[0],
+                          { width: 100, brand: product.brand }
+                        );
+
+                        return (
+                          <div
+                            key={product.id}
+                            onClick={() => handleSelectSearchResult(product)}
+                            className="p-2.5 sm:p-3 hover:bg-gray-50 flex items-center gap-3 cursor-pointer transition-colors"
+                          >
+                            <div className="w-12 h-12 flex-shrink-0 rounded-lg bg-gray-100 border border-gray-200 p-1 flex items-center justify-center overflow-hidden">
+                              <img
+                                src={thumbUrl}
+                                alt={product.name}
+                                className="w-full h-full object-contain"
+                                loading="lazy"
+                              />
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <h4 className="text-xs sm:text-sm font-bold text-gray-900 truncate">
+                                  {product.name}
+                                </h4>
+                                {isVehicle ? (
+                                  <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-0.5">
+                                    <Car className="w-2.5 h-2.5" /> Vehicle
+                                  </span>
+                                ) : (
+                                  <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded bg-gray-100 text-gray-700 border border-gray-250">
+                                    {product.condition || "Phone"}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-gray-500 truncate mt-0.5">
+                                {isVehicle
+                                  ? `${product.brand} • ${product.year || ""} • ${product.transmission || ""}`
+                                  : `${product.brand} • ${(product.storageOptions || []).slice(0, 2).join("/") || "Unlocked"}`}
+                              </p>
+                            </div>
+
+                            <div className="text-right flex-shrink-0">
+                              <div className="text-xs sm:text-sm font-extrabold text-milito-green font-mono">
+                                {formatPrice(product.price)}
+                              </div>
+                              <span className={`text-[9px] font-bold ${
+                                product.availability === "Sold Out" ? "text-red-500" : "text-emerald-700"
+                              }`}>
+                                {product.availability || "In Stock"}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="p-6 text-center">
+                        <p className="text-xs font-semibold text-gray-700">
+                          No matching devices or vehicles for "{searchQuery}"
+                        </p>
+                        <p className="text-[11px] text-gray-500 mt-1">
+                          Try searching by model name like "iPhone 14", "Galaxy S23", "Toyota", or "Camry".
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Dropdown Footer Action */}
+                  {searchQuery.trim().length > 0 && searchResults.length > 0 && (
+                    <div className="p-2.5 bg-gray-50 border-t border-gray-150 text-center">
+                      <button
+                        type="button"
+                        onClick={() => handleSearchSubmit()}
+                        className="w-full py-2 px-3 rounded-xl bg-milito-green hover:brightness-105 text-black font-extrabold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                      >
+                        <span>View all matching results</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+
+                </div>
+              )}
+            </div>
+
+            {/* Desktop Navigation Links */}
+            <nav className="hidden lg:flex items-center space-x-1 xl:space-x-2">
               {navLinks.map((link) => {
                 const isCurrentActive = 
                   link.page === "store" 
@@ -227,14 +507,14 @@ export default function Header({
                     <button
                       key={link.label}
                       onClick={() => handleNavClick(link.sectionId, link.page as any)}
-                      className={`text-xs font-black uppercase tracking-wider px-3 py-1.5 rounded-full transition-all cursor-pointer flex items-center gap-1.5 ${
+                      className={`text-xs font-extrabold uppercase tracking-wider px-2.5 py-1.5 rounded-full transition-all cursor-pointer flex items-center gap-1 ${
                         activePage === "vehicles"
                           ? "bg-[#1A2025] text-white shadow-sm ring-2 ring-[#00B14F]/40"
                           : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200"
                       }`}
                     >
-                      <span className="w-2 h-2 rounded-full bg-[#00B14F] animate-pulse"></span>
-                      <span>🚗 Vehicles & Import</span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#00B14F] animate-pulse"></span>
+                      <span>🚗 Vehicles</span>
                     </button>
                   );
                 }
@@ -243,38 +523,32 @@ export default function Header({
                   <button
                     key={link.label}
                     onClick={() => handleNavClick(link.sectionId, link.page as any)}
-                    className={`text-xs font-black uppercase tracking-wider transition-colors cursor-pointer px-2.5 py-1.5 rounded-xl ${
+                    className={`text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer px-2 py-1.5 rounded-xl ${
                       isCurrentActive
                         ? "text-[#00B14F] bg-[#00B14F]/10 font-black"
-                        : "text-gray-750 hover:text-milito-green hover:bg-gray-100/60"
+                        : "text-gray-700 hover:text-milito-green hover:bg-gray-100/60"
                     }`}
                   >
                     {link.label}
                   </button>
                 );
               })}
-              <button
-                onClick={onOpenTracker}
-                className="text-xs font-black uppercase tracking-wider text-gray-750 hover:text-milito-green transition-colors cursor-pointer flex items-center gap-0.5 px-2 py-1"
-              >
-                Track Order
-              </button>
             </nav>
 
-            {/* Icons Area */}
-            <div className="hidden md:flex items-center space-x-6">
+            {/* Desktop Icons Area */}
+            <div className="hidden md:flex items-center space-x-3">
               {isLoggedIn ? (
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2 bg-gray-100 px-3.5 py-1.5 rounded-full border border-gray-200">
-                    <div className="w-2.5 h-2.5 rounded-full bg-milito-green animate-pulse"></div>
-                    <span className="text-xs text-gray-700 font-semibold">Hi, {userName}</span>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 bg-gray-100 px-3 py-1.5 rounded-full border border-gray-200">
+                    <div className="w-2 h-2 rounded-full bg-milito-green animate-pulse"></div>
+                    <span className="text-xs text-gray-700 font-semibold">{userName}</span>
                   </div>
                   <button
                     onClick={handleLogout}
                     className="p-2 text-gray-500 hover:text-red-500 transition-colors cursor-pointer"
                     title="Sign Out"
                   >
-                    <LogOut className="w-5 h-5" />
+                    <LogOut className="w-4 h-4" />
                   </button>
                 </div>
               ) : (
@@ -283,9 +557,9 @@ export default function Header({
                     setAuthMode("login");
                     setIsLoginModalOpen(true);
                   }}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-full bg-gray-100 hover:bg-gray-200 hover:text-gray-900 transition-all duration-300 border border-gray-200 cursor-pointer text-gray-800"
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-full bg-gray-100 hover:bg-gray-200 hover:text-gray-900 transition-all border border-gray-200 cursor-pointer text-gray-800"
                 >
-                  <User className="w-4 h-4" />
+                  <User className="w-3.5 h-3.5" />
                   Login
                 </button>
               )}
@@ -293,66 +567,70 @@ export default function Header({
               {/* Cart Button */}
               <button
                 onClick={() => setIsCartOpen(true)}
-                className="relative p-2.5 rounded-full bg-gray-100 hover:bg-gray-200 hover:text-gray-900 transition-all duration-300 border border-gray-200 cursor-pointer text-gray-850"
+                className="relative p-2 rounded-full bg-gray-100 hover:bg-gray-200 hover:text-gray-900 transition-all border border-gray-200 cursor-pointer text-gray-850"
+                title="View Shopping Cart"
               >
-                <ShoppingCart className="w-5 h-5 text-current" />
+                <ShoppingCart className="w-4.5 h-4.5 text-current" />
                 {cart.length > 0 && (
-                  <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-milito-green text-black text-[11px] font-bold shadow-md">
+                  <span className="absolute -top-1 -right-1 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-milito-green text-black text-[10px] font-black shadow-md">
                     {cart.reduce((sum, item) => sum + item.quantity, 0)}
                   </span>
                 )}
               </button>
             </div>
 
-            {/* Mobile controls */}
-            <div className="flex md:hidden items-center space-x-4">
+            {/* Mobile Controls: Cart + Hamburger/Menu */}
+            <div className="flex md:hidden items-center space-x-1.5 sm:space-x-2 flex-shrink-0">
               {/* Mobile Cart */}
               <button
                 onClick={() => setIsCartOpen(true)}
-                className="relative p-2 rounded-full bg-gray-100 text-gray-850 border border-gray-200"
+                className="relative p-1.5 sm:p-2 rounded-full bg-gray-100 text-gray-850 border border-gray-200 cursor-pointer"
+                title="Shopping Cart"
               >
-                <ShoppingCart className="w-5 h-5" />
+                <ShoppingCart className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
                 {cart.length > 0 && (
-                  <span className="absolute -top-1 -right-1 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-milito-green text-black text-[10px] font-bold">
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-milito-green text-black text-[9px] font-black">
                     {cart.reduce((sum, item) => sum + item.quantity, 0)}
                   </span>
                 )}
               </button>
 
-              {/* Mobile Menu Toggle */}
+              {/* Existing Hamburger/Menu Toggle */}
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="p-2 text-gray-600 hover:text-black"
+                className="p-1.5 sm:p-2 text-gray-700 hover:text-black rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+                aria-label="Toggle Navigation Menu"
               >
-                {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                {isMobileMenuOpen ? <X className="w-5 h-5 sm:w-6 sm:h-6" /> : <Menu className="w-5 h-5 sm:w-6 sm:h-6" />}
               </button>
             </div>
+
           </div>
         </div>
 
         {/* Mobile menu panel */}
         {isMobileMenuOpen && (
-          <div className="md:hidden border-t border-gray-100 bg-white py-4 px-6 space-y-4 animate-fadeIn">
+          <div className="md:hidden border-t border-gray-100 bg-white py-4 px-6 space-y-4 animate-fadeIn shadow-lg">
             {branding.logoUrl && (
               <div className="flex items-center gap-3 pb-3 border-b border-gray-100">
                 <img
                   src={branding.logoUrl}
                   alt="Website Logo"
-                  className="h-14 sm:h-16 max-w-[250px] object-contain mix-blend-multiply bg-transparent p-0 border-0 shadow-none"
+                  className="h-10 sm:h-12 max-w-[200px] object-contain mix-blend-multiply bg-transparent p-0 border-0 shadow-none"
                 />
               </div>
             )}
-            <div className="flex flex-col space-y-3 font-semibold text-base">
+            <div className="flex flex-col space-y-2.5 font-semibold text-base">
               {navLinks.map((link) => {
                 if (link.isVehicleTab) {
                   return (
                     <button
                       key={link.label}
                       onClick={() => {
-                        handleNavClick(link.sectionId);
+                        handleNavClick(link.sectionId, link.page as any);
                         setIsMobileMenuOpen(false);
                       }}
-                      className={`text-left p-3 rounded-xl font-bold flex items-center justify-between transition-all ${
+                      className={`text-left p-2.5 rounded-xl font-bold flex items-center justify-between transition-all ${
                         activePage === "vehicles"
                           ? "bg-[#1A2025] text-white"
                           : "bg-emerald-50 text-emerald-900 border border-emerald-200"
@@ -402,13 +680,13 @@ export default function Header({
                   onOpenTracker();
                   setIsMobileMenuOpen(false);
                 }}
-                className="text-left py-1.5 text-gray-800 hover:text-milito-green transition-colors"
+                className="text-left py-2 px-3 text-gray-800 hover:text-milito-green transition-colors font-bold"
               >
                 Track Order
               </button>
             </div>
 
-            <div className="border-t border-gray-100 pt-4 flex flex-col space-y-4">
+            <div className="border-t border-gray-100 pt-3 flex flex-col space-y-3">
               {isLoggedIn ? (
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-gray-700">Account: {userName}</span>
@@ -429,7 +707,7 @@ export default function Header({
                     setIsLoginModalOpen(true);
                     setIsMobileMenuOpen(false);
                   }}
-                  className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-milito-green text-black font-extrabold shadow-lg"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-milito-green text-black font-extrabold shadow-md cursor-pointer"
                 >
                   <User className="w-4 h-4" />
                   Account Login

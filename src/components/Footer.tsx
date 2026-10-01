@@ -143,7 +143,7 @@ export default function Footer({ onScrollToSection, onOpenTracker }: FooterProps
                 <Mail className="w-4 h-4 text-milito-green" />
                 <span>sales@militotech.com</span>
               </li>
-              <li className="bg-white/5 p-3 rounded-xl border border-white/10 flex items-start gap-2 max-w-xs animate-fadeIn">
+              <li className="hidden md:flex bg-white/5 p-3 rounded-xl border border-white/10 items-start gap-2 max-w-xs animate-fadeIn">
                 <ShieldAlert className="w-4.5 h-4.5 text-milito-green flex-shrink-0 mt-0.5" />
                 <span className="text-[10px] text-gray-300 leading-relaxed font-semibold">
                   Support hours: Mon - Sat (8:00 AM - 6:00 PM). Prompt support via WhatsApp.
@@ -165,7 +165,7 @@ export default function Footer({ onScrollToSection, onOpenTracker }: FooterProps
             <span className="bg-white/5 px-2.5 py-1 rounded border border-white/10 text-white font-mono shadow-sm">BANK TRANSFER</span>
           </div>
 
-          <p className="text-gray-400 text-center md:text-right font-medium">
+          <p className="text-gray-400 text-center md:text-right font-medium hidden md:block">
             © {currentYear} MILITO TECH HOME. Built for premium devices, transparent ordering and reliable delivery. All Rights Reserved.
           </p>
         </div>

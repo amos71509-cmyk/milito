@@ -90,6 +90,8 @@ export function buildProductCorpus(product: Product): string {
     product.condition,
     product.badge || "",
     product.description || "",
+    product.productType || "",
+    product.categorySlug || "",
     product.batteryHealth || "",
     product.batteryHealthValue || "",
     product.batteryCondition || "",
@@ -98,8 +100,19 @@ export function buildProductCorpus(product: Product): string {
     product.network || "",
     product.faceId || "",
     product.fingerprint || "",
+    product.year ? String(product.year) : "",
+    product.transmission || "",
+    product.fuelType || "",
+    product.engineSize || "",
+    product.driveType || "",
+    product.location || "",
+    product.vehicleStatus || "",
+    product.documentation || "",
+    product.interiorColor || "",
+    product.vin || "",
+    ...(product.vehicleFeatures || []),
     ...(product.storageOptions || []),
-    ...(product.colorOptions ? product.colorOptions.map(c => c.name) : []),
+    ...(product.colorOptions ? product.colorOptions.map(c => typeof c === "string" ? c : c.name) : []),
     ...(product.tags || [])
   ];
 
@@ -124,8 +137,59 @@ export function buildProductCorpus(product: Product): string {
   }
 
   // Common synonyms / aliases
-  const bLower = product.brand.toLowerCase();
-  const nLower = product.name.toLowerCase();
+  const bLower = (product.brand || "").toLowerCase();
+  const nLower = (product.name || "").toLowerCase();
+  const pType = (product.productType || "").toLowerCase();
+
+  // Vehicle detection & synonyms
+  const isVehicle = pType === "vehicle" || Boolean(product.year || product.transmission || product.mileage) || ["toyota", "lexus", "mercedes", "mercedes-benz", "benz", "honda", "hyundai", "kia", "ford", "land rover", "bmw", "audi", "nissan", "mazda"].some(vb => bLower.includes(vb));
+  if (isVehicle) {
+    parts.push("vehicle");
+    parts.push("vehicles");
+    parts.push("car");
+    parts.push("cars");
+    parts.push("motor");
+    parts.push("auto");
+    parts.push("automobile");
+    parts.push("tokunbo");
+    parts.push("foreign used");
+    parts.push("nigerian used");
+    parts.push("suv");
+    parts.push("sedan");
+  } else {
+    // Non-vehicle (gadgets, phones, laptops)
+    parts.push("gadget");
+    parts.push("gadgets");
+    parts.push("tech");
+  }
+
+  // Laptop & computer synonyms
+  if (nLower.includes("macbook") || nLower.includes("laptop") || nLower.includes("notebook") || nLower.includes("thinkpad") || bLower.includes("dell") || bLower.includes("hp") || bLower.includes("lenovo")) {
+    parts.push("laptop");
+    parts.push("laptops");
+    parts.push("macbook");
+    parts.push("computer");
+    parts.push("pc");
+  }
+
+  // Tablet & wearable synonyms
+  if (nLower.includes("ipad") || nLower.includes("tab") || nLower.includes("watch") || nLower.includes("airpod") || nLower.includes("buds")) {
+    parts.push("tablet");
+    parts.push("watch");
+    parts.push("smartwatch");
+    parts.push("audio");
+    parts.push("accessories");
+  }
+
+  // Phone synonyms
+  if (!isVehicle) {
+    parts.push("phone");
+    parts.push("phones");
+    parts.push("smartphone");
+    parts.push("smartphones");
+    parts.push("mobile");
+  }
+
   if (bLower.includes("apple") || nLower.includes("iphone")) {
     parts.push("apple");
     parts.push("iphone");
@@ -145,6 +209,14 @@ export function buildProductCorpus(product: Product): string {
     parts.push("redmi");
     parts.push("xiaomi");
     parts.push("hyperos");
+  }
+  if (bLower.includes("tecno") || nLower.includes("camon") || nLower.includes("spark")) {
+    parts.push("tecno");
+    parts.push("hios");
+  }
+  if (bLower.includes("infinix") || nLower.includes("hot") || nLower.includes("zero") || nLower.includes("note")) {
+    parts.push("infinix");
+    parts.push("xos");
   }
 
   return parts.join(" ").toLowerCase();

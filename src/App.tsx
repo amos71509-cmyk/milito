@@ -20,6 +20,7 @@ import VehicleShowcaseBanner from "./components/VehicleShowcaseBanner";
 import PublicTestimonialsSection from "./components/testimonials/PublicTestimonialsSection";
 import FinalCtaSection from "./components/FinalCtaSection";
 import Footer from "./components/Footer";
+import MobileBottomNav from "./components/MobileBottomNav";
 import OrderTrackerModal from "./components/OrderTrackerModal";
 import CheckoutModal from "./components/CheckoutModal";
 import SupportChat from "./components/SupportChat";
@@ -676,6 +677,17 @@ export default function App() {
   const [isProtectionLightboxOpen, setIsProtectionLightboxOpen] = useState(false);
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
   const [isCompareOpen, setIsCompareOpen] = useState(false);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+
+  // Active tab for mobile bottom navigation
+  const mobileActiveTab = useMemo<"home" | "shop" | "swap" | "cart" | "profile">(() => {
+    if (isCartOpen) return "cart";
+    if (isLoginModalOpen) return "profile";
+    if (activePage === "store") return "shop";
+    if (activePage === "swap-deals") return "swap";
+    return "home";
+  }, [isCartOpen, isLoginModalOpen, activePage]);
 
   // Modal open/close handlers preserving exact background scroll coordinates
   const handleOpenProductDetails = useCallback((p: Product) => {
@@ -945,9 +957,9 @@ export default function App() {
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
 
   return (
-    <div className="min-h-screen bg-white text-gray-950 selection:bg-milito-green selection:text-[#1A2025] w-full max-w-full overflow-x-clip">
+    <div className="min-h-screen bg-white text-gray-950 selection:bg-milito-green selection:text-[#1A2025] w-full max-w-full overflow-x-clip pb-20 md:pb-0">
       
-      {/* 1. Header Navigation Component */}
+      {/* 1. Header Navigation Component with Sticky Positioning & Instant Search */}
       <Header
         cart={cart}
         onUpdateCartQty={handleUpdateCartQty}
@@ -958,10 +970,16 @@ export default function App() {
         onOpenDashboard={handleOpenDashboard}
         activePage={activePage}
         onNavigatePage={handleNavigatePage}
+        products={config.products}
+        onSelectProduct={handleOpenProductDetails}
+        onExecuteSearch={handleExecuteSearch}
+        isCartOpen={isCartOpen}
+        onOpenCart={() => setIsCartOpen(true)}
+        onCloseCart={() => setIsCartOpen(false)}
+        isLoginModalOpen={isLoginModalOpen}
+        onOpenLoginModal={() => setIsLoginModalOpen(true)}
+        onCloseLoginModal={() => setIsLoginModalOpen(false)}
       />
-
-      {/* Spacer for fixed header layout (80px mobile / 96px desktop) */}
-      <div className="h-20 sm:h-24 w-full" />
 
       {publicProductRoute ? (
         <PublicProductPage
@@ -1282,12 +1300,41 @@ export default function App() {
       {/* 10. Footer brand section details */}
       <Footer onScrollToSection={handleScrollToSection} onOpenTracker={handleOpenTracker} />
 
+      {/* Mobile Bottom Navigation Bar (Fixed on Mobile only) */}
+      <MobileBottomNav
+        activeTab={mobileActiveTab}
+        cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
+        onNavigateHome={() => {
+          setIsCartOpen(false);
+          setIsLoginModalOpen(false);
+          handleNavigatePage("gadgets", "hero");
+        }}
+        onNavigateShop={() => {
+          setIsCartOpen(false);
+          setIsLoginModalOpen(false);
+          handleNavigatePage("store");
+        }}
+        onNavigateSwap={() => {
+          setIsCartOpen(false);
+          setIsLoginModalOpen(false);
+          handleNavigatePage("swap-deals");
+        }}
+        onOpenCart={() => {
+          setIsLoginModalOpen(false);
+          setIsCartOpen(true);
+        }}
+        onOpenProfile={() => {
+          setIsCartOpen(false);
+          setIsLoginModalOpen(true);
+        }}
+      />
+
       {/* Float support chat utility */}
       <SupportChat />
 
       {/* Floating Compare Bar overlay */}
       {compareList.length > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-[95%] max-w-2xl bg-[#1A2025]/95 backdrop-blur-md rounded-2xl border border-gray-800 text-white p-4 shadow-2xl flex items-center justify-between gap-4 animate-slideIn">
+        <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-40 w-[95%] max-w-2xl bg-[#1A2025]/95 backdrop-blur-md rounded-2xl border border-gray-800 text-white p-4 shadow-2xl flex items-center justify-between gap-4 animate-slideIn">
           <div className="flex items-center gap-3 overflow-x-auto scrollbar-none w-[70%] sm:w-auto">
             <span className="text-[11px] font-extrabold uppercase tracking-wider text-milito-green hidden sm:inline">Compare list:</span>
             <div className="flex items-center gap-2">
