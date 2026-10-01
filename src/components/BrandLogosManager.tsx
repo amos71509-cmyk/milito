@@ -2,7 +2,7 @@ import React, { useState, useRef } from "react";
 import { Plus, Upload, Trash2, CheckCircle2, AlertCircle, RefreshCw, Smartphone, Image as ImageIcon, Sparkles } from "lucide-react";
 import { useBranding } from "../context/BrandingContext";
 import { UploadService } from "../services/UploadService";
-import { BrandItem } from "../types";
+import { BrandItem, resolveImageUrl } from "../types";
 
 export default function BrandLogosManager() {
   const { branding, updateBrandLogo, addBrand, deleteBrandLogo, deleteBrand } = useBranding();
@@ -280,8 +280,14 @@ export default function BrandLogosManager() {
                   </div>
                 ) : hasLogo ? (
                   <img
-                    src={b.logoUrl}
+                    src={resolveImageUrl(b.logoUrl, { width: 160 })}
                     alt={`${b.name} logo`}
+                    loading="lazy"
+                    decoding="async"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
                     className="max-h-full max-w-full object-contain p-1"
                   />
                 ) : (

@@ -15,7 +15,7 @@ import {
   Images,
   Sparkles
 } from "lucide-react";
-import { CloudinaryImageMeta } from "../types";
+import { CloudinaryImageMeta, getImageCanonicalKey } from "../types";
 
 export interface MediaItem {
   id: string;
@@ -74,13 +74,14 @@ export const MediaUploader: React.FC<MediaUploaderProps> = ({
   const replaceInputRef = useRef<HTMLInputElement | null>(null);
   const createdBlobUrlsRef = useRef<Set<string>>(new Set());
 
-  // Convert initial props to unified MediaItem array
+  // Convert initial props to unified MediaItem array with deduplication
   const buildInitialItems = (): MediaItem[] => {
+    const rawList: MediaItem[] = [];
+
     if (initialItems && initialItems.length > 0) {
-      return initialItems;
-    }
-    if (galleryImages && galleryImages.length > 0) {
-      return galleryImages.map((img, idx) => ({
+      rawList.push(...initialItems);
+    } else if (galleryImages && galleryImages.length > 0) {
+      const itemsFromGallery = galleryImages.map((img, idx) => ({
         id: img.public_id || `existing_${idx}_${Date.now()}`,
         previewUrl: img.secure_url,
         isLocal: false,
@@ -90,27 +91,35 @@ export const MediaUploader: React.FC<MediaUploaderProps> = ({
         width: img.width,
         height: img.height,
         format: img.format || "jpg",
-        status: "success"
+        status: "success" as const
       }));
+      rawList.push(...itemsFromGallery);
+    } else if (thumbnail?.secure_url) {
+      rawList.push({
+        id: thumbnail.public_id || `thumb_${Date.now()}`,
+        previewUrl: thumbnail.secure_url,
+        isLocal: false,
+        meta: {
+          secure_url: thumbnail.secure_url,
+          public_id: thumbnail.public_id || "main_cover",
+          original_filename: "Main Cover Photo"
+        },
+        original_filename: "Main Cover Photo",
+        format: "jpg",
+        status: "success" as const
+      });
     }
-    if (thumbnail?.secure_url) {
-      return [
-        {
-          id: thumbnail.public_id || `thumb_${Date.now()}`,
-          previewUrl: thumbnail.secure_url,
-          isLocal: false,
-          meta: {
-            secure_url: thumbnail.secure_url,
-            public_id: thumbnail.public_id || "main_cover",
-            original_filename: "Main Cover Photo"
-          },
-          original_filename: "Main Cover Photo",
-          format: "jpg",
-          status: "success"
-        }
-      ];
+
+    const seenKeys = new Set<string>();
+    const deduped: MediaItem[] = [];
+    for (const it of rawList) {
+      const key = getImageCanonicalKey(it.meta?.secure_url || it.previewUrl || it.id);
+      if (key && !seenKeys.has(key)) {
+        seenKeys.add(key);
+        deduped.push(it);
+      }
     }
-    return [];
+    return deduped;
   };
 
   const [items, setItems] = useState<MediaItem[]>(buildInitialItems);
@@ -119,23 +128,32 @@ export const MediaUploader: React.FC<MediaUploaderProps> = ({
   const [replacingIndex, setReplacingIndex] = useState<number | null>(null);
   const [limitNotice, setLimitNotice] = useState<string | null>(null);
   const [retryingIndex, setRetryingIndex] = useState<number | null>(null);
+  const activeUploadIds = useRef<Set<string>>(new Set());
 
   // Sync items if external initial gallery changes and local state is empty
   useEffect(() => {
     if (items.length === 0 && galleryImages.length > 0) {
-      const newItems: MediaItem[] = galleryImages.map((img, idx) => ({
-        id: img.public_id || `existing_${idx}_${Date.now()}`,
-        previewUrl: img.secure_url,
-        isLocal: false,
-        meta: img,
-        original_filename: img.original_filename || `Photo ${idx + 1}`,
-        bytes: img.bytes,
-        width: img.width,
-        height: img.height,
-        format: img.format || "jpg",
-        status: "success"
-      }));
-      setItems(newItems);
+      const seenKeys = new Set<string>();
+      const deduped: MediaItem[] = [];
+      galleryImages.forEach((img, idx) => {
+        const key = getImageCanonicalKey(img.secure_url || img.public_id);
+        if (key && !seenKeys.has(key)) {
+          seenKeys.add(key);
+          deduped.push({
+            id: img.public_id || `existing_${idx}_${Date.now()}`,
+            previewUrl: img.secure_url,
+            isLocal: false,
+            meta: img,
+            original_filename: img.original_filename || `Photo ${idx + 1}`,
+            bytes: img.bytes,
+            width: img.width,
+            height: img.height,
+            format: img.format || "jpg",
+            status: "success"
+          });
+        }
+      });
+      setItems(deduped);
     }
   }, [galleryImages]);
 
@@ -194,6 +212,89 @@ export const MediaUploader: React.FC<MediaUploaderProps> = ({
     }
   };
 
+  // Background upload manager for items
+  const startBackgroundUploads = async (currentItems: MediaItem[]) => {
+    const pendingItems = currentItems.filter(
+      it => it.isLocal && it.file && it.status !== "success" && !activeUploadIds.current.has(it.id)
+    );
+
+    if (pendingItems.length === 0) return;
+
+    pendingItems.forEach(it => activeUploadIds.current.add(it.id));
+
+    try {
+      const { UploadService } = await import("../services/UploadService");
+
+      // Concurrent queue with max 2 parallel uploads
+      const queue = [...pendingItems];
+      const concurrency = Math.min(2, queue.length);
+
+      const runWorker = async () => {
+        while (queue.length > 0) {
+          const target = queue.shift();
+          if (!target || !target.file) continue;
+
+          // Mark uploading in state
+          setItems(prev =>
+            prev.map(it => (it.id === target.id ? { ...it, status: "uploading", errorMessage: undefined } : it))
+          );
+
+          try {
+            const meta = await UploadService.uploadSingleFile(target.file, 0, currentItems.length);
+
+            // Clean up blob URL
+            if (target.previewUrl.startsWith("blob:")) {
+              try {
+                URL.revokeObjectURL(target.previewUrl);
+                createdBlobUrlsRef.current.delete(target.previewUrl);
+              } catch (e) {
+                // ignore
+              }
+            }
+
+            let updatedItems: MediaItem[] = [];
+            setItems(prev => {
+              const next = prev.map(it =>
+                it.id === target.id
+                  ? {
+                      ...it,
+                      isLocal: false,
+                      meta,
+                      previewUrl: meta.secure_url,
+                      status: "success" as const,
+                      errorMessage: undefined
+                    }
+                  : it
+              );
+              updatedItems = next;
+              return next;
+            });
+            if (updatedItems.length > 0) {
+              notifyParent(updatedItems);
+            }
+          } catch (err: any) {
+            console.warn(`[MediaUploader] Background upload error for ${target.original_filename}:`, err);
+            setItems(prev =>
+              prev.map(it =>
+                it.id === target.id
+                  ? { ...it, status: "error" as const, errorMessage: err.message || "Upload failed" }
+                  : it
+              )
+            );
+          } finally {
+            activeUploadIds.current.delete(target.id);
+          }
+        }
+      };
+
+      const workers = Array.from({ length: concurrency }, () => runWorker());
+      await Promise.all(workers);
+    } catch (err) {
+      console.error("[MediaUploader] Background upload loop exception:", err);
+      pendingItems.forEach(it => activeUploadIds.current.delete(it.id));
+    }
+  };
+
   // Handle instant selection of multiple files (1 to 10 photos)
   const handleFilesAdded = (files: FileList | File[]) => {
     setLimitNotice(null);
@@ -226,7 +327,7 @@ export const MediaUploader: React.FC<MediaUploaderProps> = ({
       );
     }
 
-    // Instantly generate browser object URLs for every selected image
+    // Instantly generate browser object URLs for every selected image (< 5ms)
     const newItems: MediaItem[] = filesToProcess.map((file, idx) => {
       const objUrl = URL.createObjectURL(file);
       createdBlobUrlsRef.current.add(objUrl);
@@ -247,6 +348,9 @@ export const MediaUploader: React.FC<MediaUploaderProps> = ({
     const updated = [...items, ...newItems];
     setItems(updated);
     notifyParent(updated);
+
+    // Trigger seamless background upload
+    startBackgroundUploads(updated);
   };
 
   // Dedicated single-file retry handler
@@ -603,18 +707,26 @@ export const MediaUploader: React.FC<MediaUploaderProps> = ({
                         <span className="text-[10px] font-bold text-[#00B14F]">Uploading...</span>
                       </div>
                     ) : item.status === "error" ? (
-                      <div className="absolute inset-0 bg-red-950/85 flex flex-col items-center justify-center p-2 text-center gap-1.5 z-20">
-                        <AlertTriangle className="w-5 h-5 text-red-400" />
-                        <span className="text-[10px] font-bold text-red-300">Upload failed</span>
+                      <div className="absolute inset-0 bg-red-950/90 flex flex-col items-center justify-center p-1.5 text-center gap-1 z-20 overflow-hidden">
+                        <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+                        <span className="text-[10px] font-black text-red-200 uppercase tracking-wider">Upload Failed</span>
+                        {item.errorMessage && (
+                          <span
+                            className="text-[9px] text-red-300 line-clamp-2 px-1 leading-tight max-w-full break-words"
+                            title={item.errorMessage}
+                          >
+                            {item.errorMessage}
+                          </span>
+                        )}
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleRetrySingle(index);
                           }}
-                          className="px-2.5 py-1 bg-red-600 hover:bg-red-500 text-white rounded-lg text-[10px] font-extrabold flex items-center gap-1 shadow-md cursor-pointer transition-all"
+                          className="mt-0.5 px-2 py-0.5 bg-red-600 hover:bg-red-500 text-white rounded-md text-[9px] font-extrabold flex items-center gap-1 shadow-md cursor-pointer transition-all"
                         >
-                          <RefreshCw className="w-3 h-3" />
+                          <RefreshCw className="w-2.5 h-2.5" />
                           Retry
                         </button>
                       </div>

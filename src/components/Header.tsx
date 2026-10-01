@@ -1,7 +1,9 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { ShoppingCart, Menu, X, User, Trash2, LogIn, LogOut, Check, Search, ShieldCheck } from "lucide-react";
 import { CartItem, resolveImageUrl } from "../types";
 import { useBranding } from "../context/BrandingContext";
+import { lockBodyScroll, unlockBodyScroll } from "../utils/scrollRetention";
+import WhatsAppOrderButton from "./WhatsAppOrderButton";
 
 interface HeaderProps {
   cart: CartItem[];
@@ -11,6 +13,8 @@ interface HeaderProps {
   onOpenTracker: () => void;
   onScrollToSection: (id: string) => void;
   onOpenDashboard: () => void;
+  activePage?: "gadgets" | "vehicles" | "swap-deals" | "store";
+  onNavigatePage?: (page: "gadgets" | "vehicles" | "swap-deals" | "store", sectionId?: string) => void;
 }
 
 export default function Header({
@@ -21,11 +25,23 @@ export default function Header({
   onOpenTracker,
   onScrollToSection,
   onOpenDashboard,
+  activePage = "gadgets",
+  onNavigatePage,
 }: HeaderProps) {
   const { branding } = useBranding();
+  const [logoFailed, setLogoFailed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (isCartOpen || isLoginModalOpen) {
+      lockBodyScroll();
+      return () => {
+        unlockBodyScroll();
+      };
+    }
+  }, [isCartOpen, isLoginModalOpen]);
   const logoClicksRef = useRef(0);
   const noticeTimeoutRef = useRef<any>(null);
   const lastScrollTimeRef = useRef(0);
@@ -101,12 +117,50 @@ export default function Header({
     setUserName("");
   };
 
+  const handleNavClick = (sectionId: string, pageTarget?: "gadgets" | "store" | "vehicles" | "swap-deals") => {
+    if (pageTarget) {
+      if (onNavigatePage) {
+        onNavigatePage(pageTarget as any, sectionId);
+      } else {
+        onScrollToSection(sectionId);
+      }
+      return;
+    }
+
+    if (sectionId === "store" || sectionId === "shop") {
+      if (onNavigatePage) {
+        onNavigatePage("store" as any);
+      } else {
+        onScrollToSection("store-inventory");
+      }
+    } else if (sectionId === "trade-in" || sectionId === "swap-deals") {
+      if (onNavigatePage) {
+        onNavigatePage("swap-deals");
+      } else {
+        onScrollToSection(sectionId);
+      }
+    } else if (sectionId === "vehicles" || sectionId === "vehicle-import") {
+      if (onNavigatePage) {
+        onNavigatePage("vehicles", sectionId);
+      } else {
+        onScrollToSection(sectionId);
+      }
+    } else {
+      if (onNavigatePage) {
+        onNavigatePage("gadgets", sectionId);
+      } else {
+        onScrollToSection(sectionId);
+      }
+    }
+  };
+
   const navLinks = [
-    { label: "Home", sectionId: "hero" },
-    { label: "Shop Phones", sectionId: "shop" },
-    { label: "Trade-In", sectionId: "trade-in" },
-    { label: "Vehicle Import", sectionId: "vehicle-import" },
-    { label: "How It Works", sectionId: "how-it-works" },
+    { label: "Home", sectionId: "hero", page: "gadgets" },
+    { label: "Store", sectionId: "store", page: "store" },
+    { label: "🚗 Vehicles", sectionId: "vehicles", page: "vehicles", isVehicleTab: true },
+    { label: "Trade-In", sectionId: "trade-in", page: "swap-deals" },
+    { label: "Customs Clearing", sectionId: "vehicle-import", page: "vehicles" },
+    { label: "How It Works", sectionId: "how-it-works", page: "gadgets" },
   ];
 
   return (
@@ -125,11 +179,12 @@ export default function Header({
               className="flex-shrink-0 flex items-center gap-2 cursor-pointer select-none"
               onClick={handleBrandClick}
             >
-              {branding.logoUrl ? (
+              {branding.logoUrl && !logoFailed ? (
                 <div className="flex items-center gap-2 py-1">
                   <img 
-                    src={branding.logoUrl} 
+                    src={resolveImageUrl(branding.logoUrl, { width: 300 })} 
                     alt="MILITO TECH HOME Logo" 
+                    onError={() => setLogoFailed(true)}
                     className="h-14 sm:h-16 md:h-18 lg:h-20 max-w-[220px] sm:max-w-[250px] md:max-w-[300px] w-auto object-contain bg-transparent p-0 border-0 shadow-none mix-blend-multiply transition-all duration-300"
                   />
                   <span className="font-extrabold text-[#1A2025] text-sm md:text-xl tracking-wider hidden md:inline">
@@ -154,19 +209,53 @@ export default function Header({
             </div>
 
             {/* Desktop Nav */}
-            <nav className="hidden md:flex items-center space-x-4">
-              {navLinks.map((link) => (
-                <button
-                  key={link.label}
-                  onClick={() => onScrollToSection(link.sectionId)}
-                  className="text-xs font-black uppercase tracking-wider text-gray-750 hover:text-milito-green transition-colors cursor-pointer"
-                >
-                  {link.label}
-                </button>
-              ))}
+            <nav className="hidden md:flex items-center space-x-2 lg:space-x-3">
+              {navLinks.map((link) => {
+                const isCurrentActive = 
+                  link.page === "store" 
+                    ? activePage === "store"
+                    : link.page === "gadgets"
+                    ? activePage === "gadgets" || activePage === ("home" as any)
+                    : link.page === "swap-deals"
+                    ? activePage === "swap-deals"
+                    : link.page === "vehicles"
+                    ? activePage === "vehicles"
+                    : false;
+                
+                if (link.isVehicleTab) {
+                  return (
+                    <button
+                      key={link.label}
+                      onClick={() => handleNavClick(link.sectionId, link.page as any)}
+                      className={`text-xs font-black uppercase tracking-wider px-3 py-1.5 rounded-full transition-all cursor-pointer flex items-center gap-1.5 ${
+                        activePage === "vehicles"
+                          ? "bg-[#1A2025] text-white shadow-sm ring-2 ring-[#00B14F]/40"
+                          : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200"
+                      }`}
+                    >
+                      <span className="w-2 h-2 rounded-full bg-[#00B14F] animate-pulse"></span>
+                      <span>🚗 Vehicles & Import</span>
+                    </button>
+                  );
+                }
+
+                return (
+                  <button
+                    key={link.label}
+                    onClick={() => handleNavClick(link.sectionId, link.page as any)}
+                    className={`text-xs font-black uppercase tracking-wider transition-colors cursor-pointer px-2.5 py-1.5 rounded-xl ${
+                      isCurrentActive
+                        ? "text-[#00B14F] bg-[#00B14F]/10 font-black"
+                        : "text-gray-750 hover:text-milito-green hover:bg-gray-100/60"
+                    }`}
+                  >
+                    {link.label}
+                  </button>
+                );
+              })}
               <button
                 onClick={onOpenTracker}
-                className="text-xs font-black uppercase tracking-wider text-gray-750 hover:text-milito-green transition-colors cursor-pointer flex items-center gap-0.5"
+                className="text-xs font-black uppercase tracking-wider text-gray-750 hover:text-milito-green transition-colors cursor-pointer flex items-center gap-0.5 px-2 py-1"
               >
                 Track Order
               </button>
@@ -253,25 +342,67 @@ export default function Header({
                 />
               </div>
             )}
-            <div className="flex flex-col space-y-4 font-semibold text-lg">
-              {navLinks.map((link) => (
-                <button
-                  key={link.label}
-                  onClick={() => {
-                    onScrollToSection(link.sectionId);
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className="text-left text-gray-800 hover:text-milito-green transition-colors"
-                >
-                  {link.label}
-                </button>
-              ))}
+            <div className="flex flex-col space-y-3 font-semibold text-base">
+              {navLinks.map((link) => {
+                if (link.isVehicleTab) {
+                  return (
+                    <button
+                      key={link.label}
+                      onClick={() => {
+                        handleNavClick(link.sectionId);
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className={`text-left p-3 rounded-xl font-bold flex items-center justify-between transition-all ${
+                        activePage === "vehicles"
+                          ? "bg-[#1A2025] text-white"
+                          : "bg-emerald-50 text-emerald-900 border border-emerald-200"
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span>🚗</span>
+                        <span>Vehicles & Customs Hub</span>
+                      </span>
+                      <span className="text-[10px] uppercase font-extrabold bg-[#00B14F] text-black px-2 py-0.5 rounded-full">
+                        Explore
+                      </span>
+                    </button>
+                  );
+                }
+
+                const isCurrentActive = 
+                  link.page === "store" 
+                    ? activePage === "store"
+                    : link.page === "gadgets"
+                    ? activePage === "gadgets" || activePage === ("home" as any)
+                    : link.page === "swap-deals"
+                    ? activePage === "swap-deals"
+                    : link.page === "vehicles"
+                    ? activePage === "vehicles"
+                    : false;
+
+                return (
+                  <button
+                    key={link.label}
+                    onClick={() => {
+                      handleNavClick(link.sectionId, link.page as any);
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className={`text-left py-2 px-3 rounded-xl transition-colors font-bold ${
+                      isCurrentActive
+                        ? "text-[#00B14F] bg-[#00B14F]/10 font-black"
+                        : "text-gray-800 hover:text-milito-green hover:bg-gray-50"
+                    }`}
+                  >
+                    {link.label}
+                  </button>
+                );
+              })}
               <button
                 onClick={() => {
                   onOpenTracker();
                   setIsMobileMenuOpen(false);
                 }}
-                className="text-left text-gray-800 hover:text-milito-green transition-colors"
+                className="text-left py-1.5 text-gray-800 hover:text-milito-green transition-colors"
               >
                 Track Order
               </button>
@@ -365,8 +496,13 @@ export default function Header({
                           <div key={item.id} className="flex py-4 first:pt-0 last:pb-0 gap-4">
                             <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-md border border-gray-200 bg-gray-50 p-1 flex items-center justify-center">
                               <img
-                                src={resolveImageUrl(item.product.image)}
+                                src={resolveImageUrl(
+                                  item.product.thumbnail?.secure_url || item.product.thumbnail || item.product.image || item.product.galleryImages?.[0]?.secure_url || item.product.gallery?.[0],
+                                  { width: 160, brand: item.product.brand }
+                                )}
                                 alt={item.product.name}
+                                loading="lazy"
+                                decoding="async"
                                 referrerPolicy="no-referrer"
                                 className="h-full object-contain"
                               />
@@ -430,19 +566,29 @@ export default function Header({
                       </div>
                       <p className="text-[11px] text-gray-600 mb-6 flex items-center gap-1 bg-white p-2.5 rounded border border-gray-200 shadow-sm leading-normal">
                         <ShieldCheck className="w-5 h-5 text-milito-green flex-shrink-0" />
-                        <span>Protected by MILITO escrow lock. All clearances, swap valuations, and couriers are backed by secure delivery parameters.</span>
+                        <span>Verified MILITO items. Direct order confirmation, prompt seller fulfillment, and reliable nationwide delivery.</span>
                       </p>
 
                       <div className="space-y-3">
+                        {/* 1. Order Cart via Order Now Button */}
+                        <WhatsAppOrderButton
+                          cartItems={cart}
+                          customTotal={cartTotal}
+                          label="Order Now"
+                          id="cart-drawer-order-now-btn"
+                        />
+
+                        {/* 2. Direct Order Summary Checkout */}
                         <button
                           onClick={() => {
                             setIsCartOpen(false);
                             onOpenCheckout();
                           }}
-                          className="w-full flex items-center justify-center rounded-xl bg-milito-green px-6 py-3.5 text-sm font-bold text-black shadow-lg hover:brightness-105 active:scale-98 transition duration-200 cursor-pointer"
+                          className="w-full flex items-center justify-center rounded-xl bg-milito-green px-6 py-3.5 text-sm font-bold text-black shadow-md hover:brightness-105 active:scale-98 transition duration-200 cursor-pointer"
                         >
-                          Checkout Securely (Escrow Lock)
+                          Review & Complete Order
                         </button>
+
                         <button
                           onClick={() => setIsCartOpen(false)}
                           className="w-full flex items-center justify-center rounded-xl border border-gray-300 bg-white px-6 py-2.5 text-xs font-semibold text-gray-750 hover:bg-gray-100 transition cursor-pointer"

@@ -45,20 +45,26 @@ export default function WebsiteBrandingManager() {
     }
 
     setIsUploading(true);
-    setUploadProgress(15);
+    setUploadProgress(10);
     setErrorMessage(null);
     setSuccessMessage(null);
 
     try {
-      const uploadedMetas = await UploadService.uploadToCloudinary([file], (progress) => {
-        setUploadProgress(progress);
-      });
+      const uploadedMeta = await UploadService.uploadSingleFile(
+        file,
+        0,
+        1,
+        1,
+        (progress) => {
+          setUploadProgress(progress);
+        },
+        "milito_branding"
+      );
 
-      if (!uploadedMetas || uploadedMetas.length === 0) {
+      if (!uploadedMeta || !uploadedMeta.secure_url) {
         throw new Error("Failed to upload website logo. Please try again.");
       }
 
-      const uploadedMeta = uploadedMetas[0];
       setUploadProgress(100);
 
       // Save to Firestore branding/website

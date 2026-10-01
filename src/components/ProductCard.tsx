@@ -1,6 +1,8 @@
-import React from "react";
-import { Star, ShoppingCart, Check } from "lucide-react";
-import { Product, resolveImageUrl } from "../types";
+import React, { memo, useState, useEffect, useMemo } from "react";
+import { ShoppingCart, Smartphone, Car } from "lucide-react";
+import { Product, resolveImageUrl, extractProductOriginalImages, getFallbackImage } from "../types";
+import { getStockStatus } from "../utils/stockUtils";
+import WhatsAppOrderButton from "./WhatsAppOrderButton";
 
 interface ProductCardProps {
   key?: string;
@@ -11,27 +13,61 @@ interface ProductCardProps {
   onToggleCompare: (product: Product) => void;
 }
 
-export default function ProductCard({ 
+const nairaFormatter = new Intl.NumberFormat("en-NG", {
+  style: "currency",
+  currency: "NGN",
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
+
+const formatPrice = (p: number) => nairaFormatter.format(p);
+
+function ProductCardComponent({ 
   product, 
   onOpenDetails, 
   onQuickAdd,
   isComparing,
-  onToggleCompare
+  onToggleCompare,
 }: ProductCardProps) {
-  const formatPrice = (p: number) => {
-    return new Intl.NumberFormat("en-NG", {
-      style: "currency",
-      currency: "NGN",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(p);
+  const [imageIndex, setImageIndex] = useState(0);
+  const [imageFailed, setImageFailed] = useState(false);
+
+  // Extract candidate image URLs starting with product's original images
+  const originalImages = extractProductOriginalImages(product);
+  const primaryFallback = resolveImageUrl(product.thumbnail || product.image || product.galleryImages?.[0]?.secure_url || product.gallery?.[0]);
+
+  const candidateUrls = useMemo(() => {
+    const list: string[] = [];
+    originalImages.forEach(u => {
+      if (u && !list.includes(u)) list.push(u);
+    });
+    if (primaryFallback && !list.includes(primaryFallback)) {
+      list.push(primaryFallback);
+    }
+    const brandFallback = getFallbackImage(product.brand, product.productType);
+    if (brandFallback && !list.includes(brandFallback)) {
+      list.push(brandFallback);
+    }
+    return list.filter(Boolean);
+  }, [originalImages, primaryFallback, product.brand, product.productType]);
+
+  const currentImageUrl = candidateUrls[imageIndex] || "";
+
+  useEffect(() => {
+    setImageIndex(0);
+    setImageFailed(false);
+  }, [product.id, product.image, product.thumbnail]);
+
+  const handleImageError = () => {
+    if (imageIndex + 1 < candidateUrls.length) {
+      setImageIndex(prev => prev + 1);
+    } else {
+      setImageFailed(true);
+    }
   };
 
-  const getAvailabilityColor = (avail?: string) => {
-    if (avail === "Reserved") return "bg-amber-500/10 text-amber-500 border-amber-500/20";
-    if (avail === "Sold Out" || product.quantity === 0) return "bg-red-500/10 text-red-500 border-red-500/20";
-    return "bg-emerald-500/10 text-[#00B14F] border-[#00B14F]/20";
-  };
+  const stockInfo = getStockStatus(product);
+  const isProductSoldOut = stockInfo.isSoldOut;
 
   const getTagStyle = (tag: string) => {
     switch (tag) {
@@ -48,10 +84,8 @@ export default function ProductCard({
     }
   };
 
-  const isProductSoldOut = product.availability === "Sold Out" || product.quantity === 0;
-
   return (
-    <div className={`group relative bg-white rounded-3xl overflow-hidden border transition-all duration-300 flex flex-col shadow-md ${
+    <div className={`group relative bg-white rounded-3xl overflow-hidden border transition-all duration-300 flex flex-col shadow-md will-change-transform ${
       isComparing ? "border-milito-green ring-2 ring-milito-green/20" : "border-gray-250 hover:border-milito-green/50 hover:shadow-xl"
     }`}>
       {/* Badges and tags */}
@@ -68,17 +102,7 @@ export default function ProductCard({
         }`}>
           {product.condition}
         </span>
-        {isProductSoldOut ? (
-          <span className="text-[7.5px] md:text-[9px] uppercase font-bold tracking-tight md:tracking-wider px-1.5 py-0.5 md:px-2.5 md:py-1 rounded-md md:rounded-full border bg-red-500/10 text-red-500 border-red-500/20 pointer-events-auto whitespace-nowrap">
-            Sold Out
-          </span>
-        ) : (
-          product.availability && (
-            <span className={`text-[7.5px] md:text-[9px] uppercase font-bold tracking-tight md:tracking-wider px-1.5 py-0.5 md:px-2.5 md:py-1 rounded-md md:rounded-full border pointer-events-auto whitespace-nowrap ${getAvailabilityColor(product.availability)}`}>
-              {product.availability}
-            </span>
-          )
-        )}
+
         {/* Optional tags */}
         {product.tags && product.tags.map((tag) => (
           <span key={tag} className={`text-[7.5px] md:text-[9px] uppercase font-bold md:font-extrabold tracking-tight md:tracking-wider px-1.5 py-0.5 md:px-2.5 md:py-1 rounded-md md:rounded-full border pointer-events-auto whitespace-nowrap ${getTagStyle(tag)}`}>
@@ -105,26 +129,48 @@ export default function ProductCard({
         onClick={() => onOpenDetails(product)}
         className="w-full aspect-square relative cursor-pointer bg-gray-100 overflow-hidden group-hover:bg-gray-200 transition-colors"
       >
-        <img
-          src={resolveImageUrl(product.thumbnail?.secure_url || product.image || product.galleryImages?.[0]?.secure_url || product.gallery?.[0])}
-          alt={product.name}
-          referrerPolicy="no-referrer"
-          className="w-full h-full object-cover block transition-transform duration-500 group-hover:scale-105"
-        />
+        {currentImageUrl && !imageFailed ? (
+          <img
+            key={currentImageUrl}
+            src={currentImageUrl}
+            alt={product.name}
+            loading="lazy"
+            decoding="async"
+            referrerPolicy="no-referrer"
+            onError={handleImageError}
+            className="w-full h-full object-cover block transition-transform duration-300 group-hover:scale-105"
+          />
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center bg-gray-100/90 text-gray-500 p-4 text-center select-none">
+            <div className="w-12 h-12 rounded-2xl bg-gray-200/80 flex items-center justify-center mb-2 text-gray-400 group-hover:bg-gray-200 transition">
+              {product.productType === "vehicle" ? (
+                <Car className="w-6 h-6 stroke-[1.5]" />
+              ) : (
+                <Smartphone className="w-6 h-6 stroke-[1.5]" />
+              )}
+            </div>
+            <span className="text-[11px] font-bold text-gray-700 leading-tight">Original image unavailable</span>
+            <span className="text-[9px] font-medium text-gray-400 mt-0.5">Asset offline</span>
+          </div>
+        )}
         {/* Hover quick views overlay */}
         <div className="absolute inset-x-0 bottom-0 bg-[#1A2025]/95 backdrop-blur-sm py-2 text-center text-[10px] font-bold text-gray-200 opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0 duration-300">
-          Click for Full Specs & Sourcing Reviews
+          Click for Full Specifications
         </div>
       </div>
 
       {/* Product Content Block */}
       <div className="p-2.5 sm:p-3.5 flex flex-col flex-1">
-        {/* Brand & Rating Row */}
+        {/* Brand & Stock Availability Row (Replaces old rating area with text directly on white background) */}
         <div className="flex items-center justify-between gap-1">
-          <span className="text-[9px] sm:text-[10px] text-gray-500 font-extrabold uppercase tracking-widest truncate">{product.brand}</span>
-          <div className="flex items-center gap-1 bg-gray-50 px-1.5 py-0.5 rounded-full border border-gray-200 shadow-xs flex-shrink-0">
-            <Star className="w-2.5 h-2.5 text-amber-500 fill-amber-500" />
-            <span className="text-[9px] text-gray-700 font-bold">{product.rating}</span>
+          <span className="text-[9px] sm:text-[10px] text-gray-500 font-extrabold uppercase tracking-widest truncate">
+            {product.brand}
+          </span>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <span className={`w-1.5 h-1.5 rounded-full ${stockInfo.dotColor}`} />
+            <span className={`text-[10px] sm:text-[11px] font-bold ${stockInfo.colorClass}`}>
+              {stockInfo.label}
+            </span>
           </div>
         </div>
 
@@ -138,17 +184,29 @@ export default function ProductCard({
 
         {/* Short Spec summary */}
         <div className="mt-1 mb-1.5">
-          <span className="text-[9px] sm:text-[10px] font-bold text-gray-600 bg-gray-100 border border-gray-200 px-1.5 py-0.5 rounded-md truncate block max-w-full">
-            💾 {product.storageOptions?.[0] || "128GB"}
-            {product.batteryCondition && ` • 🔋 ${product.batteryCondition}`}
-            {!product.batteryCondition && product.batteryHealth && ` • 🔋 ${product.batteryHealth}`}
-            {product.condition === "Brand New" && !product.batteryCondition && !product.batteryHealth && " • 🔋 100% Sealed"}
-            {product.network && ` • 📡 ${product.network}`}
-          </span>
+          {product.productType === "vehicle" ? (
+            <span className="text-[9px] sm:text-[10px] font-bold text-gray-600 bg-gray-100 border border-gray-200 px-1.5 py-0.5 rounded-md truncate block max-w-full">
+              🚗 {product.year || "Vehicle"}
+              {product.transmission && ` • ⚙️ ${product.transmission}`}
+              {product.fuelType && ` • ⛽ ${product.fuelType}`}
+              {product.mileage && ` • 🛣️ ${product.mileage}`}
+              {product.location && ` • 📍 ${product.location}`}
+            </span>
+          ) : (
+            <span className="text-[9px] sm:text-[10px] font-bold text-gray-600 bg-gray-100 border border-gray-200 px-1.5 py-0.5 rounded-md truncate block max-w-full">
+              💾 {product.storageOptions?.[0] || "128GB"}
+              {product.specs?.ram && ` • 🧠 ${product.specs.ram}`}
+              {product.networkCapability && ` • 📶 ${product.networkCapability}`}
+              {product.batteryCondition && ` • 🔋 ${product.batteryCondition}`}
+              {!product.batteryCondition && product.batteryHealth && ` • 🔋 ${product.batteryHealth}`}
+              {product.condition === "Brand New" && !product.batteryCondition && !product.batteryHealth && " • 🔋 100%"}
+              {product.network && !product.networkCapability && ` • 📡 ${product.network}`}
+            </span>
+          )}
         </div>
 
         {/* Price & Action Row */}
-        <div className="mt-auto pt-1.5 border-t border-gray-150 flex items-center justify-between gap-1">
+        <div className="mt-auto pt-2 border-t border-gray-150 flex items-center justify-between gap-1">
           <div className="flex flex-col min-w-0">
             {product.originalPrice && (
               <span className="text-[8.5px] sm:text-[9.5px] text-gray-400 line-through font-medium truncate">
@@ -160,11 +218,11 @@ export default function ProductCard({
             </span>
           </div>
 
-          <div className="flex items-center gap-1 flex-shrink-0">
+          <div className="flex items-center gap-1.5 flex-shrink-0">
             {/* View Details button */}
             <button
               onClick={() => onOpenDetails(product)}
-              className="text-[8.5px] sm:text-[10px] font-extrabold uppercase tracking-wider text-gray-700 hover:text-white px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg border border-gray-250 bg-white hover:bg-gray-900 hover:border-gray-900 transition-all cursor-pointer shadow-xs text-center"
+              className="text-[8.5px] sm:text-[10px] font-extrabold uppercase tracking-wider text-gray-700 hover:text-white px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg border border-gray-250 bg-white hover:bg-gray-900 hover:border-gray-900 transition-all cursor-pointer shadow-xs text-center"
             >
               Details
             </button>
@@ -174,22 +232,36 @@ export default function ProductCard({
               <button
                 disabled
                 className="p-1 sm:p-1.5 rounded-lg bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed text-[8.5px] font-bold"
-                title="Sold Out"
+                title="Out of stock"
               >
                 Out
               </button>
             ) : (
               <button
                 onClick={() => onQuickAdd(product)}
-                className="p-1 sm:p-1.5 rounded-lg bg-milito-green hover:brightness-105 text-black transition-all shadow-[0_2px_8px_rgba(0,177,79,0.2)] active:scale-95 cursor-pointer flex-shrink-0"
-                title="Add to Protected Escrow Custody"
+                className="p-1 sm:p-1.5 rounded-lg bg-gray-100 hover:bg-milito-green hover:text-black text-gray-700 transition-all shadow-xs active:scale-95 cursor-pointer flex-shrink-0"
+                title="Add to cart"
               >
                 <ShoppingCart className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
               </button>
             )}
           </div>
         </div>
+
+        {/* Dedicated "Order Now" button */}
+        <div className="mt-2">
+          <WhatsAppOrderButton
+            product={product}
+            variant="card"
+            label="Order Now"
+            disabled={isProductSoldOut}
+            id={`product-card-order-${product.id}`}
+          />
+        </div>
       </div>
     </div>
   );
 }
+
+export const ProductCard = memo(ProductCardComponent);
+export default ProductCard;

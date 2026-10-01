@@ -1,8 +1,12 @@
 import { useState } from "react";
 import { MessageSquare, X, Check, HelpCircle } from "lucide-react";
+import { getWhatsAppOrderUrl, MILITO_WHATSAPP_DISPLAY } from "../utils/whatsapp";
 
 export default function SupportChat() {
   const [isOpen, setIsOpen] = useState(false);
+
+  const supportMessage = `Hello MILITO 👋\n\nI have an inquiry about smartphones, gadgets, or vehicles from MILITO TECH HOME.\n\nPlease help me continue.`;
+  const whatsappUrl = getWhatsAppOrderUrl(supportMessage);
 
   return (
     <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end">
@@ -15,7 +19,7 @@ export default function SupportChat() {
               <span className="w-2.5 h-2.5 rounded-full bg-milito-green animate-pulse"></span>
               <div>
                 <h4 className="font-extrabold text-xs text-gray-900 font-sans">MILITO Desk Online</h4>
-                <p className="text-[10px] text-gray-500 font-semibold">Response time: ~10 Minutes</p>
+                <p className="text-[10px] text-gray-500 font-semibold">{MILITO_WHATSAPP_DISPLAY}</p>
               </div>
             </div>
             <button
@@ -36,11 +40,11 @@ export default function SupportChat() {
             </div>
 
             <a
-              href="https://wa.me/2349000000000?text=Hello%20MILITO%20TECH%20HOME%2C%20I%20have%20an%20inquiry%20about%20a%20smartphone."
+              href={whatsappUrl}
               target="_blank"
               rel="noreferrer"
               onClick={() => setIsOpen(false)}
-              className="w-full py-3 bg-milito-green hover:brightness-105 transition-all text-black font-extrabold text-center block rounded-xl text-xs uppercase tracking-wider shadow-md cursor-pointer"
+              className="w-full py-3 bg-[#25D366] hover:bg-[#20bd5a] transition-all text-black font-extrabold text-center block rounded-xl text-xs uppercase tracking-wider shadow-md cursor-pointer"
             >
               Start WhatsApp Chat
             </a>

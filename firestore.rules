@@ -17,5 +17,33 @@ service cloud.firestore {
     match /branding/{brandingId} {
       allow read, write: if true;
     }
+
+    match /orders/{orderId} {
+      allow read, write: if true;
+    }
+
+    match /testimonials/{testimonialId} {
+      allow read, write: if true;
+    }
+
+    match /customers/{customerId} {
+      allow read, write: if true;
+    }
+
+    match /productAlerts/{alertId} {
+      allow read, write: if true;
+    }
+
+    match /notificationQueue/{notificationId} {
+      allow read, write: if true;
+    }
+
+    match /swap_requests/{requestId} {
+      allow read, write: if true;
+    }
+
+    match /swapAppraisalRequests/{requestId} {
+      allow read, write: if true;
+    }
   }
 }

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import {
   Sparkles,
   Check,
-  Plus,
   X,
   RefreshCw,
   AlertTriangle,
@@ -10,17 +9,22 @@ import {
   ShieldCheck,
   BatteryCharging,
   HardDrive,
-  Palette,
   DollarSign,
   Eye,
-  CheckCircle2
+  CheckCircle2,
+  Cpu,
+  Fingerprint,
+  Wifi,
+  Layers
 } from "lucide-react";
 import { Product, CloudinaryImageMeta } from "../types";
 import { MediaUploader } from "./MediaUploader";
 import { useBranding } from "../context/BrandingContext";
+import { getStockStatus, getProductStockQuantity } from "../utils/stockUtils";
 import {
   PHONE_BRANDS,
   getModelsForBrand,
+  getSeriesForBrand,
   getPhoneModelDetails,
   PhoneModelItem
 } from "../data/phoneModels";
@@ -53,6 +57,213 @@ interface BrandProductFormProps {
   ) => void;
 }
 
+const nairaFormatter = new Intl.NumberFormat("en-NG", {
+  style: "currency",
+  currency: "NGN",
+  maximumFractionDigits: 0
+});
+
+const formatNaira = (num: number) => nairaFormatter.format(num);
+
+// Helper to generate clean, concise, natural summary in straightforward Nigerian English based ONLY on admin selected fields
+export const generateSelectedOnlyDescription = (form: Partial<Product>): string => {
+  const brand = (form.brand || "").trim();
+  const model = (form.name || "").trim();
+  const isApple =
+    brand.toLowerCase() === "apple" ||
+    model.toLowerCase().includes("iphone") ||
+    model.toLowerCase().includes("ipad");
+
+  // 1. Device Title (Combine brand and model without repetition)
+  let deviceTitle = "";
+  if (model) {
+    const lowerModel = model.toLowerCase();
+    const lowerBrand = brand.toLowerCase();
+
+    const isAppleProduct =
+      lowerModel.startsWith("iphone") ||
+      lowerModel.startsWith("ipad") ||
+      lowerModel.startsWith("macbook") ||
+      lowerModel.startsWith("airpods");
+
+    if (lowerModel.startsWith(lowerBrand) || isAppleProduct) {
+      deviceTitle = model;
+    } else if (brand && brand !== "Other" && brand !== "Smartphone") {
+      deviceTitle = `${brand} ${model}`;
+    } else {
+      deviceTitle = model;
+    }
+  } else if (brand && brand !== "Other" && brand !== "Smartphone") {
+    deviceTitle = brand;
+  }
+
+  // 2. Condition (Only if selected)
+  const condition = form.condition ? form.condition.trim() : "";
+
+  // 3. Storage (ONLY what admin selected)
+  let storageVal = "";
+  if (form.storageOptions && form.storageOptions.length > 0) {
+    const validStorage = form.storageOptions.filter(Boolean);
+    if (validStorage.length > 0) {
+      storageVal = validStorage.join(" / ") + " storage";
+    }
+  }
+
+  // 4. RAM (ONLY if selected)
+  let ramVal = "";
+  if (form.specs?.ram && form.specs.ram.trim() && form.specs.ram !== "None") {
+    const rawRam = form.specs.ram.trim();
+    ramVal = rawRam.toLowerCase().includes("ram") ? rawRam : `${rawRam} RAM`;
+  }
+
+  // 5. Network Capability (e.g. 4G, 5G)
+  let netCapVal = "";
+  if (form.networkCapability && form.networkCapability.trim()) {
+    const rawCap = form.networkCapability.trim();
+    netCapVal = rawCap.toLowerCase().includes("network") ? rawCap : `${rawCap} network`;
+  }
+
+  // 6. Device Lock / SIM Status (e.g. Factory Unlocked)
+  let lockText = "";
+  if (form.deviceLockStatus && String(form.deviceLockStatus).trim()) {
+    const lk = String(form.deviceLockStatus).trim();
+    if (lk === "Unlocked" || lk === "Factory Unlocked") {
+      lockText = "Factory Unlocked";
+    } else {
+      lockText = lk;
+    }
+  } else if (form.network && String(form.network).trim()) {
+    const net = String(form.network).trim();
+    if (net.toLowerCase().includes("unlocked")) {
+      lockText = net;
+    }
+  }
+
+  // Assemble First Sentence: [Device Title], [Condition] [with details...]
+  const configParts: string[] = [];
+  if (storageVal) configParts.push(storageVal);
+  if (ramVal) configParts.push(ramVal);
+  if (netCapVal) configParts.push(netCapVal);
+  if (lockText) configParts.push(lockText);
+
+  let firstSentence = "";
+  if (deviceTitle && condition) {
+    firstSentence = `${deviceTitle}, ${condition}`;
+  } else if (deviceTitle) {
+    firstSentence = deviceTitle;
+  } else if (condition) {
+    firstSentence = condition;
+  }
+
+  if (configParts.length > 0) {
+    if (firstSentence) {
+      if (configParts.length === 1) {
+        firstSentence += ` with ${configParts[0]}`;
+      } else if (configParts.length === 2) {
+        firstSentence += ` with ${configParts[0]} and ${configParts[1]}`;
+      } else {
+        const allExceptLast = configParts.slice(0, -1).join(", ");
+        const last = configParts[configParts.length - 1];
+        firstSentence += ` with ${allExceptLast} and ${last}`;
+      }
+    } else {
+      firstSentence = configParts.join(", ");
+    }
+  }
+
+  // 7. Battery Text (Only if selected by admin)
+  let batteryText = "";
+  if (isApple) {
+    if (form.batteryHealth && form.batteryHealth.trim()) {
+      const rawBat = form.batteryHealth.trim();
+      if (rawBat.toLowerCase().includes("brand new") || (condition === "Brand New" && rawBat.includes("100%"))) {
+        batteryText = "battery health is 100%";
+      } else if (rawBat.includes("%")) {
+        batteryText = `battery health is ${rawBat}`;
+      } else {
+        batteryText = `battery health is ${rawBat}%`;
+      }
+    }
+  } else {
+    if (form.batteryCondition && form.batteryCondition.trim()) {
+      batteryText = `battery condition is ${form.batteryCondition.trim()}`;
+    } else if (form.batteryHealth && form.batteryHealth.trim()) {
+      const rawBat = form.batteryHealth.trim();
+      batteryText = `battery is ${rawBat.includes("%") ? rawBat : `${rawBat}%`}`;
+    }
+  }
+
+  // 8. Biometrics (Fingerprint & Face Unlock / Face ID)
+  let biometricsText = "";
+  const fp = form.fingerprint ? String(form.fingerprint).trim() : "";
+  const fid = form.faceId ? String(form.faceId).trim() : "";
+
+  const fpWorking = fp.toLowerCase().includes("working") && !fp.toLowerCase().includes("not working");
+  const fpNotWorking = fp.toLowerCase().includes("not working");
+  
+  const fidWorking = fid.toLowerCase().includes("working") && !fid.toLowerCase().includes("not working");
+  const fidNotWorking = fid.toLowerCase().includes("not working");
+
+  const faceLabel = isApple ? "Face ID" : "Face Unlock";
+
+  if (fpWorking && fidWorking) {
+    biometricsText = `Fingerprint and ${faceLabel} are working`;
+  } else if (fpWorking && !fidWorking && !fidNotWorking) {
+    biometricsText = "Fingerprint sensor is working";
+  } else if (!fpWorking && !fpNotWorking && fidWorking) {
+    biometricsText = `${faceLabel} is working`;
+  } else if (fpNotWorking && fidNotWorking) {
+    biometricsText = `Fingerprint and ${faceLabel} are not working`;
+  } else if (fpNotWorking) {
+    biometricsText = "Fingerprint is not working";
+  } else if (fidNotWorking) {
+    biometricsText = `${faceLabel} is not working`;
+  }
+
+  // 9. iCloud Status (Only if selected)
+  let icloudText = "";
+  if (form.specs?.icloudStatus && form.specs.icloudStatus.trim() && form.specs.icloudStatus !== "Unknown") {
+    const icl = form.specs.icloudStatus.trim();
+    if (icl.toLowerCase().includes("clean") || icl.toLowerCase().includes("unlocked")) {
+      icloudText = "iCloud is Clean";
+    } else {
+      icloudText = `iCloud is ${icl}`;
+    }
+  }
+
+  // Assemble second sentence with ONLY selected details
+  const statusParts: string[] = [];
+  if (batteryText) statusParts.push(batteryText);
+  if (biometricsText) statusParts.push(biometricsText);
+  if (icloudText) statusParts.push(icloudText);
+
+  let secondSentence = "";
+  if (statusParts.length > 0) {
+    if (statusParts.length === 1) {
+      secondSentence = statusParts[0] + ".";
+    } else if (statusParts.length === 2) {
+      secondSentence = `${statusParts[0]} and ${statusParts[1]}.`;
+    } else {
+      const allExceptLast = statusParts.slice(0, -1).join(", ");
+      const last = statusParts[statusParts.length - 1];
+      secondSentence = `${allExceptLast} and ${last}.`;
+    }
+    secondSentence = secondSentence.charAt(0).toUpperCase() + secondSentence.slice(1);
+  }
+
+  const conclusion = "Device is tested and ready for use.";
+
+  if (firstSentence && secondSentence) {
+    return `${firstSentence}. ${secondSentence} ${conclusion}`;
+  } else if (firstSentence) {
+    return `${firstSentence}. ${conclusion}`;
+  } else if (secondSentence) {
+    return `${secondSentence} ${conclusion}`;
+  }
+
+  return deviceTitle ? `${deviceTitle}. ${conclusion}` : "";
+};
+
 export function BrandProductForm({
   productForm,
   setProductForm,
@@ -69,9 +280,8 @@ export function BrandProductForm({
 
   // Brand selection state
   const [selectedBrand, setSelectedBrand] = useState<string>(productForm.brand || "Apple");
+  const [selectedSeries, setSelectedSeries] = useState<string>("All Series");
   const [modelSearchQuery, setModelSearchQuery] = useState<string>("");
-  const [customColorName, setCustomColorName] = useState<string>("");
-  const [customColorHex, setCustomColorHex] = useState<string>("#1C1C1E");
 
   // Helper to find logo URL for a brand
   const getBrandLogoUrl = (brandName: string): string | undefined => {
@@ -81,20 +291,31 @@ export function BrandProductForm({
     return found?.logoUrl;
   };
 
-  // Combine standard PHONE_BRANDS with any custom brands added by Admin
+  // Combine standard PHONE_BRANDS with any custom brands added by Admin with strict deduplication
   const allBrands = React.useMemo(() => {
-    const standardNames = new Set(PHONE_BRANDS.map(b => b.name.toLowerCase()));
-    const list: Array<{ id: string; name: string; logo?: string; logoUrl?: string; modelCount?: number }> = PHONE_BRANDS.map(b => ({
-      id: b.id,
-      name: b.name,
-      logo: b.logo,
-      logoUrl: getBrandLogoUrl(b.name),
-      modelCount: b.models.length
-    }));
+    const seenBrandNames = new Set<string>();
+    const list: Array<{ id: string; name: string; logo?: string; logoUrl?: string; modelCount?: number }> = [];
+
+    // Add standard brands
+    PHONE_BRANDS.forEach(b => {
+      const lower = b.name.trim().toLowerCase();
+      if (!seenBrandNames.has(lower)) {
+        seenBrandNames.add(lower);
+        list.push({
+          id: b.id,
+          name: b.name,
+          logo: b.logo,
+          logoUrl: getBrandLogoUrl(b.name),
+          modelCount: b.models.length
+        });
+      }
+    });
 
     // Add custom brands from brandLogos if not already in standard list
     brandLogos.forEach(bl => {
-      if (!standardNames.has(bl.name.toLowerCase())) {
+      const lower = bl.name.trim().toLowerCase();
+      if (!seenBrandNames.has(lower)) {
+        seenBrandNames.add(lower);
         list.push({
           id: bl.id,
           name: bl.name,
@@ -107,25 +328,74 @@ export function BrandProductForm({
     return list;
   }, [brandLogos]);
 
-  // Format currency display
-  const formatNaira = (num: number) => {
-    return new Intl.NumberFormat("en-NG", {
-      style: "currency",
-      currency: "NGN",
-      maximumFractionDigits: 0
-    }).format(num);
-  };
+  // Available series for selected brand
+  const availableSeries = React.useMemo(() => {
+    return getSeriesForBrand(selectedBrand);
+  }, [selectedBrand]);
 
   // Keep selectedBrand synchronized with productForm.brand
   useEffect(() => {
     if (productForm.brand && productForm.brand !== selectedBrand) {
       setSelectedBrand(productForm.brand);
+      setSelectedSeries("All Series");
     }
   }, [productForm.brand]);
+
+  // Helper to apply model specs & variants to form
+  const applyModelDetailsToForm = (form: Partial<Product>, modelItem: PhoneModelItem) => {
+    // Single selected storage default (never auto-add multiple unless chosen)
+    const defaultStorage = modelItem.defaultStorageOptions?.[0] ? [modelItem.defaultStorageOptions[0]] : ["128GB"];
+    form.storageOptions = form.storageOptions && form.storageOptions.length > 0 ? form.storageOptions : defaultStorage;
+    
+    // RAM configuration
+    const defaultRam = modelItem.ramOptions?.[0] || modelItem.specs?.ram || "";
+
+    // Network options
+    const defaultNetwork = modelItem.networkOptions?.[0] || (modelItem.specs?.simType?.includes("5G") ? "5G" : "4G");
+    form.networkCapability = form.networkCapability || defaultNetwork;
+    form.network = form.network || "Factory Unlocked";
+    form.deviceLockStatus = form.deviceLockStatus || "Unlocked";
+
+    // Biometrics
+    const isApple = selectedBrand.toLowerCase() === "apple" || modelItem.model.toLowerCase().includes("iphone");
+    if (isApple) {
+      form.faceId = form.faceId || "Working";
+    } else {
+      form.fingerprint = form.fingerprint || "Working";
+      form.faceId = form.faceId || "Working";
+    }
+
+    if (modelItem.specs) {
+      form.specs = {
+        screen: modelItem.specs.screen,
+        camera: modelItem.specs.camera,
+        chipset: modelItem.specs.chipset,
+        batterySize: modelItem.specs.batterySize,
+        os: modelItem.specs.os,
+        warranty: modelItem.specs.warranty || "1-Year Warranty",
+        simType: modelItem.specs.simType || "Physical Nano SIM + eSIM",
+        accessories: "Original Box & Accessories",
+        ram: form.specs?.ram || defaultRam,
+        fingerprint: modelItem.specs.fingerprint,
+        faceUnlock: modelItem.specs.faceUnlock
+      };
+    }
+
+    form.condition = form.condition || "Premium UK Used";
+    if (!isApple && !form.batteryCondition) {
+      form.batteryCondition = "Excellent";
+    }
+    form.quantity = form.quantity !== undefined ? form.quantity : 1;
+    form.availability = form.availability || "In Stock";
+
+    // Auto generate description summary based strictly on selected fields
+    form.description = generateSelectedOnlyDescription(form);
+  };
 
   // When admin selects a new brand
   const handleBrandChange = (newBrand: string) => {
     setSelectedBrand(newBrand);
+    setSelectedSeries("All Series");
     setModelSearchQuery("");
     
     // Get default models for the new brand
@@ -141,41 +411,18 @@ export function BrandProductForm({
 
       if (defaultModel) {
         applyModelDetailsToForm(updated, defaultModel);
+      } else {
+        updated.description = generateSelectedOnlyDescription(updated);
       }
 
       return updated;
     });
   };
 
-  // Helper to apply model specs & variants to form
-  const applyModelDetailsToForm = (form: Partial<Product>, modelItem: PhoneModelItem) => {
-    const defaultStorage = modelItem.defaultStorageOptions || ["128GB", "256GB"];
-    const defaultColors = modelItem.defaultColors && modelItem.defaultColors.length > 0
-      ? modelItem.defaultColors
-      : [{ name: "Standard Color", hex: "#1C1C1E" }];
-
-    form.storageOptions = defaultStorage;
-    form.colorOptions = defaultColors;
-    
-    if (modelItem.specs) {
-      form.specs = {
-        screen: modelItem.specs.screen,
-        camera: modelItem.specs.camera,
-        chipset: modelItem.specs.chipset,
-        batterySize: modelItem.specs.batterySize,
-        os: modelItem.specs.os,
-        warranty: modelItem.specs.warranty || "1-Year Warranty",
-        simType: modelItem.specs.simType || "Physical Nano SIM + eSIM",
-        accessories: "Original Box & Accessories"
-      };
-    }
-
-    form.condition = form.condition === "Brand New" ? "Brand New" : (form.condition || "Premium UK Used");
-    form.quantity = form.quantity !== undefined ? form.quantity : 1;
-    form.availability = form.availability || "In Stock";
-
-    // Auto generate description summary
-    form.description = generateSummaryText(form);
+  // When admin selects a series filter
+  const handleSeriesChange = (seriesName: string) => {
+    setSelectedSeries(seriesName);
+    setModelSearchQuery("");
   };
 
   // Handle Model Selection
@@ -186,211 +433,89 @@ export function BrandProductForm({
       const updatedForm: Partial<Product> = {
         ...prev,
         brand: selectedBrand,
-        name: modelName // CLEAN MODEL NAME ONLY
+        name: modelName
       };
 
       if (details) {
         applyModelDetailsToForm(updatedForm, details);
       } else {
-        updatedForm.description = generateSummaryText(updatedForm);
+        updatedForm.description = generateSelectedOnlyDescription(updatedForm);
       }
 
       return updatedForm;
     });
   };
 
-  // Get models for selected brand filtered by search query
+  // Get models for selected brand filtered by series and search query
   const availableModels: PhoneModelItem[] = React.useMemo(() => {
     let models = getModelsForBrand(selectedBrand);
+    if (selectedSeries && selectedSeries !== "All Series" && selectedSeries !== "All") {
+      models = models.filter(m => m.series && m.series.toLowerCase() === selectedSeries.toLowerCase());
+    }
     if (modelSearchQuery.trim()) {
       const q = modelSearchQuery.toLowerCase();
       models = models.filter(m => m.model.toLowerCase().includes(q) || (m.series && m.series.toLowerCase().includes(q)));
     }
     return models;
-  }, [selectedBrand, modelSearchQuery]);
+  }, [selectedBrand, selectedSeries, modelSearchQuery]);
 
-  // Helper to generate clean, concise, natural summary in simple Nigerian English based ONLY on selected fields
-  const generateSummaryText = (form: Partial<Product>) => {
-    const brand = (form.brand || "").trim();
-    const model = (form.name || "").trim();
-    const isApple = brand.toLowerCase() === "apple" || model.toLowerCase().includes("iphone") || model.toLowerCase().includes("ipad");
+  // Current active phone model details if available
+  const currentModelDetails = React.useMemo(() => {
+    if (!productForm.name) return undefined;
+    return getPhoneModelDetails(selectedBrand, productForm.name);
+  }, [selectedBrand, productForm.name]);
 
-    // 1. Device Title (Combine brand and model without unnecessary repetition)
-    let deviceTitle = "";
-    if (model) {
-      const lowerModel = model.toLowerCase();
-      const lowerBrand = brand.toLowerCase();
-
-      const isAppleProduct = lowerModel.startsWith("iphone") ||
-                             lowerModel.startsWith("ipad") ||
-                             lowerModel.startsWith("macbook") ||
-                             lowerModel.startsWith("airpods");
-
-      if (lowerModel.startsWith(lowerBrand) || isAppleProduct) {
-        deviceTitle = model;
-      } else if (brand && brand !== "Other" && brand !== "Smartphone") {
-        deviceTitle = `${brand} ${model}`;
-      } else {
-        deviceTitle = model;
-      }
-    } else if (brand && brand !== "Other" && brand !== "Smartphone") {
-      deviceTitle = brand;
-    } else {
-      deviceTitle = "Device";
+  // Available RAM options for the currently selected phone model
+  const availableRamOptions = React.useMemo(() => {
+    if (currentModelDetails?.ramOptions && currentModelDetails.ramOptions.length > 0) {
+      return currentModelDetails.ramOptions;
     }
-
-    // 2. Condition
-    const condition = form.condition ? form.condition.trim() : "";
-
-    // 3. Storage
-    let storageVal = "";
-    if (form.storageOptions && form.storageOptions.length > 0) {
-      storageVal = form.storageOptions.join("/");
-    }
-
-    // First Sentence Assembly: [Device Title], [Condition], [Storage]
-    const firstSentenceParts: string[] = [];
-    if (deviceTitle) firstSentenceParts.push(deviceTitle);
-    if (condition) firstSentenceParts.push(condition);
-    if (storageVal) firstSentenceParts.push(storageVal);
-
-    const firstSentence = firstSentenceParts.join(", ");
-
-    // 4. Battery Text (Apple: Battery Health percentage, Android: Battery Condition)
-    let batteryText = "";
-    if (isApple) {
-      if (form.batteryHealth && form.batteryHealth.trim()) {
-        const rawBat = form.batteryHealth.trim();
-        if (rawBat.includes("100%")) {
-          batteryText = "Battery health is 100%";
-        } else if (rawBat.includes("%")) {
-          batteryText = `Battery health is ${rawBat}`;
-        } else {
-          batteryText = `Battery health is ${rawBat}%`;
-        }
-      }
-    } else {
-      if (form.batteryCondition && form.batteryCondition.trim()) {
-        batteryText = `Battery condition is ${form.batteryCondition.trim()}`;
-      } else if (form.batteryHealth && form.batteryHealth.trim()) {
-        batteryText = `Battery condition is ${form.batteryHealth.trim()}`;
-      }
-    }
-
-    // 5. Network Status
-    let networkText = "";
-    if (form.network && form.network.trim()) {
-      const net = form.network.trim();
-      if (net === "Factory Unlocked") {
-        networkText = "Factory Unlocked";
-      } else if (net === "Network Unlocked") {
-        networkText = "Network Unlocked";
-      } else {
-        networkText = net;
-      }
-    }
-
-    // 6. Device Lock Status
-    let lockText = "";
-    if (form.deviceLockStatus && form.deviceLockStatus.trim()) {
-      const lk = form.deviceLockStatus.trim();
-      if (lk === "Unlocked") {
-        lockText = "Unlocked";
-      } else if (lk !== "Unknown") {
-        lockText = lk;
-      }
-    }
-
-    // 7. Face ID / Biometrics & iCloud Lock
-    let biometricsText = "";
-    if (isApple) {
-      if (form.faceId && form.faceId.trim()) {
-        const fid = form.faceId.trim().toLowerCase();
-        if (fid.includes("working") && !fid.includes("not working")) {
-          biometricsText = "Face ID is working";
-        } else if (fid.includes("not working")) {
-          biometricsText = "Face ID is not working";
-        }
-      }
-      if (form.specs?.icloudStatus) {
-        const icl = form.specs.icloudStatus.trim();
-        if (icl.toLowerCase().includes("clean")) {
-          if (biometricsText) biometricsText += " and iCloud is Clean";
-          else biometricsText = "iCloud is Clean";
-        }
-      }
-    }
-
-    // Second Sentence Assembly: [Battery], [Network], [Device Lock], [Biometrics]
-    const statusParts: string[] = [];
-    if (batteryText) statusParts.push(batteryText);
-    if (networkText && lockText) {
-      if (networkText === "Factory Unlocked" && lockText === "Unlocked") {
-        statusParts.push("the device is Factory Unlocked");
-      } else {
-        statusParts.push(`network is ${networkText} (${lockText})`);
-      }
-    } else if (networkText) {
-      statusParts.push(`the device is ${networkText}`);
-    } else if (lockText) {
-      statusParts.push(`device lock is ${lockText}`);
-    }
-    if (biometricsText) statusParts.push(biometricsText);
-
-    let secondSentence = "";
-    if (statusParts.length > 0) {
-      secondSentence = statusParts.join(" and ") + ".";
-      // Capitalize first letter of second sentence
-      secondSentence = secondSentence.charAt(0).toUpperCase() + secondSentence.slice(1);
-    }
-
-    if (firstSentence && secondSentence) {
-      return `${firstSentence}. ${secondSentence}`;
-    } else if (firstSentence) {
-      return `${firstSentence}.`;
-    } else if (secondSentence) {
-      return secondSentence;
-    }
-
-    return `${deviceTitle}.`;
-  };
+    return ["4GB", "6GB", "8GB", "12GB", "16GB"];
+  }, [currentModelDetails]);
 
   // Auto Generate Summary Button Handler
   const handleAutoGenerateSummary = () => {
-    const summary = generateSummaryText(productForm);
+    const summary = generateSelectedOnlyDescription(productForm);
     setProductForm(prev => ({
       ...prev,
       description: summary
     }));
   };
 
-  // Toggle Storage Option Chip
-  const toggleStorageOption = (storageVal: string) => {
+  // Select Storage Option (Admin selects single storage or updates selection)
+  const handleSelectStorage = (storageVal: string) => {
     setProductForm(prev => {
-      const current = prev.storageOptions || [];
-      let updated: string[];
-      if (current.includes(storageVal)) {
-        if (current.length === 1) return prev;
-        updated = current.filter(s => s !== storageVal);
-      } else {
-        updated = [...current, storageVal];
-      }
-      return { ...prev, storageOptions: updated };
+      const updatedForm = { ...prev, storageOptions: [storageVal] };
+      return {
+        ...updatedForm,
+        description: generateSelectedOnlyDescription(updatedForm)
+      };
     });
   };
 
-  // Add Custom Color
-  const handleAddCustomColor = () => {
-    if (!customColorName.trim()) return;
-    const newColor = { name: customColorName.trim(), hex: customColorHex || "#1C1C1E" };
+  // Select RAM Option
+  const handleSelectRam = (ramVal: string) => {
     setProductForm(prev => {
-      const current = prev.colorOptions || [];
-      return {
+      const newRam = prev.specs?.ram === ramVal ? "" : ramVal;
+      const updatedForm: Partial<Product> = {
         ...prev,
-        colorOptions: [...current, newColor]
+        specs: {
+          ...(prev.specs || {}),
+          screen: prev.specs?.screen || "",
+          camera: prev.specs?.camera || "",
+          chipset: prev.specs?.chipset || "",
+          batterySize: prev.specs?.batterySize || "",
+          os: prev.specs?.os || "",
+          warranty: prev.specs?.warranty || "",
+          simType: prev.specs?.simType || "",
+          ram: newRam
+        }
+      };
+      return {
+        ...updatedForm,
+        description: generateSelectedOnlyDescription(updatedForm)
       };
     });
-    setCustomColorName("");
   };
 
   // Local validation error state
@@ -425,6 +550,12 @@ export function BrandProductForm({
     onSave(e as React.FormEvent);
   };
 
+  const isAppleDevice =
+    selectedBrand.toLowerCase() === "apple" ||
+    (productForm.brand || "").toLowerCase() === "apple" ||
+    (productForm.name || "").toLowerCase().includes("iphone") ||
+    (productForm.name || "").toLowerCase().includes("ipad");
+
   return (
     <form onSubmit={handleDirectSubmit} noValidate className="space-y-6">
       {/* STEP 1: SELECT BRAND & MODEL (DEPENDENT DROPDOWNS) */}
@@ -435,7 +566,7 @@ export function BrandProductForm({
               1
             </div>
             <div>
-              <h4 className="text-sm font-bold text-white">Select Brand & Phone Model</h4>
+              <h4 className="text-sm font-bold text-white">Select Brand, Series & Phone Model</h4>
               <p className="text-xs text-gray-400">Selecting a brand dynamically loads ONLY models for that brand.</p>
             </div>
           </div>
@@ -450,56 +581,113 @@ export function BrandProductForm({
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
           {allBrands.map((b) => {
             const isSelected = selectedBrand.toLowerCase() === b.name.toLowerCase();
-            const logoUrl = b.logoUrl || getBrandLogoUrl(b.name);
-
             return (
               <button
                 key={b.id}
                 type="button"
                 onClick={() => handleBrandChange(b.name)}
-                className={`p-3 rounded-xl border transition-all flex flex-col items-center justify-center text-center gap-1.5 ${
+                className={`relative p-3 rounded-2xl border transition-all duration-200 flex flex-col items-center justify-center gap-2 group ${
                   isSelected
-                    ? "bg-[#00B14F]/15 border-[#00B14F] text-white shadow-lg shadow-[#00B14F]/10 scale-[1.02]"
-                    : "bg-gray-900/80 border-gray-800 text-gray-400 hover:border-gray-700 hover:text-white"
+                    ? "bg-[#00B14F]/15 border-[#00B14F] ring-2 ring-[#00B14F]/40 shadow-lg shadow-[#00B14F]/10 scale-[1.02]"
+                    : "bg-gray-900/90 border-gray-800 hover:border-gray-700 hover:bg-gray-850"
                 }`}
               >
-                {logoUrl ? (
-                  <div className="w-8 h-8 rounded-lg bg-black/80 border border-gray-800 flex items-center justify-center p-1 overflow-hidden shrink-0">
-                    <img src={logoUrl} alt={b.name} className="w-full h-full object-contain" />
+                <div className="w-10 h-10 rounded-xl bg-gray-800/80 border border-gray-700/60 p-1.5 flex items-center justify-center overflow-hidden group-hover:scale-105 transition-transform">
+                  {b.logoUrl ? (
+                    <img
+                      src={b.logoUrl}
+                      alt={b.name}
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-contain filter drop-shadow-sm"
+                    />
+                  ) : b.logo ? (
+                    <img
+                      src={b.logo}
+                      alt={b.name}
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-contain filter drop-shadow-sm"
+                    />
+                  ) : (
+                    <Smartphone className="w-5 h-5 text-gray-400" />
+                  )}
+                </div>
+
+                <div className="text-center">
+                  <span className={`text-xs font-bold block ${isSelected ? "text-[#00B14F]" : "text-gray-200"}`}>
+                    {b.name}
+                  </span>
+                  <span className="text-[10px] text-gray-400">
+                    {b.modelCount !== undefined ? `${b.modelCount} models` : "Brand"}
+                  </span>
+                </div>
+
+                {isSelected && (
+                  <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#00B14F] text-black flex items-center justify-center shadow-sm">
+                    <Check className="w-3 h-3 stroke-[3]" />
                   </div>
-                ) : b.logo ? (
-                  <span className="text-2xl">{b.logo}</span>
-                ) : (
-                  <Smartphone className="w-6 h-6 text-emerald-400" />
-                )}
-                <span className="text-xs font-extrabold leading-tight">{b.name}</span>
-                {b.modelCount !== undefined && b.modelCount > 0 && (
-                  <span className="text-[10px] text-gray-400">{b.modelCount} Models</span>
                 )}
               </button>
             );
           })}
-
-          <button
-            type="button"
-            onClick={() => handleBrandChange("Other")}
-            className={`p-3 rounded-xl border transition-all flex flex-col items-center justify-center text-center gap-1.5 ${
-              selectedBrand === "Other"
-                ? "bg-[#00B14F]/15 border-[#00B14F] text-white shadow-lg shadow-[#00B14F]/10 scale-[1.02]"
-                : "bg-gray-900/80 border-gray-800 text-gray-400 hover:border-gray-700 hover:text-white"
-            }`}
-          >
-            <Smartphone className="w-6 h-6 text-emerald-400" />
-            <span className="text-xs font-extrabold">Other Brand</span>
-            <span className="text-[10px] text-gray-400">Custom Entry</span>
-          </button>
         </div>
 
-        {/* DEPENDENT MODEL SELECTOR DROPDOWN */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+        {/* SERIES SELECTOR (PROMINENT TABS WHEN BRAND HAS SERIES) */}
+        {availableSeries.length > 0 && (
+          <div className="pt-2 pb-1 border-t border-gray-800/80">
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-bold text-gray-300 flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 text-[#00B14F]" />
+                <span>{selectedBrand} Series Filter</span>
+              </label>
+              <span className="text-[11px] text-gray-400">
+                {selectedSeries === "All Series" ? "Showing all series" : `Filtered to ${selectedSeries}`}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => handleSeriesChange("All Series")}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 ${
+                  selectedSeries === "All Series"
+                    ? "bg-[#00B14F] text-black border-[#00B14F] shadow-sm font-black"
+                    : "bg-gray-900 border-gray-800 text-gray-400 hover:text-white hover:border-gray-700"
+                }`}
+              >
+                <span>All Series</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-md ${selectedSeries === "All Series" ? "bg-black/20 text-black" : "bg-gray-800 text-gray-400"}`}>
+                  {getModelsForBrand(selectedBrand).length}
+                </span>
+              </button>
+              {availableSeries.map((series) => {
+                const isSelected = selectedSeries.toLowerCase() === series.toLowerCase();
+                const seriesCount = getModelsForBrand(selectedBrand).filter(m => m.series && m.series.toLowerCase() === series.toLowerCase()).length;
+                return (
+                  <button
+                    key={series}
+                    type="button"
+                    onClick={() => handleSeriesChange(series)}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 ${
+                      isSelected
+                        ? "bg-[#00B14F] text-black border-[#00B14F] shadow-sm font-black"
+                        : "bg-gray-900 border-gray-800 text-gray-300 hover:text-white hover:border-gray-700"
+                    }`}
+                  >
+                    <span>{series}</span>
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-md ${isSelected ? "bg-black/20 text-black" : "bg-gray-800 text-gray-400"}`}>
+                      {seriesCount}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Model Selection Dropdown and Search */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
           <div>
             <label className="block text-xs font-bold text-gray-300 mb-1">
-              Select {selectedBrand} Model
+              Select {selectedBrand} Model {selectedSeries !== "All Series" && `(${selectedSeries})`}
             </label>
             <select
               value={productForm.name || ""}
@@ -509,7 +697,7 @@ export function BrandProductForm({
               <option value="">-- Choose {selectedBrand} Model --</option>
               {availableModels.map((m) => (
                 <option key={m.id} value={m.model}>
-                  {m.model}
+                  {m.model} {m.series ? `(${m.series})` : ""}
                 </option>
               ))}
             </select>
@@ -531,7 +719,7 @@ export function BrandProductForm({
         {availableModels.length > 0 && (
           <div>
             <label className="block text-[11px] font-bold text-gray-400 mb-2 uppercase tracking-wider">
-              {selectedBrand} Models (Click to Select)
+              {selectedBrand} {selectedSeries !== "All Series" ? selectedSeries : ""} Models (Click to Select)
             </label>
             <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto pr-1 scrollbar-thin">
               {availableModels.map((m) => {
@@ -562,15 +750,21 @@ export function BrandProductForm({
           <input
             type="text"
             required
-            placeholder="e.g. iPhone 17 Pro Max"
+            placeholder="e.g. TECNO SPARK 40 Pro"
             value={productForm.name || ""}
-            onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
+            onChange={(e) => {
+              const updated = { ...productForm, name: e.target.value };
+              setProductForm({
+                ...updated,
+                description: generateSelectedOnlyDescription(updated)
+              });
+            }}
             className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:border-[#00B14F] focus:outline-none font-bold"
           />
         </div>
       </div>
 
-      {/* STEP 2: CONDITION, STORAGE, COLORS & VARIANTS */}
+      {/* STEP 2: CONDITION, STORAGE, RAM & HARDWARE SPECIFICATIONS */}
       <div className="p-5 bg-[#111827] border border-gray-800 rounded-2xl shadow-xl space-y-5">
         <div className="flex items-center justify-between pb-3 border-b border-gray-800">
           <div className="flex items-center gap-3">
@@ -578,8 +772,8 @@ export function BrandProductForm({
               2
             </div>
             <div>
-              <h4 className="text-sm font-bold text-white">Condition & Storage Options</h4>
-              <p className="text-xs text-gray-400">Select device condition grade, storage capacities and color swatches.</p>
+              <h4 className="text-sm font-bold text-white">Condition, Storage, RAM & Specifications</h4>
+              <p className="text-xs text-gray-400">Select only the exact specs that apply to this device.</p>
             </div>
           </div>
         </div>
@@ -597,13 +791,17 @@ export function BrandProductForm({
                 <button
                   key={cond}
                   type="button"
-                  onClick={() =>
-                    setProductForm(prev => ({
-                      ...prev,
+                  onClick={() => {
+                    const updated: Partial<Product> = {
+                      ...productForm,
                       condition: cond,
-                      batteryHealth: cond === "Brand New" ? "100% (Brand New)" : (prev.batteryHealth || "100%")
-                    }))
-                  }
+                      batteryHealth: cond === "Brand New" && isAppleDevice ? "100%" : (productForm.batteryHealth || "")
+                    };
+                    setProductForm({
+                      ...updated,
+                      description: generateSelectedOnlyDescription(updated)
+                    });
+                  }}
                   className={`p-3 rounded-xl border text-xs font-extrabold transition-all text-center ${
                     isSelected
                       ? "bg-[#00B14F] text-black border-[#00B14F] shadow-lg shadow-[#00B14F]/20"
@@ -617,23 +815,23 @@ export function BrandProductForm({
           </div>
         </div>
 
-        {/* STORAGE OPTIONS CHIPS */}
+        {/* STORAGE SELECTION CHIPS - SINGLE VALUE SELECTION */}
         <div>
           <label className="block text-xs font-bold text-gray-300 mb-2 flex items-center gap-1.5">
             <HardDrive className="w-4 h-4 text-emerald-400" />
-            Storage Options
+            Selected Storage (Click to Choose)
           </label>
           <div className="flex flex-wrap gap-2">
-            {["64GB", "128GB", "256GB", "512GB", "1TB"].map((stg) => {
+            {["64GB", "128GB", "256GB", "512GB", "1TB", "2TB"].map((stg) => {
               const isSelected = (productForm.storageOptions || []).includes(stg);
               return (
                 <button
                   key={stg}
                   type="button"
-                  onClick={() => toggleStorageOption(stg)}
+                  onClick={() => handleSelectStorage(stg)}
                   className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 ${
                     isSelected
-                      ? "bg-[#00B14F] text-black border-[#00B14F]"
+                      ? "bg-[#00B14F] text-black border-[#00B14F] shadow-md shadow-[#00B14F]/20"
                       : "bg-gray-900 border-gray-800 text-gray-400 hover:text-white"
                   }`}
                 >
@@ -645,193 +843,268 @@ export function BrandProductForm({
           </div>
         </div>
 
-        {/* COLOR OPTIONS SWATCHES */}
+        {/* RAM SELECTION CHIPS (FOR TECNO & ANDROID DEVICES) */}
         <div>
-          <label className="block text-xs font-bold text-gray-300 mb-2 flex items-center gap-1.5">
-            <Palette className="w-4 h-4 text-emerald-400" />
-            Color Options
-          </label>
-          
-          <div className="flex flex-wrap gap-2.5 mb-3">
-            {(productForm.colorOptions || []).map((colorObj, idx) => {
-              const name = typeof colorObj === 'string' ? colorObj : colorObj.name;
-              const hex = typeof colorObj === 'object' ? colorObj.hex : "#1C1C1E";
-              
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-xs font-bold text-gray-300 flex items-center gap-1.5">
+              <Cpu className="w-4 h-4 text-emerald-400" />
+              Selected RAM Configuration (Optional)
+            </label>
+            {productForm.specs?.ram && (
+              <span className="text-[11px] font-bold text-[#00B14F] bg-[#00B14F]/10 border border-[#00B14F]/30 px-2 py-0.5 rounded-full">
+                {productForm.specs.ram} Selected
+              </span>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {availableRamOptions.map((ram) => {
+              const isSelected = productForm.specs?.ram === ram;
               return (
-                <div
-                  key={idx}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-900 border border-gray-700 text-xs text-white font-semibold"
+                <button
+                  key={ram}
+                  type="button"
+                  onClick={() => handleSelectRam(ram)}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 ${
+                    isSelected
+                      ? "bg-[#00B14F] text-black border-[#00B14F] shadow-md shadow-[#00B14F]/20"
+                      : "bg-gray-900 border-gray-800 text-gray-400 hover:text-white"
+                  }`}
                 >
-                  <span className="w-3.5 h-3.5 rounded-full border border-gray-500 shadow-sm" style={{ backgroundColor: hex }} />
-                  <span>{name}</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setProductForm(prev => ({
-                        ...prev,
-                        colorOptions: (prev.colorOptions || []).filter((_, i) => i !== idx)
-                      }));
-                    }}
-                    className="text-gray-400 hover:text-red-400 ml-1"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+                  {isSelected && <Check className="w-3.5 h-3.5" />}
+                  <span>{ram}</span>
+                </button>
               );
             })}
-          </div>
-
-          <div className="flex items-center gap-2 max-w-md">
-            <input
-              type="text"
-              placeholder="Add color (e.g. Sierra Blue)"
-              value={customColorName}
-              onChange={(e) => setCustomColorName(e.target.value)}
-              className="flex-1 bg-gray-900 border border-gray-700 rounded-xl px-3 py-1.5 text-xs text-white focus:border-[#00B14F] focus:outline-none"
-            />
-            <input
-              type="color"
-              value={customColorHex}
-              onChange={(e) => setCustomColorHex(e.target.value)}
-              className="w-8 h-8 rounded-lg border border-gray-700 bg-transparent cursor-pointer shrink-0"
-            />
-            <button
-              type="button"
-              onClick={handleAddCustomColor}
-              className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-white font-bold rounded-xl text-xs flex items-center gap-1 shrink-0"
-            >
-              <Plus className="w-3.5 h-3.5" /> Add Color
-            </button>
+            {productForm.specs?.ram && (
+              <button
+                type="button"
+                onClick={() => handleSelectRam(productForm.specs?.ram || "")}
+                className="px-3 py-2 rounded-xl text-xs font-semibold text-gray-400 hover:text-red-400 border border-gray-800 hover:border-red-500/50 bg-gray-900 transition-colors"
+              >
+                Clear RAM
+              </button>
+            )}
           </div>
         </div>
 
         {/* BATTERY INFORMATION, NETWORK STATUS, DEVICE LOCK STATUS & BIOMETRICS */}
-        {(() => {
-          const isAppleDevice = selectedBrand.toLowerCase() === "apple" ||
-                                (productForm.brand || "").toLowerCase() === "apple" ||
-                                (productForm.name || "").toLowerCase().includes("iphone") ||
-                                (productForm.name || "").toLowerCase().includes("ipad");
-
-          return (
-            <div className="space-y-4 pt-2 border-t border-gray-800">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {/* 1. BATTERY INFORMATION */}
-                {isAppleDevice ? (
-                  <div>
-                    <label className="block text-xs font-bold text-gray-300 mb-1 flex items-center gap-1">
-                      <BatteryCharging className="w-3.5 h-3.5 text-emerald-400" />
-                      Battery Health (Apple)
-                    </label>
-                    <select
-                      value={productForm.batteryHealth || ""}
-                      onChange={(e) => setProductForm({ ...productForm, batteryHealth: e.target.value })}
-                      className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:border-[#00B14F] focus:outline-none"
-                    >
-                      <option value="">-- Select Battery Health % --</option>
-                      <option value="100%">100% Battery Health</option>
-                      <option value="99%">99% Battery Health</option>
-                      <option value="98%">98% Battery Health</option>
-                      <option value="95%">95% Battery Health</option>
-                      <option value="90%">90% Battery Health</option>
-                      <option value="88%">88% Battery Health</option>
-                      <option value="85%">85% Battery Health</option>
-                      <option value="80%">80% Battery Health</option>
-                    </select>
-                  </div>
-                ) : (
-                  <div>
-                    <label className="block text-xs font-bold text-gray-300 mb-1 flex items-center gap-1">
-                      <BatteryCharging className="w-3.5 h-3.5 text-emerald-400" />
-                      Battery Condition (Android)
-                    </label>
-                    <select
-                      value={productForm.batteryCondition || productForm.batteryHealth || ""}
-                      onChange={(e) => setProductForm({ ...productForm, batteryCondition: e.target.value, batteryHealth: e.target.value })}
-                      className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:border-[#00B14F] focus:outline-none"
-                    >
-                      <option value="">-- Select Battery Condition --</option>
-                      <option value="Excellent">Excellent</option>
-                      <option value="Very Good">Very Good</option>
-                      <option value="Good">Good</option>
-                      <option value="Normal">Normal</option>
-                      <option value="Fair">Fair</option>
-                      <option value="Needs Attention">Needs Attention</option>
-                    </select>
-                  </div>
-                )}
-
-                {/* 2. NETWORK STATUS */}
-                <div>
-                  <label className="block text-xs font-bold text-gray-300 mb-1">Network Status</label>
-                  <select
-                    value={productForm.network || ""}
-                    onChange={(e) => setProductForm({ ...productForm, network: e.target.value as any })}
-                    className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:border-[#00B14F] focus:outline-none"
-                  >
-                    <option value="">-- Select Network Status --</option>
-                    <option value="Factory Unlocked">Factory Unlocked</option>
-                    <option value="Network Unlocked">Network Unlocked</option>
-                    <option value="Locked">Locked</option>
-                    <option value="Unknown">Unknown</option>
-                  </select>
-                </div>
-
-                {/* 3. DEVICE LOCK STATUS */}
-                <div>
-                  <label className="block text-xs font-bold text-gray-300 mb-1">Device Lock Status</label>
-                  <select
-                    value={productForm.deviceLockStatus || ""}
-                    onChange={(e) => setProductForm({ ...productForm, deviceLockStatus: e.target.value as any })}
-                    className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:border-[#00B14F] focus:outline-none"
-                  >
-                    <option value="">-- Select Device Lock Status --</option>
-                    <option value="Unlocked">Unlocked</option>
-                    <option value="Carrier Locked">Carrier Locked</option>
-                    <option value="SIM Locked">SIM Locked</option>
-                    <option value="Account Locked">Account Locked</option>
-                    <option value="Unknown">Unknown</option>
-                  </select>
-                </div>
-
-                {/* 4. APPLE SPECIFIC: FACE ID & ICLOUD LOCK */}
-                {isAppleDevice && (
-                  <>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-300 mb-1">Face ID / Biometrics</label>
-                      <select
-                        value={productForm.faceId || ""}
-                        onChange={(e) => setProductForm({ ...productForm, faceId: e.target.value as any })}
-                        className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:border-[#00B14F] focus:outline-none"
-                      >
-                        <option value="">-- Face ID Status --</option>
-                        <option value="Working">Working (Tested)</option>
-                        <option value="Not Working">Not Working</option>
-                        <option value="Not Applicable">Not Applicable</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-gray-300 mb-1">iCloud Lock Status</label>
-                      <select
-                        value={productForm.specs?.icloudStatus || ""}
-                        onChange={(e) => setProductForm({
-                          ...productForm,
-                          specs: { ...productForm.specs, icloudStatus: e.target.value } as any
-                        })}
-                        className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:border-[#00B14F] focus:outline-none"
-                      >
-                        <option value="">-- iCloud Lock Status --</option>
-                        <option value="Clean / Unlocked">Clean / Unlocked</option>
-                        <option value="iCloud Locked">iCloud Locked</option>
-                        <option value="Unknown">Unknown</option>
-                      </select>
-                    </div>
-                  </>
-                )}
+        <div className="space-y-4 pt-2 border-t border-gray-800">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {/* 1. BATTERY INFORMATION */}
+            {isAppleDevice ? (
+              <div>
+                <label className="block text-xs font-bold text-gray-300 mb-1 flex items-center gap-1">
+                  <BatteryCharging className="w-3.5 h-3.5 text-emerald-400" />
+                  Battery Health (Apple)
+                </label>
+                <select
+                  value={productForm.batteryHealth || ""}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    const updated = { ...productForm, batteryHealth: val, batteryHealthValue: val };
+                    setProductForm({
+                      ...updated,
+                      description: generateSelectedOnlyDescription(updated)
+                    });
+                  }}
+                  className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:border-[#00B14F] focus:outline-none"
+                >
+                  <option value="">-- None / Leave Blank --</option>
+                  <option value="100%">100% Battery Health</option>
+                  <option value="99%">99% Battery Health</option>
+                  <option value="98%">98% Battery Health</option>
+                  <option value="95%">95% Battery Health</option>
+                  <option value="90%">90% Battery Health</option>
+                  <option value="88%">88% Battery Health</option>
+                  <option value="85%">85% Battery Health</option>
+                  <option value="80%">80% Battery Health</option>
+                </select>
               </div>
+            ) : (
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold text-gray-300 flex items-center gap-1">
+                    <BatteryCharging className="w-3.5 h-3.5 text-emerald-400" />
+                    Battery Condition
+                  </label>
+                  {productForm.specs?.batterySize && (
+                    <span className="text-[10px] text-emerald-400 font-mono font-bold">
+                      {productForm.specs.batterySize}
+                    </span>
+                  )}
+                </div>
+                <select
+                  value={productForm.batteryCondition || productForm.batteryHealth || ""}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    const updated = { ...productForm, batteryCondition: val, batteryHealth: val };
+                    setProductForm({
+                      ...updated,
+                      description: generateSelectedOnlyDescription(updated)
+                    });
+                  }}
+                  className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:border-[#00B14F] focus:outline-none"
+                >
+                  <option value="">-- None / Leave Blank --</option>
+                  <option value="Excellent">Excellent (Guaranteed Battery)</option>
+                  <option value="Very Good">Very Good</option>
+                  <option value="Good">Good</option>
+                  <option value="Normal">Normal</option>
+                  <option value="Fair">Fair</option>
+                  <option value="Needs Attention">Needs Attention</option>
+                </select>
+              </div>
+            )}
+
+            {/* 2. NETWORK CAPABILITY (4G / 5G) */}
+            <div>
+              <label className="block text-xs font-bold text-gray-300 mb-1 flex items-center gap-1">
+                <Wifi className="w-3.5 h-3.5 text-emerald-400" />
+                Network Capability
+              </label>
+              <select
+                value={productForm.networkCapability || ""}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  const updated = { ...productForm, networkCapability: val };
+                  setProductForm({
+                    ...updated,
+                    description: generateSelectedOnlyDescription(updated)
+                  });
+                }}
+                className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:border-[#00B14F] focus:outline-none"
+              >
+                <option value="">-- None / Leave Blank --</option>
+                <option value="5G">5G Ultra-Fast</option>
+                <option value="4G">4G LTE</option>
+                <option value="4G / 5G">4G / 5G Dual Network</option>
+              </select>
             </div>
-          );
-        })()}
+
+            {/* 3. NETWORK / SIM STATUS */}
+            <div>
+              <label className="block text-xs font-bold text-gray-300 mb-1">Network / SIM Status</label>
+              <select
+                value={productForm.network || ""}
+                onChange={(e) => {
+                  const val = e.target.value as any;
+                  const updated = { ...productForm, network: val };
+                  setProductForm({
+                    ...updated,
+                    description: generateSelectedOnlyDescription(updated)
+                  });
+                }}
+                className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:border-[#00B14F] focus:outline-none"
+              >
+                <option value="">-- None / Leave Blank --</option>
+                <option value="Factory Unlocked">Factory Unlocked</option>
+                <option value="Network Unlocked">Network Unlocked</option>
+                <option value="SIM Unlocked">SIM Unlocked</option>
+                <option value="Locked">Locked</option>
+              </select>
+            </div>
+
+            {/* 4. DEVICE LOCK STATUS */}
+            <div>
+              <label className="block text-xs font-bold text-gray-300 mb-1">Device Lock Status</label>
+              <select
+                value={productForm.deviceLockStatus || ""}
+                onChange={(e) => {
+                  const val = e.target.value as any;
+                  const updated = { ...productForm, deviceLockStatus: val };
+                  setProductForm({
+                    ...updated,
+                    description: generateSelectedOnlyDescription(updated)
+                  });
+                }}
+                className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:border-[#00B14F] focus:outline-none"
+              >
+                <option value="">-- None / Leave Blank --</option>
+                <option value="Unlocked">Unlocked (All Carriers)</option>
+                <option value="Carrier Locked">Carrier Locked</option>
+                <option value="SIM Locked">SIM Locked</option>
+                <option value="Account Locked">Account Locked</option>
+              </select>
+            </div>
+
+            {/* 5. BIOMETRICS: FINGERPRINT SENSOR */}
+            {!isAppleDevice && (
+              <div>
+                <label className="block text-xs font-bold text-gray-300 mb-1 flex items-center gap-1">
+                  <Fingerprint className="w-3.5 h-3.5 text-emerald-400" />
+                  Fingerprint Sensor
+                </label>
+                <select
+                  value={productForm.fingerprint || ""}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    const updated = { ...productForm, fingerprint: val };
+                    setProductForm({
+                      ...updated,
+                      description: generateSelectedOnlyDescription(updated)
+                    });
+                  }}
+                  className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:border-[#00B14F] focus:outline-none"
+                >
+                  <option value="">-- None / Leave Blank --</option>
+                  <option value="Working">Working (Tested & Verified)</option>
+                  <option value="Not Working">Not Working</option>
+                  <option value="Not Available">Not Available on this Model</option>
+                </select>
+              </div>
+            )}
+
+            {/* 6. BIOMETRICS: FACE UNLOCK / FACE ID */}
+            <div>
+              <label className="block text-xs font-bold text-gray-300 mb-1">
+                {isAppleDevice ? "Face ID Status" : "Face Unlock Status"}
+              </label>
+              <select
+                value={productForm.faceId || ""}
+                onChange={(e) => {
+                  const val = e.target.value as any;
+                  const updated = { ...productForm, faceId: val };
+                  setProductForm({
+                    ...updated,
+                    description: generateSelectedOnlyDescription(updated)
+                  });
+                }}
+                className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:border-[#00B14F] focus:outline-none"
+              >
+                <option value="">-- None / Leave Blank --</option>
+                <option value="Working">Working (Tested & Verified)</option>
+                <option value="Not Working">Not Working</option>
+                {!isAppleDevice && <option value="Not Available">Not Available</option>}
+              </select>
+            </div>
+
+            {/* 7. APPLE SPECIFIC: ICLOUD LOCK STATUS */}
+            {isAppleDevice && (
+              <div>
+                <label className="block text-xs font-bold text-gray-300 mb-1">iCloud Lock Status</label>
+                <select
+                  value={productForm.specs?.icloudStatus || ""}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    const updated = {
+                      ...productForm,
+                      specs: { ...(productForm.specs || {}), icloudStatus: val } as any
+                    };
+                    setProductForm({
+                      ...updated,
+                      description: generateSelectedOnlyDescription(updated)
+                    });
+                  }}
+                  className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:border-[#00B14F] focus:outline-none"
+                >
+                  <option value="">-- None / Leave Blank --</option>
+                  <option value="Clean / Unlocked">Clean / Unlocked</option>
+                  <option value="iCloud Locked">iCloud Locked</option>
+                </select>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* STEP 3: PRICING & STOCK QUANTITY */}
@@ -885,19 +1158,32 @@ export function BrandProductForm({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-300 mb-1">Stock Quantity</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-semibold text-gray-300">Stock Quantity</label>
+              {(() => {
+                const currentQty = getProductStockQuantity(productForm);
+                const status = getStockStatus(currentQty);
+                return (
+                  <span className={`text-[10px] font-extrabold flex items-center gap-1 ${status.colorClass}`}>
+                    <span>{status.label} ({currentQty})</span>
+                  </span>
+                );
+              })()}
+            </div>
             <input
               type="number"
               min="0"
               placeholder="1"
-              value={productForm.quantity !== undefined ? productForm.quantity : 1}
-              onChange={(e) =>
+              value={productForm.stockQuantity !== undefined ? productForm.stockQuantity : (productForm.quantity !== undefined ? productForm.quantity : 1)}
+              onChange={(e) => {
+                const val = Math.max(0, parseInt(e.target.value, 10) || 0);
                 setProductForm({
                   ...productForm,
-                  quantity: Number(e.target.value),
-                  availability: Number(e.target.value) <= 0 ? "Sold Out" : "In Stock"
-                })
-              }
+                  stockQuantity: val,
+                  quantity: val,
+                  availability: val <= 0 ? "Sold Out" : "In Stock"
+                });
+              }}
               className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:border-[#00B14F] focus:outline-none font-bold"
             />
           </div>
@@ -984,13 +1270,16 @@ export function BrandProductForm({
             <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 font-bold text-sm">
               5
             </div>
-            <h4 className="text-sm font-bold text-white">Product Description Summary</h4>
+            <div>
+              <h4 className="text-sm font-bold text-white">Product Description Summary</h4>
+              <p className="text-xs text-gray-400">Uses only the exact details you selected above.</p>
+            </div>
           </div>
 
           <button
             type="button"
             onClick={handleAutoGenerateSummary}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500 hover:text-black transition-all"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500 hover:text-black transition-all cursor-pointer"
           >
             <Sparkles className="w-3.5 h-3.5" />
             Auto-Generate Summary
@@ -1036,9 +1325,41 @@ export function BrandProductForm({
               <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-800 text-gray-300">
                 {productForm.condition || "Premium UK Used"}
               </span>
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                ⚡ {productForm.batteryHealth || "100% Battery"}
-              </span>
+              {productForm.storageOptions && productForm.storageOptions.length > 0 && (
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-800 text-gray-300">
+                  💾 {productForm.storageOptions.join(" / ")}
+                </span>
+              )}
+              {productForm.specs?.ram && (
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  🧠 {productForm.specs.ram} RAM
+                </span>
+              )}
+              {productForm.networkCapability && (
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                  📶 {productForm.networkCapability}
+                </span>
+              )}
+              {productForm.batteryHealth && (
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  ⚡ {productForm.batteryHealth}
+                </span>
+              )}
+              {!productForm.batteryHealth && productForm.batteryCondition && (
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  ⚡ {productForm.batteryCondition}
+                </span>
+              )}
+              {productForm.network && (
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                  📡 {productForm.network}
+                </span>
+              )}
+              {productForm.fingerprint === "Working" && (
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                  🔒 Fingerprint OK
+                </span>
+              )}
             </div>
 
             <h5 className="text-sm font-extrabold text-white">
@@ -1049,7 +1370,7 @@ export function BrandProductForm({
               {productForm.description || "Description preview..."}
             </p>
 
-            <div className="pt-1 flex items-center gap-3 justify-center sm:justify-start">
+            <div className="pt-1 flex flex-wrap items-center gap-3 justify-center sm:justify-start">
               <span className="text-base font-extrabold text-[#00B14F]">
                 {Number(productForm.price) > 0 ? formatNaira(Number(productForm.price)) : "₦0"}
               </span>
@@ -1058,6 +1379,15 @@ export function BrandProductForm({
                   {formatNaira(Number(productForm.originalPrice))}
                 </span>
               )}
+              {(() => {
+                const currentQty = getProductStockQuantity(productForm);
+                const status = getStockStatus(currentQty);
+                return (
+                  <span className={`text-[10px] font-extrabold ${status.colorClass}`}>
+                    <span>{status.label}</span>
+                  </span>
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -1073,7 +1403,7 @@ export function BrandProductForm({
           <button
             type="button"
             onClick={() => setLocalValidationError(null)}
-            className="text-red-400 hover:text-white p-1"
+            className="text-red-400 hover:text-white p-1 cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -1086,7 +1416,7 @@ export function BrandProductForm({
           type="button"
           onClick={onCancel}
           disabled={isSaving}
-          className="w-full xs:w-auto px-6 py-3.5 rounded-xl text-xs font-bold bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white transition-all text-center touch-manipulation disabled:opacity-50"
+          className="w-full xs:w-auto px-6 py-3.5 rounded-xl text-xs font-bold bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white transition-all text-center touch-manipulation disabled:opacity-50 cursor-pointer"
         >
           Cancel
         </button>

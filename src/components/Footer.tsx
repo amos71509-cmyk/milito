@@ -1,5 +1,6 @@
 import { Mail, Phone, MapPin, Instagram, MessageSquare, ShieldAlert } from "lucide-react";
 import { useBranding } from "../context/BrandingContext";
+import { MILITO_WHATSAPP_CLEAN_NUMBER, MILITO_WHATSAPP_DISPLAY } from "../utils/whatsapp";
 
 interface FooterProps {
   onScrollToSection: (id: string) => void;
@@ -55,7 +56,7 @@ export default function Footer({ onScrollToSection, onOpenTracker }: FooterProps
               <a href="https://instagram.com" target="_blank" rel="noreferrer" className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center text-gray-300 hover:text-milito-green hover:bg-white/10 transition border border-white/10 shadow-sm animate-fadeIn">
                 <Instagram className="w-4.5 h-4.5" />
               </a>
-              <a href="https://wa.me/2349000000000" target="_blank" rel="noreferrer" className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center text-gray-300 hover:text-milito-green hover:bg-white/10 transition border border-white/10 shadow-sm animate-fadeIn">
+              <a href={`https://wa.me/${MILITO_WHATSAPP_CLEAN_NUMBER}`} target="_blank" rel="noreferrer" className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center text-gray-300 hover:text-milito-green hover:bg-white/10 transition border border-white/10 shadow-sm animate-fadeIn" title="Chat on WhatsApp">
                 <MessageSquare className="w-4.5 h-4.5" />
               </a>
               <a href="mailto:support@militotech.com" className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center text-gray-300 hover:text-milito-green hover:bg-white/10 transition border border-white/10 shadow-sm animate-fadeIn">
@@ -79,8 +80,13 @@ export default function Footer({ onScrollToSection, onOpenTracker }: FooterProps
                 </button>
               </li>
               <li>
+                <button onClick={() => onScrollToSection("vehicles")} className="hover:text-milito-green text-gray-300 transition cursor-pointer flex items-center gap-1">
+                  <span>🚗</span> Vehicles & Direct Stock
+                </button>
+              </li>
+              <li>
                 <button onClick={() => onScrollToSection("vehicle-import")} className="hover:text-milito-green text-gray-300 transition cursor-pointer">
-                  Vehicle Clearance Estimates
+                  Customs Clearance Estimates
                 </button>
               </li>
               <li>
@@ -90,7 +96,7 @@ export default function Footer({ onScrollToSection, onOpenTracker }: FooterProps
               </li>
               <li>
                 <button onClick={() => onScrollToSection("faq")} className="hover:text-milito-green text-gray-300 transition cursor-pointer">
-                  Secure Escrow FAQs
+                  Help & Ordering FAQs
                 </button>
               </li>
             </ul>
@@ -127,7 +133,7 @@ export default function Footer({ onScrollToSection, onOpenTracker }: FooterProps
             <ul className="space-y-4 text-xs font-semibold">
               <li className="flex items-center gap-2.5 text-gray-300">
                 <Phone className="w-4 h-4 text-milito-green" />
-                <span>+234 901 000 0000 (Lagos Sales)</span>
+                <span>{MILITO_WHATSAPP_DISPLAY} (WhatsApp Sales)</span>
               </li>
               <li className="flex items-center gap-2.5 text-gray-300">
                 <Phone className="w-4 h-4 text-milito-green" />
@@ -135,12 +141,12 @@ export default function Footer({ onScrollToSection, onOpenTracker }: FooterProps
               </li>
               <li className="flex items-center gap-2.5 text-gray-300">
                 <Mail className="w-4 h-4 text-milito-green" />
-                <span>sales@militotechhome.com</span>
+                <span>sales@militotech.com</span>
               </li>
               <li className="bg-white/5 p-3 rounded-xl border border-white/10 flex items-start gap-2 max-w-xs animate-fadeIn">
                 <ShieldAlert className="w-4.5 h-4.5 text-milito-green flex-shrink-0 mt-0.5" />
                 <span className="text-[10px] text-gray-300 leading-relaxed font-semibold">
-                  Support hours: Mon - Sat (8:00 AM - 6:00 PM). Fast response on WhatsApp is guaranteed.
+                  Support hours: Mon - Sat (8:00 AM - 6:00 PM). Prompt support via WhatsApp.
                 </span>
               </li>
             </ul>
@@ -151,7 +157,7 @@ export default function Footer({ onScrollToSection, onOpenTracker }: FooterProps
         {/* Payment vectors and disclaimer */}
         <div className="border-t border-white/[0.08] pt-8 flex flex-col md:flex-row items-center justify-between gap-6 text-[11px]">
           <div className="flex flex-wrap items-center gap-4 text-gray-400 font-semibold justify-center">
-            <span>SECURE PAYMENTS:</span>
+            <span>ACCEPTED PAYMENTS:</span>
             <span className="bg-white/5 px-2.5 py-1 rounded border border-white/10 text-white font-mono shadow-sm">VISA</span>
             <span className="bg-white/5 px-2.5 py-1 rounded border border-white/10 text-white font-mono shadow-sm">MASTERCARD</span>
             <span className="bg-white/5 px-2.5 py-1 rounded border border-white/10 text-white font-mono shadow-sm">PAYSTACK</span>
@@ -160,7 +166,7 @@ export default function Footer({ onScrollToSection, onOpenTracker }: FooterProps
           </div>
 
           <p className="text-gray-400 text-center md:text-right font-medium">
-            © {currentYear} MILITO TECH HOME. Built for premium device, protected payment and trusted delivery. All Rights Reserved.
+            © {currentYear} MILITO TECH HOME. Built for premium devices, transparent ordering and reliable delivery. All Rights Reserved.
           </p>
         </div>
 

@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { Car, Globe, Heart, ArrowRight, ShieldCheck, HelpCircle, FileText, CheckCircle } from "lucide-react";
+import { getWhatsAppOrderUrl, MILITO_WHATSAPP_DISPLAY } from "../utils/whatsapp";
 
 export default function VehicleImport() {
   const [carType, setCarType] = useState<"Sedan" | "SUV" | "Truck">("SUV");
@@ -72,16 +73,16 @@ export default function VehicleImport() {
   };
 
   const getWhatsAppCarInquiryLink = () => {
-    const message = `Hello MILITO TECH HOME, I am interested in importing a vehicle:\n\n` +
-      `- Sourcing Inquiry: ${carInquiry}\n` +
+    const message = `Hello MILITO 👋\n\nI would like to inquire about importing/clearing a vehicle:\n\n` +
+      `- Vehicle Inquiry: ${carInquiry}\n` +
       `- Client Budget: ${maxBudget ? formatPrice(parseInt(maxBudget)) || maxBudget : "Flexible"}\n` +
       `- Sourcing Hub: ${sourcingLocation === "US" ? "USA/Canada Bidding" : "European Markets"}\n` +
-      `- Estimated Clearing (via math model): ${formatPrice(estimates.customs)}\n` +
+      `- Estimated Clearing: ${formatPrice(estimates.customs)}\n` +
       `- Calculated Landed Cost: ${formatPrice(estimates.total)}\n\n` +
       `Contact Name: ${clientName}\n` +
       `WhatsApp Phone: ${clientPhone}\n\n` +
-      `Please provide me a verified auction checklist and quote.`;
-    return `https://wa.me/2349000000000?text=${encodeURIComponent(message)}`;
+      `Please help me continue with this vehicle inquiry.`;
+    return getWhatsAppOrderUrl(message);
   };
 
   return (

@@ -12,11 +12,10 @@ export const SAMPLE_PRODUCTS: Product[] = [
     availability: "In Stock",
     batteryHealth: "100%",
     batteryHealthValue: "100%",
-    image: "https://res.cloudinary.com/militotech/image/upload/v1782151726/IMG-20260614-WA0014_dgbjv6.jpg",
+    image: "https://images.unsplash.com/photo-1695048133142-1a20484d2569?auto=format&fit=crop&w=800&q=80",
     gallery: [
-      "https://res.cloudinary.com/militotech/image/upload/v1782151726/IMG-20260614-WA0014_dgbjv6.jpg",
-      "https://images.unsplash.com/photo-1695048133142-1a20484d2569?q=80&w=600&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1695048133502-df5b11400a10?q=80&w=600&auto=format&fit=crop"
+      "https://images.unsplash.com/photo-1695048133142-1a20484d2569?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1695048133502-df5b11400a10?auto=format&fit=crop&w=800&q=80"
     ],
     storageOptions: ["256GB", "512GB", "1TB"],
     colorOptions: [
@@ -30,11 +29,15 @@ export const SAMPLE_PRODUCTS: Product[] = [
       screen: "6.7-inch Super Retina XDR OLED (120Hz, HDR10)",
       camera: "48MP Main + 12MP Telephoto (5x optical zoom) + 12MP Ultra-wide",
       chipset: "Apple A17 Pro (3nm)",
+      ram: "8GB LPDDR5",
       batterySize: "4441 mAh (Supports 25W tech charging)",
       os: "iOS 17, upgradable to iOS 18",
       warranty: "1 Year International Apple Warranty",
       simType: "Physical Nano-SIM + eSIM (Dual Standby)"
     },
+    networkCapability: "5G",
+    network: "Factory Unlocked 5G",
+    faceId: "Working",
     rating: 4.9,
     reviewsCount: 124
   },
@@ -65,11 +68,16 @@ export const SAMPLE_PRODUCTS: Product[] = [
       screen: "6.8-inch Dynamic AMOLED 2X, QHD+ (120Hz, 2600 nits Peak)",
       camera: "200MP Main + 50MP Periscope (5x optical) + 10MP Telephoto (3x optical) + 12MP Ultra-wide",
       chipset: "Snapdragon 8 Gen 3 for Galaxy (4nm)",
+      ram: "12GB RAM LPDDR5X",
       batterySize: "5000 mAh (45W Super Fast Charging 2.0)",
       os: "Android 14 (One UI 6.1), 7 Years Support",
       warranty: "1 Year Official Samsung Warranty",
       simType: "Dual Physical SIM Slot for Nigeria market"
     },
+    networkCapability: "5G",
+    network: "Dual SIM 5G",
+    fingerprint: "Working",
+    faceId: "Working",
     rating: 4.8,
     reviewsCount: 96
   },
@@ -98,11 +106,16 @@ export const SAMPLE_PRODUCTS: Product[] = [
       screen: "6.8-inch LTPO Super Actua OLED (120Hz, 3000 nits Peak)",
       camera: "50MP Main + 48MP Telephoto (5x optical) + 48MP Ultra-wide with Macro Focus",
       chipset: "Google Tensor G4 (4nm) with Titan M2 security",
+      ram: "16GB RAM",
       batterySize: "5060 mAh (Supports 37W fast charging)",
       os: "Android 14 (With 7 Years of OS & Feature Drops)",
       warranty: "1 Year Store Warranty",
       simType: "Physical SIM + eSIM"
     },
+    networkCapability: "5G",
+    network: "5G Factory Unlocked",
+    fingerprint: "Working",
+    faceId: "Working",
     rating: 4.7,
     reviewsCount: 45
   },
@@ -133,11 +146,15 @@ export const SAMPLE_PRODUCTS: Product[] = [
       screen: "6.1-inch Super Retina XDR OLED with Dynamic Island (120Hz)",
       camera: "48MP Main + 12MP Telephoto (3x optical) + 12MP Ultra-wide",
       chipset: "Apple A16 Bionic (4nm)",
+      ram: "6GB RAM",
       batterySize: "3200 mAh (Tested health range: 88% - 94%)",
       os: "iOS 16, upgradable to iOS 18",
       warranty: "6-Month MILITO Premium Store Warranty",
       simType: "Physical Nano-SIM + eSIM capability"
     },
+    networkCapability: "5G",
+    network: "Factory Unlocked 5G",
+    faceId: "Working",
     rating: 4.8,
     reviewsCount: 88
   },
@@ -168,11 +185,16 @@ export const SAMPLE_PRODUCTS: Product[] = [
       screen: "6.8-inch Dynamic AMOLED 2X, QHD+ (120Hz)",
       camera: "200MP Main + 10MP Periscope + 10MP Telephoto + 12MP Ultra-wide",
       chipset: "Snapdragon 8 Gen 2 for Galaxy",
+      ram: "8GB / 12GB RAM",
       batterySize: "5000 mAh (Tested capacity guaranteed above 90%)",
       os: "Android 13, upgradable to Android 15",
       warranty: "6-Month MILITO Premium Store Warranty",
       simType: "Dual SIM Slot Active"
     },
+    networkCapability: "5G",
+    network: "Dual SIM 5G",
+    fingerprint: "Working",
+    faceId: "Working",
     rating: 4.7,
     reviewsCount: 62
   },
@@ -187,9 +209,9 @@ export const SAMPLE_PRODUCTS: Product[] = [
     availability: "Reserved",
     batteryHealth: "90% (Good)",
     batteryHealthValue: "90%+",
-    image: "https://images.unsplash.com/photo-1632649635142-f5137515e128?q=80&w=600&auto=format&fit=crop",
+    image: "https://images.unsplash.com/photo-1632661674596-df8be070a5c5?auto=format&fit=crop&w=800&q=80",
     gallery: [
-      "https://images.unsplash.com/photo-1632649635142-f5137515e128?q=80&w=600&auto=format&fit=crop"
+      "https://images.unsplash.com/photo-1632661674596-df8be070a5c5?auto=format&fit=crop&w=800&q=80"
     ],
     storageOptions: ["128GB", "256GB", "512GB"],
     colorOptions: [
@@ -203,11 +225,15 @@ export const SAMPLE_PRODUCTS: Product[] = [
       screen: "6.7-inch Super Retina XDR with ProMotion (120Hz)",
       camera: "12MP Main + 12MP Telephoto + 12MP Ultra-wide",
       chipset: "Apple A15 Bionic (5nm)",
+      ram: "6GB RAM",
       batterySize: "4352 mAh (Health: 85% - 91% verified)",
       os: "iOS 15, upgradable to iOS 18",
       warranty: "6-Month MILITO Store Warranty",
       simType: "Physical SIM + eSIM"
     },
+    networkCapability: "5G",
+    network: "Factory Unlocked 5G",
+    faceId: "Working",
     rating: 4.8,
     reviewsCount: 154
   },
@@ -236,11 +262,16 @@ export const SAMPLE_PRODUCTS: Product[] = [
       screen: "7.85 inches Foldable LTPO AMOLED + 6.42 inches Cover Display",
       camera: "50MP Main + 50MP Portrait + 50MP Ultra-wide",
       chipset: "MediaTek Dimensity 9000+ (4nm)",
+      ram: "12GB RAM (+12GB Extended)",
       batterySize: "5000 mAh (45W Super Charge)",
       os: "Android 13, HiOS 13 Fold",
       warranty: "1 Year Official Tecno Warranty",
       simType: "Dual Physical Nano SIM"
     },
+    networkCapability: "5G",
+    network: "Dual SIM 5G",
+    fingerprint: "Working",
+    faceId: "Working",
     rating: 4.6,
     reviewsCount: 22
   },
@@ -268,11 +299,16 @@ export const SAMPLE_PRODUCTS: Product[] = [
       screen: "6.78-inch curved 3D LTPS AMOLED (144Hz, Gorilla Glass 5)",
       camera: "108MP Main OIS + 50MP Ultra-wide + 2MP Depth, Front 50MP Vlog",
       chipset: "MediaTek Dimensity 8200 Ultimate (4nm)",
+      ram: "12GB RAM",
       batterySize: "5000 mAh (45W Fast Charging)",
       os: "Android 14, XOS 14.5",
       warranty: "1 Year Carlcare Warranty",
       simType: "Dual SIM Slot Ready"
     },
+    networkCapability: "5G",
+    network: "Dual SIM 5G",
+    fingerprint: "Working",
+    faceId: "Working",
     rating: 4.5,
     reviewsCount: 31
   },
@@ -302,11 +338,16 @@ export const SAMPLE_PRODUCTS: Product[] = [
       screen: "6.67-inch CrystalRes AMOLED (120Hz, 1800 nits Peak)",
       camera: "200MP Main OIS + 8MP Ultra-wide + 2MP Macro",
       chipset: "MediaTek Dimensity 7200-Ultra (4nm)",
+      ram: "8GB / 12GB RAM",
       batterySize: "5000 mAh (120W HyperCharge Charger included)",
       os: "Xiaomi HyperOS (Android 14)",
       warranty: "1 Year Store Warranty",
       simType: "Dual physical slots (Dual Standby)"
     },
+    networkCapability: "5G",
+    network: "Dual SIM 5G",
+    fingerprint: "Working",
+    faceId: "Working",
     rating: 4.7,
     reviewsCount: 68
   },
@@ -335,11 +376,16 @@ export const SAMPLE_PRODUCTS: Product[] = [
       screen: "6.78-inch IPS LCD, FHD+ (120Hz)",
       camera: "108MP Main + Auxiliary lens, 32MP Front Selfie with Dual Flash",
       chipset: "MediaTek Helio G99 Ultra (6nm)",
+      ram: "8GB RAM (+8GB Extended)",
       batterySize: "5000 mAh (33W Fast Charge)",
       os: "Android 13, HiOS",
       warranty: "1 Year Carlcare Warranty",
       simType: "Dual Nano-SIM Slot"
     },
+    networkCapability: "4G/LTE",
+    network: "Dual Nano-SIM 4G",
+    fingerprint: "Working",
+    faceId: "Working",
     rating: 4.4,
     reviewsCount: 41
   },
@@ -368,11 +414,16 @@ export const SAMPLE_PRODUCTS: Product[] = [
       screen: "6.78-inch IPS LCD, FHD+ (120Hz, Smart Link)",
       camera: "108MP Main + 2MP Macro + AI lens",
       chipset: "MediaTek Helio G99 (6nm)",
+      ram: "8GB RAM",
       batterySize: "5000 mAh (Tested health: 93% verified)",
       os: "Android 13, XOS 13.5",
       warranty: "3-Month Store Warranty",
       simType: "Dual physical Nano SIM"
     },
+    networkCapability: "4G/LTE",
+    network: "Dual Nano-SIM 4G",
+    fingerprint: "Working",
+    faceId: "Working",
     rating: 4.3,
     reviewsCount: 19
   },
@@ -401,11 +452,16 @@ export const SAMPLE_PRODUCTS: Product[] = [
       screen: "6.74-inch IPS LCD (90Hz, 450 nits)",
       camera: "50MP Main + 2MP Macro + Aux lens",
       chipset: "MediaTek Helio G85 (12nm)",
+      ram: "6GB RAM (+6GB Turbo)",
       batterySize: "5000 mAh (18W charging support)",
       os: "MIUI 14 (Android 13)",
       warranty: "1 Year Store Warranty",
       simType: "Dual Nano-SIM + microSD slot"
     },
+    networkCapability: "4G/LTE",
+    network: "Dual Nano-SIM 4G",
+    fingerprint: "Working",
+    faceId: "Working",
     rating: 4.2,
     reviewsCount: 15
   }
@@ -417,7 +473,7 @@ export const TESTIMONIALS: Testimonial[] = [
     name: "Afeez Babatunde",
     location: "Ikeja, Lagos State",
     rating: 5,
-    text: "I was highly skeptical about buying a UK used device online in Nigeria, but MILITO's protected payment framework completely gave me confidence. I deposited my payment, it was held securely, and I verified my iPhone 14 Pro (Battery Health was 94% exactly as claimed) before releasing funds. Absolute professionalism!",
+    text: "I was highly skeptical about buying a UK used device online in Nigeria, but MILITO's transparent ordering and clear device specifications gave me full confidence. I ordered my iPhone 14 Pro, verified the Battery Health was 94% exactly as listed, and received it promptly in Ikeja. Absolute professionalism!",
     verifiedPurchase: true,
     avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=150&auto=format&fit=crop",
     deviceBought: "iPhone 14 Pro (UK Used)"
@@ -447,9 +503,9 @@ export const TESTIMONIALS: Testimonial[] = [
 export const FAQS: FAQ[] = [
   {
     id: "faq-1",
-    question: "How does the Locked Escrow & Buyer Protection work?",
-    answer: "When you place an order, your payment is held securely in the MILITO Protection Escrow vault. Your money is NOT released to the operations team until your package is hand-delivered, and you inspect the device to confirm its physical state, specs, and battery health match the description.",
-    category: "Payments"
+    question: "How does the ordering and verification process work?",
+    answer: "When you discover a product you want, click 'Order Now'. Your order details are pre-filled so you can easily confirm device availability, physical condition, warranty, and delivery address directly with MILITO and the seller before completing your purchase.",
+    category: "Ordering"
   },
   {
     id: "faq-2",
@@ -490,17 +546,249 @@ export const NIGERIAN_STATES = [
   { name: "Edo (Benin City)", code: "EDO", fee: 8000, eta: "48 Hours" }
 ];
 
-export const TRADE_IN_MODELS_DB: Record<string, { baseValue: number, versions: string[] }> = {
-  "iPhone 14 Pro Max": { baseValue: 750000, versions: ["128GB", "256GB", "512GB", "1TB"] },
-  "iPhone 14 Pro": { baseValue: 660000, versions: ["128GB", "256GB", "512GB", "1TB"] },
-  "iPhone 13 Pro Max": { baseValue: 580000, versions: ["128GB", "256GB", "512GB"] },
-  "iPhone 13 Pro": { baseValue: 510000, versions: ["128GB", "256GB", "512GB"] },
-  "iPhone 12 Pro Max": { baseValue: 460000, versions: ["128GB", "256GB", "512GB"] },
-  "iPhone 12": { baseValue: 330000, versions: ["64GB", "128GB", "256GB"] },
-  "Galaxy S23 Ultra": { baseValue: 800000, versions: ["256GB", "512GB", "1TB"] },
-  "Galaxy S23 Plus": { baseValue: 610000, versions: ["128GB", "256GB"] },
-  "Galaxy S22 Ultra": { baseValue: 550000, versions: ["128GB", "256GB", "512GB"] },
-  "Galaxy S21 Ultra": { baseValue: 380000, versions: ["128GB", "256GB"] },
-  "Pixel 8 Pro": { baseValue: 500000, versions: ["128GB", "256GB", "512GB"] },
-  "Pixel 7 Pro": { baseValue: 350000, versions: ["128GB", "256GB"] }
+export interface TradeInModelEntry {
+  brand: string;
+  baseValue: number;
+  versions: string[];
+}
+
+export const TRADE_IN_BRANDS: Array<{
+  id: string;
+  name: string;
+  logo: string;
+}> = [
+  { id: "Apple", name: "Apple", logo: "🍎" },
+  { id: "Samsung", name: "Samsung", logo: "📱" },
+  { id: "Google", name: "Google", logo: "🌐" },
+  { id: "Tecno", name: "Tecno", logo: "⚡" },
+  { id: "Infinix", name: "Infinix", logo: "🚀" },
+  { id: "Xiaomi", name: "Xiaomi", logo: "🔥" },
+  { id: "Oppo", name: "Oppo", logo: "✨" },
+  { id: "OnePlus", name: "OnePlus", logo: "🔴" },
+  { id: "Huawei", name: "Huawei", logo: "🌸" },
+  { id: "Nokia", name: "Nokia", logo: "🔷" },
+  { id: "Itel", name: "Itel", logo: "🟡" },
+  { id: "Vivo", name: "Vivo", logo: "💫" },
+  { id: "Realme", name: "Realme", logo: "⭐" },
+  { id: "Motorola", name: "Motorola", logo: "Ⓜ️" },
+  { id: "Sony", name: "Sony", logo: "📷" },
+  { id: "Honor", name: "Honor", logo: "💎" }
+];
+
+export const TRADE_IN_MODELS_DB: Record<string, TradeInModelEntry> = {
+  // Apple (Older through Modern Range)
+  "iPhone 17 Pro Max": { brand: "Apple", baseValue: 2100000, versions: ["256GB", "512GB", "1TB"] },
+  "iPhone 17 Pro": { brand: "Apple", baseValue: 1850000, versions: ["256GB", "512GB", "1TB"] },
+  "iPhone 17 Air": { brand: "Apple", baseValue: 1550000, versions: ["128GB", "256GB", "512GB"] },
+  "iPhone 17": { brand: "Apple", baseValue: 1400000, versions: ["128GB", "256GB", "512GB"] },
+  "iPhone 16 Pro Max": { brand: "Apple", baseValue: 1650000, versions: ["256GB", "512GB", "1TB"] },
+  "iPhone 16 Pro": { brand: "Apple", baseValue: 1400000, versions: ["128GB", "256GB", "512GB", "1TB"] },
+  "iPhone 16 Plus": { brand: "Apple", baseValue: 1050000, versions: ["128GB", "256GB", "512GB"] },
+  "iPhone 16": { brand: "Apple", baseValue: 920000, versions: ["128GB", "256GB", "512GB"] },
+  "iPhone 15 Pro Max": { brand: "Apple", baseValue: 1250000, versions: ["256GB", "512GB", "1TB"] },
+  "iPhone 15 Pro": { brand: "Apple", baseValue: 1050000, versions: ["128GB", "256GB", "512GB", "1TB"] },
+  "iPhone 15 Plus": { brand: "Apple", baseValue: 780000, versions: ["128GB", "256GB", "512GB"] },
+  "iPhone 15": { brand: "Apple", baseValue: 690000, versions: ["128GB", "256GB", "512GB"] },
+  "iPhone 14 Pro Max": { brand: "Apple", baseValue: 750000, versions: ["128GB", "256GB", "512GB", "1TB"] },
+  "iPhone 14 Pro": { brand: "Apple", baseValue: 660000, versions: ["128GB", "256GB", "512GB", "1TB"] },
+  "iPhone 14 Plus": { brand: "Apple", baseValue: 560000, versions: ["128GB", "256GB", "512GB"] },
+  "iPhone 14": { brand: "Apple", baseValue: 490000, versions: ["128GB", "256GB", "512GB"] },
+  "iPhone 13 Pro Max": { brand: "Apple", baseValue: 580000, versions: ["128GB", "256GB", "512GB", "1TB"] },
+  "iPhone 13 Pro": { brand: "Apple", baseValue: 510000, versions: ["128GB", "256GB", "512GB", "1TB"] },
+  "iPhone 13": { brand: "Apple", baseValue: 410000, versions: ["128GB", "256GB", "512GB"] },
+  "iPhone 13 mini": { brand: "Apple", baseValue: 330000, versions: ["128GB", "256GB", "512GB"] },
+  "iPhone 12 Pro Max": { brand: "Apple", baseValue: 460000, versions: ["128GB", "256GB", "512GB"] },
+  "iPhone 12 Pro": { brand: "Apple", baseValue: 390000, versions: ["128GB", "256GB", "512GB"] },
+  "iPhone 12": { brand: "Apple", baseValue: 320000, versions: ["64GB", "128GB", "256GB"] },
+  "iPhone 12 mini": { brand: "Apple", baseValue: 240000, versions: ["64GB", "128GB", "256GB"] },
+  "iPhone 11 Pro Max": { brand: "Apple", baseValue: 320000, versions: ["64GB", "256GB", "512GB"] },
+  "iPhone 11 Pro": { brand: "Apple", baseValue: 270000, versions: ["64GB", "256GB", "512GB"] },
+  "iPhone 11": { brand: "Apple", baseValue: 220000, versions: ["64GB", "128GB", "256GB"] },
+  "iPhone XS Max": { brand: "Apple", baseValue: 190000, versions: ["64GB", "256GB", "512GB"] },
+  "iPhone XS": { brand: "Apple", baseValue: 155000, versions: ["64GB", "256GB", "512GB"] },
+  "iPhone XR": { brand: "Apple", baseValue: 145000, versions: ["64GB", "128GB", "256GB"] },
+  "iPhone X": { brand: "Apple", baseValue: 125000, versions: ["64GB", "256GB"] },
+  "iPhone 8 Plus": { brand: "Apple", baseValue: 105000, versions: ["64GB", "128GB", "256GB"] },
+  "iPhone 8": { brand: "Apple", baseValue: 80000, versions: ["64GB", "128GB", "256GB"] },
+  "iPhone 7 Plus": { brand: "Apple", baseValue: 70000, versions: ["32GB", "128GB", "256GB"] },
+  "iPhone 7": { brand: "Apple", baseValue: 55000, versions: ["32GB", "128GB", "256GB"] },
+  "iPhone 6s Plus": { brand: "Apple", baseValue: 48000, versions: ["16GB", "32GB", "64GB", "128GB"] },
+  "iPhone 6s": { brand: "Apple", baseValue: 38000, versions: ["16GB", "32GB", "64GB", "128GB"] },
+  "iPhone 6 Plus": { brand: "Apple", baseValue: 35000, versions: ["16GB", "64GB", "128GB"] },
+  "iPhone 6": { brand: "Apple", baseValue: 28000, versions: ["16GB", "32GB", "64GB", "128GB"] },
+
+  // Samsung
+  "Galaxy S24 Ultra": { brand: "Samsung", baseValue: 1200000, versions: ["256GB", "512GB", "1TB"] },
+  "Galaxy S24 Plus": { brand: "Samsung", baseValue: 850000, versions: ["256GB", "512GB"] },
+  "Galaxy S24": { brand: "Samsung", baseValue: 680000, versions: ["128GB", "256GB"] },
+  "Galaxy S23 Ultra": { brand: "Samsung", baseValue: 800000, versions: ["256GB", "512GB", "1TB"] },
+  "Galaxy S23 Plus": { brand: "Samsung", baseValue: 610000, versions: ["128GB", "256GB"] },
+  "Galaxy S23": { brand: "Samsung", baseValue: 480000, versions: ["128GB", "256GB"] },
+  "Galaxy S22 Ultra": { brand: "Samsung", baseValue: 550000, versions: ["128GB", "256GB", "512GB"] },
+  "Galaxy S22 Plus": { brand: "Samsung", baseValue: 420000, versions: ["128GB", "256GB"] },
+  "Galaxy S22": { brand: "Samsung", baseValue: 350000, versions: ["128GB", "256GB"] },
+  "Galaxy S21 Ultra": { brand: "Samsung", baseValue: 380000, versions: ["128GB", "256GB", "512GB"] },
+  "Galaxy S21 Plus": { brand: "Samsung", baseValue: 290000, versions: ["128GB", "256GB"] },
+  "Galaxy S21": { brand: "Samsung", baseValue: 230000, versions: ["128GB", "256GB"] },
+  "Galaxy S20 Ultra": { brand: "Samsung", baseValue: 240000, versions: ["128GB", "256GB", "512GB"] },
+  "Galaxy S20 Plus": { brand: "Samsung", baseValue: 190000, versions: ["128GB", "256GB"] },
+  "Galaxy S20": { brand: "Samsung", baseValue: 160000, versions: ["128GB"] },
+  "Galaxy S10 Plus": { brand: "Samsung", baseValue: 130000, versions: ["128GB", "512GB", "1TB"] },
+  "Galaxy S10": { brand: "Samsung", baseValue: 110000, versions: ["128GB", "512GB"] },
+  "Galaxy Note 20 Ultra": { brand: "Samsung", baseValue: 360000, versions: ["128GB", "256GB", "512GB"] },
+  "Galaxy Note 20": { brand: "Samsung", baseValue: 250000, versions: ["128GB", "256GB"] },
+  "Galaxy Note 10 Plus": { brand: "Samsung", baseValue: 210000, versions: ["256GB", "512GB"] },
+  "Galaxy Z Fold 6": { brand: "Samsung", baseValue: 1450000, versions: ["256GB", "512GB", "1TB"] },
+  "Galaxy Z Fold 5": { brand: "Samsung", baseValue: 950000, versions: ["256GB", "512GB", "1TB"] },
+  "Galaxy Z Fold 4": { brand: "Samsung", baseValue: 650000, versions: ["256GB", "512GB"] },
+  "Galaxy Z Flip 6": { brand: "Samsung", baseValue: 750000, versions: ["256GB", "512GB"] },
+  "Galaxy Z Flip 5": { brand: "Samsung", baseValue: 480000, versions: ["256GB", "512GB"] },
+  "Galaxy Z Flip 4": { brand: "Samsung", baseValue: 320000, versions: ["128GB", "256GB"] },
+  "Galaxy A55 5G": { brand: "Samsung", baseValue: 280000, versions: ["128GB", "256GB"] },
+  "Galaxy A54 5G": { brand: "Samsung", baseValue: 210000, versions: ["128GB", "256GB"] },
+  "Galaxy A35 5G": { brand: "Samsung", baseValue: 190000, versions: ["128GB", "256GB"] },
+  "Galaxy A25 5G": { brand: "Samsung", baseValue: 150000, versions: ["128GB", "256GB"] },
+  "Galaxy A15": { brand: "Samsung", baseValue: 110000, versions: ["64GB", "128GB", "256GB"] },
+  "Galaxy A14": { brand: "Samsung", baseValue: 85000, versions: ["64GB", "128GB"] },
+  "Galaxy A05s": { brand: "Samsung", baseValue: 75000, versions: ["64GB", "128GB"] },
+
+  // Google
+  "Pixel 9 Pro XL": { brand: "Google", baseValue: 980000, versions: ["128GB", "256GB", "512GB"] },
+  "Pixel 9 Pro": { brand: "Google", baseValue: 850000, versions: ["128GB", "256GB", "512GB"] },
+  "Pixel 9": { brand: "Google", baseValue: 620000, versions: ["128GB", "256GB"] },
+  "Pixel 8 Pro": { brand: "Google", baseValue: 500000, versions: ["128GB", "256GB", "512GB", "1TB"] },
+  "Pixel 8": { brand: "Google", baseValue: 390000, versions: ["128GB", "256GB"] },
+  "Pixel 8a": { brand: "Google", baseValue: 340000, versions: ["128GB", "256GB"] },
+  "Pixel 7 Pro": { brand: "Google", baseValue: 350000, versions: ["128GB", "256GB", "512GB"] },
+  "Pixel 7": { brand: "Google", baseValue: 270000, versions: ["128GB", "256GB"] },
+  "Pixel 7a": { brand: "Google", baseValue: 230000, versions: ["128GB"] },
+  "Pixel 6 Pro": { brand: "Google", baseValue: 220000, versions: ["128GB", "256GB", "512GB"] },
+  "Pixel 6": { brand: "Google", baseValue: 175000, versions: ["128GB", "256GB"] },
+  "Pixel 6a": { brand: "Google", baseValue: 145000, versions: ["128GB"] },
+  "Pixel 5": { brand: "Google", baseValue: 110000, versions: ["128GB"] },
+
+  // Tecno
+  "Tecno Phantom V Fold 2": { brand: "Tecno", baseValue: 720000, versions: ["512GB"] },
+  "Tecno Phantom V Fold": { brand: "Tecno", baseValue: 520000, versions: ["256GB", "512GB"] },
+  "Tecno Phantom V Flip 2": { brand: "Tecno", baseValue: 460000, versions: ["256GB"] },
+  "Tecno Phantom V Flip": { brand: "Tecno", baseValue: 360000, versions: ["256GB"] },
+  "Tecno Camon 30 Premier": { brand: "Tecno", baseValue: 310000, versions: ["512GB"] },
+  "Tecno Camon 30 Pro": { brand: "Tecno", baseValue: 240000, versions: ["256GB"] },
+  "Tecno Camon 30": { brand: "Tecno", baseValue: 165000, versions: ["128GB", "256GB"] },
+  "Tecno Camon 20 Pro 5G": { brand: "Tecno", baseValue: 175000, versions: ["256GB"] },
+  "Tecno Camon 20 Pro": { brand: "Tecno", baseValue: 135000, versions: ["256GB"] },
+  "Tecno Camon 20": { brand: "Tecno", baseValue: 110000, versions: ["128GB", "256GB"] },
+  "Tecno Pova 6 Pro 5G": { brand: "Tecno", baseValue: 190000, versions: ["256GB"] },
+  "Tecno Spark 20 Pro+": { brand: "Tecno", baseValue: 150000, versions: ["256GB"] },
+  "Tecno Spark 20 Pro": { brand: "Tecno", baseValue: 120000, versions: ["256GB"] },
+  "Tecno Spark 20": { brand: "Tecno", baseValue: 95000, versions: ["128GB", "256GB"] },
+  "Tecno Spark 10 Pro": { brand: "Tecno", baseValue: 80000, versions: ["128GB", "256GB"] },
+  "Tecno Pop 8": { brand: "Tecno", baseValue: 58000, versions: ["64GB", "128GB"] },
+  "Tecno Pop 7": { brand: "Tecno", baseValue: 45000, versions: ["64GB"] },
+
+  // Infinix
+  "Infinix Zero 40 5G": { brand: "Infinix", baseValue: 320000, versions: ["256GB", "512GB"] },
+  "Infinix Zero 30 5G": { brand: "Infinix", baseValue: 230000, versions: ["256GB"] },
+  "Infinix Zero Ultra": { brand: "Infinix", baseValue: 210000, versions: ["256GB"] },
+  "Infinix GT 20 Pro": { brand: "Infinix", baseValue: 240000, versions: ["256GB"] },
+  "Infinix GT 10 Pro": { brand: "Infinix", baseValue: 180000, versions: ["256GB"] },
+  "Infinix Note 40 Pro+ 5G": { brand: "Infinix", baseValue: 230000, versions: ["256GB"] },
+  "Infinix Note 40 Pro": { brand: "Infinix", baseValue: 190000, versions: ["256GB"] },
+  "Infinix Note 40": { brand: "Infinix", baseValue: 150000, versions: ["256GB"] },
+  "Infinix Note 30 Pro": { brand: "Infinix", baseValue: 135000, versions: ["256GB"] },
+  "Infinix Hot 40 Pro": { brand: "Infinix", baseValue: 100000, versions: ["128GB", "256GB"] },
+  "Infinix Hot 40": { brand: "Infinix", baseValue: 85000, versions: ["128GB", "256GB"] },
+  "Infinix Hot 30": { brand: "Infinix", baseValue: 70000, versions: ["128GB", "256GB"] },
+  "Infinix Smart 8": { brand: "Infinix", baseValue: 55000, versions: ["64GB", "128GB"] },
+  "Infinix Smart 7": { brand: "Infinix", baseValue: 42000, versions: ["64GB"] },
+
+  // Xiaomi / Redmi / POCO
+  "Xiaomi 14 Ultra": { brand: "Xiaomi", baseValue: 920000, versions: ["512GB", "1TB"] },
+  "Xiaomi 14 Pro": { brand: "Xiaomi", baseValue: 680000, versions: ["256GB", "512GB", "1TB"] },
+  "Xiaomi 14": { brand: "Xiaomi", baseValue: 540000, versions: ["256GB", "512GB"] },
+  "Xiaomi 13 Ultra": { brand: "Xiaomi", baseValue: 620000, versions: ["256GB", "512GB", "1TB"] },
+  "Xiaomi 13 Pro": { brand: "Xiaomi", baseValue: 480000, versions: ["256GB", "512GB"] },
+  "Xiaomi 13": { brand: "Xiaomi", baseValue: 390000, versions: ["128GB", "256GB"] },
+  "Redmi Note 13 Pro+ 5G": { brand: "Xiaomi", baseValue: 260000, versions: ["256GB", "512GB"] },
+  "Redmi Note 13 Pro": { brand: "Xiaomi", baseValue: 200000, versions: ["256GB", "512GB"] },
+  "Redmi Note 13": { brand: "Xiaomi", baseValue: 140000, versions: ["128GB", "256GB"] },
+  "Redmi Note 12 Pro+": { brand: "Xiaomi", baseValue: 160000, versions: ["256GB"] },
+  "Redmi Note 12 Pro": { brand: "Xiaomi", baseValue: 130000, versions: ["128GB", "256GB"] },
+  "Redmi 13C": { brand: "Xiaomi", baseValue: 75000, versions: ["128GB", "256GB"] },
+  "Redmi 12": { brand: "Xiaomi", baseValue: 80000, versions: ["128GB", "256GB"] },
+  "POCO X6 Pro": { brand: "Xiaomi", baseValue: 250000, versions: ["256GB", "512GB"] },
+  "POCO F6 Pro": { brand: "Xiaomi", baseValue: 380000, versions: ["256GB", "512GB", "1TB"] },
+  "POCO F6": { brand: "Xiaomi", baseValue: 310000, versions: ["256GB", "512GB"] },
+
+  // Oppo
+  "Oppo Find X7 Ultra": { brand: "Oppo", baseValue: 820000, versions: ["256GB", "512GB"] },
+  "Oppo Find N3": { brand: "Oppo", baseValue: 900000, versions: ["512GB", "1TB"] },
+  "Oppo Find N3 Flip": { brand: "Oppo", baseValue: 480000, versions: ["256GB"] },
+  "Oppo Reno 12 Pro": { brand: "Oppo", baseValue: 340000, versions: ["256GB", "512GB"] },
+  "Oppo Reno 11 Pro": { brand: "Oppo", baseValue: 260000, versions: ["256GB", "512GB"] },
+  "Oppo Reno 10": { brand: "Oppo", baseValue: 190000, versions: ["128GB", "256GB"] },
+  "Oppo A78": { brand: "Oppo", baseValue: 120000, versions: ["128GB", "256GB"] },
+  "Oppo A58": { brand: "Oppo", baseValue: 95000, versions: ["128GB"] },
+
+  // OnePlus
+  "OnePlus 12": { brand: "OnePlus", baseValue: 680000, versions: ["256GB", "512GB"] },
+  "OnePlus 12R": { brand: "OnePlus", baseValue: 420000, versions: ["128GB", "256GB"] },
+  "OnePlus Open": { brand: "OnePlus", baseValue: 920000, versions: ["512GB"] },
+  "OnePlus 11": { brand: "OnePlus", baseValue: 440000, versions: ["128GB", "256GB"] },
+  "OnePlus 10 Pro": { brand: "OnePlus", baseValue: 310000, versions: ["128GB", "256GB"] },
+  "OnePlus 9 Pro": { brand: "OnePlus", baseValue: 220000, versions: ["128GB", "256GB"] },
+  "OnePlus Nord 4": { brand: "OnePlus", baseValue: 300000, versions: ["256GB", "512GB"] },
+  "OnePlus Nord CE 4": { brand: "OnePlus", baseValue: 200000, versions: ["128GB", "256GB"] },
+
+  // Huawei
+  "Huawei Pura 70 Ultra": { brand: "Huawei", baseValue: 920000, versions: ["512GB", "1TB"] },
+  "Huawei Pura 70 Pro": { brand: "Huawei", baseValue: 710000, versions: ["256GB", "512GB", "1TB"] },
+  "Huawei Mate 60 Pro": { brand: "Huawei", baseValue: 690000, versions: ["256GB", "512GB", "1TB"] },
+  "Huawei P60 Pro": { brand: "Huawei", baseValue: 460000, versions: ["256GB", "512GB"] },
+  "Huawei Nova 12": { brand: "Huawei", baseValue: 220000, versions: ["256GB", "512GB"] },
+
+  // Vivo
+  "Vivo X100 Pro": { brand: "Vivo", baseValue: 690000, versions: ["256GB", "512GB", "1TB"] },
+  "Vivo X90 Pro": { brand: "Vivo", baseValue: 450000, versions: ["256GB", "512GB"] },
+  "Vivo V30 Pro": { brand: "Vivo", baseValue: 310000, versions: ["256GB", "512GB"] },
+  "Vivo V29": { brand: "Vivo", baseValue: 210000, versions: ["128GB", "256GB"] },
+  "Vivo Y27": { brand: "Vivo", baseValue: 105000, versions: ["128GB"] },
+  "Vivo Y17s": { brand: "Vivo", baseValue: 85000, versions: ["64GB", "128GB"] },
+
+  // Realme
+  "Realme GT 6": { brand: "Realme", baseValue: 390000, versions: ["256GB", "512GB"] },
+  "Realme 12 Pro+ 5G": { brand: "Realme", baseValue: 260000, versions: ["256GB", "512GB"] },
+  "Realme 11 Pro+ 5G": { brand: "Realme", baseValue: 195000, versions: ["256GB", "512GB"] },
+  "Realme C67": { brand: "Realme", baseValue: 95000, versions: ["128GB", "256GB"] },
+  "Realme C55": { brand: "Realme", baseValue: 80000, versions: ["128GB", "256GB"] },
+
+  // Honor
+  "Honor Magic 6 Pro": { brand: "Honor", baseValue: 740000, versions: ["512GB", "1TB"] },
+  "Honor 200 Pro": { brand: "Honor", baseValue: 410000, versions: ["256GB", "512GB"] },
+  "Honor 90": { brand: "Honor", baseValue: 230000, versions: ["256GB", "512GB"] },
+  "Honor X9b": { brand: "Honor", baseValue: 185000, versions: ["256GB"] },
+
+  // Itel
+  "Itel S23+": { brand: "Itel", baseValue: 95000, versions: ["128GB", "256GB"] },
+  "Itel S23": { brand: "Itel", baseValue: 65000, versions: ["128GB", "256GB"] },
+  "Itel A70": { brand: "Itel", baseValue: 55000, versions: ["64GB", "128GB", "256GB"] },
+  "Itel P55+": { brand: "Itel", baseValue: 78000, versions: ["128GB", "256GB"] },
+  "Itel P55": { brand: "Itel", baseValue: 65000, versions: ["128GB"] },
+
+  // Sony
+  "Sony Xperia 1 VI": { brand: "Sony", baseValue: 920000, versions: ["256GB", "512GB"] },
+  "Sony Xperia 1 V": { brand: "Sony", baseValue: 650000, versions: ["256GB", "512GB"] },
+  "Sony Xperia 5 V": { brand: "Sony", baseValue: 490000, versions: ["128GB", "256GB"] },
+
+  // Motorola
+  "Motorola Edge 50 Ultra": { brand: "Motorola", baseValue: 710000, versions: ["512GB", "1TB"] },
+  "Motorola Razr 50 Ultra": { brand: "Motorola", baseValue: 820000, versions: ["512GB"] },
+  "Motorola Razr 40 Ultra": { brand: "Motorola", baseValue: 470000, versions: ["256GB"] },
+  "Motorola Moto G84": { brand: "Motorola", baseValue: 140000, versions: ["256GB"] },
+
+  // Nokia
+  "Nokia XR21": { brand: "Nokia", baseValue: 240000, versions: ["128GB"] },
+  "Nokia G42 5G": { brand: "Nokia", baseValue: 130000, versions: ["128GB", "256GB"] },
+  "Nokia G22": { brand: "Nokia", baseValue: 85000, versions: ["64GB", "128GB"] },
+  "Nokia C32": { brand: "Nokia", baseValue: 65000, versions: ["64GB", "128GB"] }
 };

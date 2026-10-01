@@ -913,7 +913,7 @@ export default function CustomizerDashboard({
                           </div>
 
                           <div className="space-y-1">
-                            <label className="text-[9px] text-gray-400 uppercase font-bold">Escrow Store Warranty</label>
+                            <label className="text-[9px] text-gray-400 uppercase font-bold">Store Warranty</label>
                             <input
                               type="text"
                               value={productForm.specs?.warranty}

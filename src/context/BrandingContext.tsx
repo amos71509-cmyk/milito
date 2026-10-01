@@ -62,14 +62,31 @@ const normalizeBranding = (data: any): WebsiteBranding | null => {
     (data.logoMeta && data.logoMeta.public_id) ||
     "";
 
-  let storedBrandLogos: BrandItem[] = Array.isArray(data.brandLogos) ? data.brandLogos : [];
+  let rawBrandLogos: BrandItem[] = Array.isArray(data.brandLogos) ? data.brandLogos : [];
+  const existingKeys = new Set<string>();
+  let storedBrandLogos: BrandItem[] = [];
+
+  rawBrandLogos.forEach(b => {
+    if (!b) return;
+    const nameKey = (b.name || "").toLowerCase().trim();
+    const idKey = (b.id || "").toLowerCase().trim();
+    if ((nameKey && !existingKeys.has(nameKey)) || (idKey && !existingKeys.has(idKey))) {
+      if (nameKey) existingKeys.add(nameKey);
+      if (idKey) existingKeys.add(idKey);
+      storedBrandLogos.push(b);
+    }
+  });
+
   if (storedBrandLogos.length === 0) {
     storedBrandLogos = [...DEFAULT_BRAND_LOGOS];
   } else {
     // Ensure all standard default brands are present if omitted
-    const existingIds = new Set(storedBrandLogos.map(b => b.id.toLowerCase()));
     DEFAULT_BRAND_LOGOS.forEach(def => {
-      if (!existingIds.has(def.id.toLowerCase())) {
+      const defNameKey = def.name.toLowerCase().trim();
+      const defIdKey = def.id.toLowerCase().trim();
+      if (!existingKeys.has(defNameKey) && !existingKeys.has(defIdKey)) {
+        existingKeys.add(defNameKey);
+        existingKeys.add(defIdKey);
         storedBrandLogos.push(def);
       }
     });

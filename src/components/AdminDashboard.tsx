@@ -41,7 +41,9 @@ import {
   Copy,
   ExternalLink,
   PackageCheck,
-  Smartphone
+  Smartphone,
+  HardDrive,
+  Share2
 } from "lucide-react";
 import { Product, resolveImageUrl, CloudinaryImageMeta } from "../types";
 import CustomizerDashboard, { SiteConfig } from "./CustomizerDashboard";
@@ -49,17 +51,36 @@ import { db, isFirebasePlaceholder, handleFirestoreError, OperationType } from "
 import { collection, addDoc, setDoc, getDocs, getDocsFromCache, updateDoc, deleteDoc, doc, query, orderBy } from "firebase/firestore";
 
 import BrandProductForm from "./BrandProductForm";
+import VehicleProductForm from "./VehicleProductForm";
 import DeleteProductModal from "./DeleteProductModal";
 import WebsiteBrandingManager from "./WebsiteBrandingManager";
 import BrandLogosManager from "./BrandLogosManager";
+import VehicleShowcaseManager from "./VehicleShowcaseManager";
+import AdminSwapManager from "./AdminSwapManager";
+import AdminTradeInValuationManager from "./AdminTradeInValuationManager";
+import AdminTestimonialManager from "./testimonials/AdminTestimonialManager";
+import AdminAlertsManager from "./AdminAlertsManager";
 import { useBranding } from "../context/BrandingContext";
+import {
+  saveAdminActiveTab,
+  getStoredAdminActiveTab,
+  saveAdminProductDraft,
+  getStoredAdminProductDraft,
+  saveAdminFilterState,
+  getStoredAdminFilterState,
+  AdminProductDraft
+} from "../utils/userProgressPersistence";
 import { UploadService } from "../services/UploadService";
+import { getStockStatus, getProductStockQuantity } from "../utils/stockUtils";
+import { lockBodyScroll, unlockBodyScroll } from "../utils/scrollRetention";
+import { processProductChange } from "../services/AlertService";
 
 interface AdminDashboardProps {
   isOpen: boolean;
   onClose: () => void;
   config: SiteConfig;
   onChangeConfig: (newConfig: SiteConfig) => void;
+  onShareProduct?: (product: Product) => void;
 }
 
 interface AdminOrder {
@@ -70,7 +91,7 @@ interface AdminOrder {
   customerState: string;
   productName: string;
   productPrice: number;
-  paymentStatus: "Paid" | "Unpaid" | "Escrow Locked";
+  paymentStatus: "Paid" | "Unpaid" | "Confirmed";
   deliveryStatus: "Pending" | "Processing" | "Shipped" | "Delivered" | "Completed";
   date: string;
 }
@@ -130,13 +151,36 @@ export default function AdminDashboard({
   isOpen,
   onClose,
   config,
-  onChangeConfig
+  onChangeConfig,
+  onShareProduct
 }: AdminDashboardProps) {
   const { branding } = useBranding();
+
+  useEffect(() => {
+    if (isOpen) {
+      lockBodyScroll();
+      return () => {
+        unlockBodyScroll();
+      };
+    }
+  }, [isOpen]);
+
   // Primary Tabs Navigation
   const [activeTab, setActiveTab] = useState<
-    "dashboard" | "products" | "inventory" | "media" | "orders" | "tradeins" | "messages" | "profile" | "branding"
-  >("dashboard");
+    "dashboard" | "products" | "inventory" | "media" | "orders" | "tradeins" | "tradein-valuations" | "testimonials" | "messages" | "profile" | "branding" | "showcase"
+  >(() => {
+    const saved = getStoredAdminActiveTab();
+    const validTabs = ["dashboard", "products", "inventory", "media", "orders", "tradeins", "tradein-valuations", "testimonials", "messages", "profile", "branding", "showcase"];
+    if (saved && validTabs.includes(saved)) {
+      return saved as any;
+    }
+    return "dashboard";
+  });
+
+  // Persist Active Tab
+  useEffect(() => {
+    saveAdminActiveTab(activeTab);
+  }, [activeTab]);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
@@ -159,7 +203,7 @@ export default function AdminDashboard({
         customerState: "Lagos",
         productName: "iPhone 14 Pro Max",
         productPrice: 910000,
-        paymentStatus: "Escrow Locked",
+        paymentStatus: "Confirmed",
         deliveryStatus: "Processing",
         date: "2026-06-20 14:32"
       },
@@ -235,18 +279,37 @@ export default function AdminDashboard({
     localStorage.setItem("milito_admin_profile", JSON.stringify(profile));
   }, [orders, tradeIns, messages, profile]);
 
-  // Product Filters & Search State
-  const [productSearchQuery, setProductSearchQuery] = useState("");
-  const [adminBrandFilter, setAdminBrandFilter] = useState("All");
-  const [adminConditionFilter, setAdminConditionFilter] = useState("All");
-  const [productStatusFilter, setProductStatusFilter] = useState<"All" | "Available" | "Reserved" | "Sold">("All");
-  const [adminSortBy, setAdminSortBy] = useState<"newest" | "oldest" | "price-asc" | "price-desc" | "brand">("newest");
-  const [adminViewMode, setAdminViewMode] = useState<"table" | "grid">("table");
+  // Product Filters & Search State with persistence
+  const storedAdminFilters = useMemo(() => getStoredAdminFilterState(), []);
+  const [productSearchQuery, setProductSearchQuery] = useState(() => storedAdminFilters?.searchQuery || "");
+  const [adminProductTypeFilter, setAdminProductTypeFilter] = useState<"All" | "phone" | "vehicle">(() => (storedAdminFilters?.productType as any) || "All");
+  const [adminBrandFilter, setAdminBrandFilter] = useState(() => storedAdminFilters?.brand || "All");
+  const [adminConditionFilter, setAdminConditionFilter] = useState(() => storedAdminFilters?.condition || "All");
+  const [productStatusFilter, setProductStatusFilter] = useState<"All" | "Available" | "Reserved" | "Sold">(() => (storedAdminFilters?.status as any) || "All");
+  const [adminSortBy, setAdminSortBy] = useState<"newest" | "oldest" | "price-asc" | "price-desc" | "brand">(() => (storedAdminFilters?.sortBy as any) || "newest");
+  const [adminViewMode, setAdminViewMode] = useState<"table" | "grid">(() => (storedAdminFilters?.viewMode as any) || "table");
   const [adminPage, setAdminPage] = useState(1);
   const [adminPageSize, setAdminPageSize] = useState(10);
 
+  // Auto-save admin product filters
+  useEffect(() => {
+    saveAdminFilterState({
+      searchQuery: productSearchQuery,
+      productType: adminProductTypeFilter,
+      brand: adminBrandFilter,
+      condition: adminConditionFilter,
+      status: productStatusFilter,
+      sortBy: adminSortBy,
+      viewMode: adminViewMode
+    });
+  }, [productSearchQuery, adminProductTypeFilter, adminBrandFilter, adminConditionFilter, productStatusFilter, adminSortBy, adminViewMode]);
+
+  // Product Draft State Management
+  const storedProductDraft = useMemo(() => getStoredAdminProductDraft(), []);
+  const [hasProductDraft, setHasProductDraft] = useState(() => Boolean(storedProductDraft?.isDirty));
+
   // Add/Edit Product Form States
-  const [isAddingProduct, setIsAddingProduct] = useState(false);
+  const [isAddingProduct, setIsAddingProduct] = useState(() => Boolean(storedProductDraft?.isDirty && storedProductDraft.isAddingProduct));
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
 
@@ -279,39 +342,57 @@ export default function AdminDashboard({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const sessionUploadedPublicIds = useRef<string[]>([]);
 
-  // Product Form State
-  const [productForm, setProductForm] = useState<Partial<Product>>({
-    name: "",
-    brand: "", // REQUIREMENT: Blank by default so admin selects Brand first
-    condition: "Premium UK Used",
-    price: 350000,
-    originalPrice: 420000,
-    image: "",
-    gallery: [],
-    storageOptions: ["128GB", "256GB"],
-    colorOptions: [{ name: "Space Black", hex: "#1C1C1E" }],
-    description: "",
-    specs: {
-      screen: "6.7-inch OLED",
-      camera: "48MP Dual Camera",
-      chipset: "Flagship Bionic CPU",
-      batterySize: "4400 mAh",
-      os: "Latest OS",
-      warranty: "1-Year MILITO Escrow Warranty",
-      simType: "Physical SIM + eSIM"
-    },
-    rating: 4.9,
-    reviewsCount: 12,
-    availability: "In Stock",
-    quantity: 1,
-    tags: [],
-    faceId: "Working",
-    network: "Factory Unlocked"
+  // Product Form State with Draft restoration
+  const [productForm, setProductForm] = useState<Partial<Product>>(() => {
+    if (storedProductDraft?.isDirty && storedProductDraft.productForm) {
+      return storedProductDraft.productForm;
+    }
+    return {
+      name: "",
+      brand: "", // REQUIREMENT: Blank by default so admin selects Brand first
+      condition: "Premium UK Used",
+      price: 350000,
+      originalPrice: 420000,
+      image: "",
+      gallery: [],
+      storageOptions: ["128GB"],
+      colorOptions: [],
+      description: "",
+      specs: {
+        screen: "6.7-inch OLED",
+        camera: "48MP Dual Camera",
+        chipset: "Flagship Bionic CPU",
+        batterySize: "4400 mAh",
+        os: "Latest OS",
+        warranty: "1-Year MILITO Warranty",
+        simType: "Physical SIM + eSIM"
+      },
+      rating: 4.9,
+      reviewsCount: 12,
+      availability: "In Stock",
+      quantity: 1,
+      tags: []
+    };
   });
 
-  // Load Products from Firestore on Mount
+  // Auto-save Product draft on form changes
   useEffect(() => {
-    if (isOpen) {
+    if (isAddingProduct || editingProduct) {
+      const isDirty = Boolean(productForm.name?.trim() || productForm.brand?.trim() || (productForm.price && productForm.price !== 350000) || (productForm.gallery && productForm.gallery.length > 0));
+      setHasProductDraft(isDirty);
+      saveAdminProductDraft({
+        productForm,
+        isAddingProduct,
+        editingProductId: editingProduct?.id || null,
+        isDirty,
+        updatedAt: Date.now()
+      });
+    }
+  }, [productForm, isAddingProduct, editingProduct]);
+
+  // Load Products from Firestore only if catalog is empty when opened
+  useEffect(() => {
+    if (isOpen && (!config.products || config.products.length === 0)) {
       loadProductsFromFirestore();
     }
   }, [isOpen]);
@@ -397,33 +478,57 @@ export default function AdminDashboard({
           galUrls = [mainImg];
         }
 
+        const isVehicleProduct = data.productType === "vehicle" || ((data.year || data.transmission || data.mileage) ? true : false);
+
         return {
           id: docSnap.id,
           name: data.model || data.name || "Unknown Model",
           brand: data.brand || "Other",
-          condition: data.condition || "Premium UK Used",
+          productType: isVehicleProduct ? "vehicle" : "phone",
+          condition: data.condition || (isVehicleProduct ? "Foreign Used" : "Premium UK Used"),
           price: Number(data.price) || 0,
           originalPrice: Number(data.originalPrice) || Number(data.price) * 1.2,
-          badge: data.badge || "Verified Grade A",
+          badge: data.badge || (isVehicleProduct ? "Verified Clean" : "Verified Grade A"),
           image: mainImg,
           imagePublicId: parsedThumbnail.public_id || data.imagePublicId || undefined,
           thumbnail: parsedThumbnail,
           galleryImages: parsedGalleryImages,
           gallery: galUrls,
           galleryPublicIds: data.galleryPublicIds || parsedGalleryImages.map(g => g.public_id).filter(Boolean),
-          storageOptions: data.storage || ["128GB", "256GB"],
-          colorOptions: data.color || [{ name: "Space Black", hex: "#1C1C1E" }],
-          batteryHealth: data.batteryHealth || "100%",
-          batteryHealthValue: data.batteryHealthValue || "100%",
+
+          // Vehicle attributes
+          year: data.year || undefined,
+          mileage: data.mileage || undefined,
+          mileageNumber: data.mileageNumber || undefined,
+          transmission: data.transmission || undefined,
+          fuelType: data.fuelType || undefined,
+          engine: data.engine || undefined,
+          driveType: data.driveType || undefined,
+          bodyType: data.bodyType || undefined,
+          exteriorColor: data.exteriorColor || undefined,
+          interiorColor: data.interiorColor || undefined,
+          vehicleStatus: data.vehicleStatus || undefined,
+          documentation: data.documentation || undefined,
+          location: data.location || undefined,
+          customBrand: data.customBrand || undefined,
+          customModel: data.customModel || undefined,
+          series: data.series || undefined,
+
+          storageOptions: data.storageOptions || data.storage || (isVehicleProduct ? [] : ["128GB"]),
+          colorOptions: data.colorOptions || data.color || [],
+          batteryHealth: data.batteryHealth || undefined,
+          batteryHealthValue: data.batteryHealthValue || data.batteryHealth || undefined,
+          batteryCondition: data.batteryCondition || undefined,
+          deviceLockStatus: data.deviceLockStatus || undefined,
           description: data.description || "",
           specs: data.specs || {
-            screen: "6.7-inch OLED",
-            camera: "48MP Dual Camera",
-            chipset: "Bionic CPU",
-            batterySize: "4400 mAh",
-            os: "Latest OS",
-            warranty: "1-Year Warranty",
-            simType: "Physical SIM + eSIM"
+            screen: isVehicleProduct ? "" : "6.7-inch OLED",
+            camera: isVehicleProduct ? "" : "48MP Dual Camera",
+            chipset: isVehicleProduct ? "" : "Bionic CPU",
+            batterySize: isVehicleProduct ? "" : "4400 mAh",
+            os: isVehicleProduct ? "" : "Latest OS",
+            warranty: isVehicleProduct ? "Inspection Guaranteed" : "1-Year Warranty",
+            simType: isVehicleProduct ? "" : "Physical SIM + eSIM"
           },
           rating: Number(data.rating) || 4.9,
           reviewsCount: Number(data.reviewsCount) || 10,
@@ -431,8 +536,8 @@ export default function AdminDashboard({
           featured: !!data.featured,
           quantity: data.quantity !== undefined ? Number(data.quantity) : 1,
           tags: data.tags || [],
-          faceId: data.faceId || "Working",
-          network: data.network || "Factory Unlocked",
+          faceId: data.faceId || undefined,
+          network: data.network || undefined,
           createdAt: data.createdAt || "",
           updatedAt: data.updatedAt || ""
         };
@@ -548,14 +653,16 @@ export default function AdminDashboard({
       e.preventDefault();
     }
 
+    const isVehicle = productForm.productType === "vehicle";
+
     if (!productForm.brand) {
-      const msg = "Please select a smartphone brand first.";
+      const msg = isVehicle ? "Please select a vehicle make / brand first." : "Please select a smartphone brand first.";
       setUploadError(msg);
       setToastNotification({ type: "error", message: msg });
       return;
     }
     if (!productForm.name || !productForm.name.trim()) {
-      const msg = "Please select or enter the smartphone model name.";
+      const msg = isVehicle ? "Please select or enter the vehicle model name." : "Please select or enter the smartphone model name.";
       setUploadError(msg);
       setToastNotification({ type: "error", message: msg });
       return;
@@ -602,11 +709,18 @@ export default function AdminDashboard({
 
       sessionUploadedPublicIds.current = [];
 
+      const notifyCount = (updatedProduct as any)?._notificationResult?.totalQueued || 0;
       setToastNotification({
         type: "success",
-        message: `${updatedProduct.name || "Product"} published successfully to catalog.`
+        message: notifyCount > 0
+          ? `${updatedProduct.name || "Product"} published. ${notifyCount} customer notification ${notifyCount === 1 ? "job" : "jobs"} queued in background.`
+          : `${updatedProduct.name || "Product"} published successfully to catalog.`
       });
       setTimeout(() => setToastNotification(null), 4000);
+
+      // Clear saved product draft on publish
+      saveAdminProductDraft(null);
+      setHasProductDraft(false);
 
       setIsAddingProduct(false);
       setEditingProduct(null);
@@ -692,6 +806,10 @@ export default function AdminDashboard({
       const q = productSearchQuery.toLowerCase();
       const matchesSearch = !q || p.name.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q);
 
+      // Product Type / Category Filter
+      const pType = p.productType || ((p.year || p.transmission || p.mileage) ? "vehicle" : "phone");
+      const matchesType = adminProductTypeFilter === "All" || pType === adminProductTypeFilter;
+
       // Brand Filter
       const matchesBrand = adminBrandFilter === "All" || p.brand.toLowerCase() === adminBrandFilter.toLowerCase();
 
@@ -703,7 +821,7 @@ export default function AdminDashboard({
       if (productStatusFilter === "Available") matchesStatus = (p.quantity ?? 1) > 0 && p.availability !== "Sold Out";
       if (productStatusFilter === "Sold") matchesStatus = (p.quantity ?? 0) <= 0 || p.availability === "Sold Out";
 
-      return matchesSearch && matchesBrand && matchesCondition && matchesStatus;
+      return matchesSearch && matchesType && matchesBrand && matchesCondition && matchesStatus;
     }).sort((a, b) => {
       if (adminSortBy === "newest") return (b.createdAt || "").localeCompare(a.createdAt || "");
       if (adminSortBy === "oldest") return (a.createdAt || "").localeCompare(b.createdAt || "");
@@ -712,7 +830,7 @@ export default function AdminDashboard({
       if (adminSortBy === "brand") return a.brand.localeCompare(b.brand);
       return 0;
     });
-  }, [config.products, productSearchQuery, adminBrandFilter, adminConditionFilter, productStatusFilter, adminSortBy]);
+  }, [config.products, productSearchQuery, adminProductTypeFilter, adminBrandFilter, adminConditionFilter, productStatusFilter, adminSortBy]);
 
   // Pagination calculation
   const totalPages = Math.ceil(filteredProducts.length / adminPageSize) || 1;
@@ -777,10 +895,24 @@ export default function AdminDashboard({
               <div className="space-y-2 text-xs">
                 <p><strong className="text-gray-400">Price:</strong> <span className="text-[#00B14F] font-bold text-sm">₦{viewingProduct.price?.toLocaleString()}</span></p>
                 <p><strong className="text-gray-400">Stock Quantity:</strong> {viewingProduct.quantity ?? 1}</p>
-                <p><strong className="text-gray-400">Battery Health:</strong> {viewingProduct.batteryHealth || "100%"}</p>
-                <p><strong className="text-gray-400">Face ID:</strong> {viewingProduct.faceId || "Working"}</p>
-                <p><strong className="text-gray-400">Network:</strong> {viewingProduct.network || "Factory Unlocked"}</p>
-                <p><strong className="text-gray-400">Storage Options:</strong> {(viewingProduct.storageOptions || []).join(", ")}</p>
+                {viewingProduct.batteryHealth && (
+                  <p><strong className="text-gray-400">Battery Health:</strong> {viewingProduct.batteryHealth}</p>
+                )}
+                {viewingProduct.batteryCondition && (
+                  <p><strong className="text-gray-400">Battery Condition:</strong> {viewingProduct.batteryCondition}</p>
+                )}
+                {viewingProduct.faceId && (
+                  <p><strong className="text-gray-400">Biometrics / Face ID:</strong> {viewingProduct.faceId}</p>
+                )}
+                {viewingProduct.network && (
+                  <p><strong className="text-gray-400">Network:</strong> {viewingProduct.network}</p>
+                )}
+                {viewingProduct.deviceLockStatus && (
+                  <p><strong className="text-gray-400">Device Lock:</strong> {viewingProduct.deviceLockStatus}</p>
+                )}
+                {viewingProduct.storageOptions && viewingProduct.storageOptions.length > 0 && (
+                  <p><strong className="text-gray-400">Storage Options:</strong> {viewingProduct.storageOptions.join(", ")}</p>
+                )}
                 {viewingProduct.imagePublicId && (
                   <p className="text-[10px] text-gray-500 font-mono truncate"><strong className="text-gray-400">Cloudinary ID:</strong> {viewingProduct.imagePublicId}</p>
                 )}
@@ -792,6 +924,17 @@ export default function AdminDashboard({
             </p>
 
             <div className="flex justify-end gap-3 pt-2">
+              {onShareProduct && (
+                <button
+                  onClick={() => {
+                    onShareProduct(viewingProduct);
+                  }}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-gray-800 text-emerald-400 hover:bg-gray-700 border border-emerald-500/30"
+                >
+                  <Share2 className="w-3.5 h-3.5" />
+                  Share Product Link
+                </button>
+              )}
               <button
                 onClick={() => {
                   setEditingProduct(viewingProduct);
@@ -858,11 +1001,15 @@ export default function AdminDashboard({
           {[
             { id: "dashboard", label: "Overview", icon: LayoutDashboard },
             { id: "products", label: "Products Catalog", icon: ShoppingBag, badge: metrics.total },
+            { id: "alerts", label: "Notification Alerts", icon: Bell },
+            { id: "showcase", label: "Homepage Showcase", icon: Car },
             { id: "branding", label: "Website Branding", icon: Sparkles },
             { id: "inventory", label: "Inventory & Stock", icon: TrendingUp, badge: metrics.lowStock > 0 ? metrics.lowStock : undefined },
             { id: "media", label: "Media Library", icon: ImageIcon },
             { id: "orders", label: "Orders & Sales", icon: Clock, badge: orders.length },
-            { id: "tradeins", label: "Trade-Ins & Swaps", icon: RefreshCw },
+            { id: "tradein-valuations", label: "Trade-In Valuation", icon: HardDrive },
+            { id: "tradeins", label: "Swap Requests", icon: RefreshCw },
+            { id: "testimonials", label: "Testimonials & Proof", icon: ShieldCheck },
             { id: "messages", label: "Support Messages", icon: MessageSquare, badge: messages.filter(m => m.status === "Unread").length },
             { id: "profile", label: "Portal Settings", icon: Settings }
           ].map(item => {
@@ -943,11 +1090,14 @@ export default function AdminDashboard({
               <h2 className="text-sm sm:text-base font-black text-white capitalize truncate">
                 {activeTab === "dashboard" && "Dashboard Overview"}
                 {activeTab === "products" && "Smartphone Catalog Storefront"}
+                {activeTab === "alerts" && "Product Notification Demands"}
                 {activeTab === "branding" && "Website Branding & Asset Management"}
                 {activeTab === "inventory" && "Stock & Inventory Control"}
                 {activeTab === "media" && "Cloudinary Media Library"}
                 {activeTab === "orders" && "Naira Live Orders"}
+                {activeTab === "tradein-valuations" && "Trade-In Valuation"}
                 {activeTab === "tradeins" && "Device Swap Appraisals"}
+                {activeTab === "testimonials" && "Customer Testimonials & Proofs"}
                 {activeTab === "messages" && "Customer Support Inbox"}
                 {activeTab === "profile" && "Portal Settings"}
               </h2>
@@ -972,27 +1122,60 @@ export default function AdminDashboard({
               Cloudinary CDN Connected
             </div>
 
-            {/* Add Product CTA */}
+            {/* Add Product CTAs */}
             {activeTab === "products" && !isAddingProduct && (
-              <button
-                onClick={() => {
-                  setEditingProduct(null);
-                  setProductForm({
-                    name: "",
-                    brand: "", // REQUIREMENT 1: First select brand
-                    condition: "Premium UK Used",
-                    price: 380000,
-                    quantity: 1,
-                    availability: "In Stock"
-                  });
-                  setIsAddingProduct(true);
-                }}
-                className="flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2 rounded-xl bg-[#00B14F] text-black font-extrabold text-xs shadow-lg shadow-[#00B14F]/20 hover:bg-[#009241] transition-all"
-              >
-                <Plus className="w-4 h-4" />
-                <span className="hidden sm:inline">Add Smartphone</span>
-                <span className="sm:hidden">Add</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setEditingProduct(null);
+                    setProductForm({
+                      productType: "phone",
+                      name: "",
+                      brand: "", // First select brand
+                      condition: "Premium UK Used",
+                      price: 380000,
+                      quantity: 1,
+                      availability: "In Stock"
+                    });
+                    setIsAddingProduct(true);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2 rounded-xl bg-[#00B14F] text-black font-extrabold text-xs shadow-lg shadow-[#00B14F]/20 hover:bg-[#009241] transition-all cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <Smartphone className="w-3.5 h-3.5 hidden sm:inline" />
+                  <span className="hidden sm:inline">Add Smartphone</span>
+                  <span className="sm:hidden">Phone</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setEditingProduct(null);
+                    setProductForm({
+                      productType: "vehicle",
+                      name: "",
+                      brand: "",
+                      condition: "Foreign Used",
+                      year: "2020",
+                      transmission: "Automatic",
+                      fuelType: "Petrol",
+                      driveType: "AWD",
+                      location: "Lagos",
+                      vehicleStatus: "Available",
+                      documentation: "Complete Original Customs Paper",
+                      price: 8500000,
+                      quantity: 1,
+                      availability: "In Stock"
+                    });
+                    setIsAddingProduct(true);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs shadow-lg shadow-blue-600/20 transition-all cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <Car className="w-3.5 h-3.5 hidden sm:inline" />
+                  <span className="hidden sm:inline">Add Vehicle</span>
+                  <span className="sm:hidden">Vehicle</span>
+                </button>
+              </div>
             )}
           </div>
         </header>
@@ -1030,14 +1213,19 @@ export default function AdminDashboard({
               {/* Quick Actions & Cloudinary Status */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
                 <div className="lg:col-span-2 p-4 sm:p-6 rounded-2xl bg-[#111827] border border-gray-800 space-y-4">
-                  <h3 className="text-xs sm:text-sm font-extrabold text-white">Recently Added Smartphones</h3>
+                  <h3 className="text-xs sm:text-sm font-extrabold text-white">Recently Added Inventory</h3>
                   <div className="divide-y divide-gray-800">
                     {config.products.slice(0, 5).map(p => (
                       <div key={p.id} className="py-3 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                           <img src={resolveImageUrl(p.image)} alt={p.name} className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg object-contain bg-gray-800 border border-gray-700 p-0.5 shrink-0" />
                           <div className="min-w-0">
-                            <h4 className="text-xs font-bold text-white truncate">{p.name}</h4>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[9px] px-1.5 py-0.2 rounded font-black bg-gray-800 text-gray-300">
+                                {p.productType === "vehicle" ? "🚗 Vehicle" : "📱 Phone"}
+                              </span>
+                              <h4 className="text-xs font-bold text-white truncate">{p.name}</h4>
+                            </div>
                             <span className="text-[10px] text-gray-400 block truncate">{p.brand} • {p.condition}</span>
                           </div>
                         </div>
@@ -1068,43 +1256,188 @@ export default function AdminDashboard({
           {activeTab === "products" && (
             <div className="space-y-4 sm:space-y-6">
               {isAddingProduct ? (
-                /* DYNAMIC BRAND SPECIFIC FORM COMPONENT */
+                /* DYNAMIC FORM COMPONENT (SMARTPHONE OR VEHICLE) */
                 <div className="bg-[#0E131F] p-2 sm:p-4 rounded-2xl">
-                  <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-800">
-                    <h3 className="text-xs sm:text-base font-extrabold text-white truncate pr-2">
-                      {editingProduct ? `Edit Smartphone: ${editingProduct.name}` : "Add New Smartphone to Storefront"}
-                    </h3>
-                    <button
-                      type="button"
-                      onClick={() => {
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-gray-800">
+                    <div>
+                      <h3 className="text-xs sm:text-base font-extrabold text-white truncate">
+                        {editingProduct 
+                          ? `Edit ${productForm.productType === "vehicle" ? "Vehicle" : "Smartphone"}: ${editingProduct.name}` 
+                          : `Add New ${productForm.productType === "vehicle" ? "Vehicle" : "Smartphone"} to Storefront`}
+                      </h3>
+                      <p className="text-[11px] text-gray-400 mt-0.5">
+                        {productForm.productType === "vehicle" 
+                          ? "Enter automotive specifications, condition, papers, and high-resolution vehicle photos." 
+                          : "Enter brand specifications, grade condition, and high-resolution smartphone photos."}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {/* Product Type Switcher (Only enabled when creating fresh product) */}
+                      {!editingProduct && (
+                        <div className="flex items-center bg-gray-900 p-1 rounded-xl border border-gray-800">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (productForm.productType !== "phone") {
+                                setProductForm(prev => ({
+                                  ...prev,
+                                  productType: "phone",
+                                  brand: "",
+                                  name: "",
+                                  condition: "Premium UK Used",
+                                  price: 380000
+                                }));
+                              }
+                            }}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                              (productForm.productType || "phone") === "phone"
+                                ? "bg-[#00B14F] text-black shadow-sm"
+                                : "text-gray-400 hover:text-white"
+                            }`}
+                          >
+                            <Smartphone className="w-3.5 h-3.5" />
+                            <span>Phones</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (productForm.productType !== "vehicle") {
+                                setProductForm(prev => ({
+                                  ...prev,
+                                  productType: "vehicle",
+                                  brand: "",
+                                  name: "",
+                                  condition: "Foreign Used",
+                                  year: "2020",
+                                  transmission: "Automatic",
+                                  fuelType: "Petrol",
+                                  driveType: "AWD",
+                                  location: "Lagos",
+                                  vehicleStatus: "Available",
+                                  documentation: "Complete Original Customs Paper",
+                                  price: 8500000
+                                }));
+                              }
+                            }}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                              productForm.productType === "vehicle"
+                                ? "bg-[#00B14F] text-black shadow-sm"
+                                : "text-gray-400 hover:text-white"
+                            }`}
+                          >
+                            <Car className="w-3.5 h-3.5" />
+                            <span>Vehicles</span>
+                          </button>
+                        </div>
+                      )}
+
+                      {hasProductDraft && (
+                        <span className="px-2 py-0.5 rounded-md bg-amber-500/20 border border-amber-500/30 text-amber-400 text-[10px] font-extrabold uppercase tracking-wider">
+                          Unsaved Draft
+                        </span>
+                      )}
+
+                      {hasProductDraft && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            saveAdminProductDraft(null);
+                            setHasProductDraft(false);
+                            setProductForm({
+                              name: "",
+                              brand: "",
+                              condition: "Premium UK Used",
+                              price: 350000,
+                              originalPrice: 420000,
+                              image: "",
+                              gallery: [],
+                              storageOptions: ["128GB"],
+                              colorOptions: [],
+                              description: "",
+                              specs: {
+                                screen: "6.7-inch OLED",
+                                camera: "48MP Dual Camera",
+                                chipset: "Flagship Bionic CPU",
+                                batterySize: "4400 mAh",
+                                os: "Latest OS",
+                                warranty: "1-Year MILITO Warranty",
+                                simType: "Physical SIM + eSIM"
+                              },
+                              rating: 4.9,
+                              reviewsCount: 12,
+                              availability: "In Stock",
+                              quantity: 1,
+                              tags: []
+                            });
+                            setIsAddingProduct(false);
+                            setEditingProduct(null);
+                            setToastNotification({
+                              type: "info",
+                              message: "Discarded unsaved product draft."
+                            });
+                            setTimeout(() => setToastNotification(null), 3000);
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-bold hover:bg-rose-500/20 shrink-0 cursor-pointer"
+                        >
+                          Discard Draft
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsAddingProduct(false);
+                          setEditingProduct(null);
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-gray-800 text-gray-300 text-xs font-bold hover:text-white shrink-0 cursor-pointer"
+                      >
+                        ← Back to Catalog
+                      </button>
+                    </div>
+                  </div>
+
+                  {productForm.productType === "vehicle" ? (
+                    <VehicleProductForm
+                      productForm={productForm}
+                      setProductForm={setProductForm}
+                      editingProduct={editingProduct}
+                      onSave={handleSaveProductForm}
+                      onCancel={() => {
                         setIsAddingProduct(false);
                         setEditingProduct(null);
                       }}
-                      className="px-3 py-1.5 rounded-xl bg-gray-800 text-gray-300 text-xs font-bold hover:text-white shrink-0"
-                    >
-                      ← Back to Catalog
-                    </button>
-                  </div>
-
-                  <BrandProductForm
-                    productForm={productForm}
-                    setProductForm={setProductForm}
-                    editingProduct={editingProduct}
-                    onSave={handleSaveProductForm}
-                    onCancel={() => {
-                      setIsAddingProduct(false);
-                      setEditingProduct(null);
-                    }}
-                    isSaving={isFirebaseLoading}
-                    uploadQueue={uploadQueue}
-                    isUploadingImage={isUploadingImage}
-                    uploadProgress={uploadProgress}
-                    uploadError={uploadError}
-                    uploadStatus={publishUploadStatus}
-                    fileInputRef={fileInputRef}
-                    handleFileSelect={handleFileSelect}
-                    onImageUploadSuccess={trackImageUploadSuccess}
-                  />
+                      isSaving={isFirebaseLoading}
+                      uploadQueue={uploadQueue}
+                      isUploadingImage={isUploadingImage}
+                      uploadProgress={uploadProgress}
+                      uploadError={uploadError}
+                      uploadStatus={publishUploadStatus}
+                      fileInputRef={fileInputRef}
+                      handleFileSelect={handleFileSelect}
+                      onImageUploadSuccess={trackImageUploadSuccess}
+                    />
+                  ) : (
+                    <BrandProductForm
+                      productForm={productForm}
+                      setProductForm={setProductForm}
+                      editingProduct={editingProduct}
+                      onSave={handleSaveProductForm}
+                      onCancel={() => {
+                        setIsAddingProduct(false);
+                        setEditingProduct(null);
+                      }}
+                      isSaving={isFirebaseLoading}
+                      uploadQueue={uploadQueue}
+                      isUploadingImage={isUploadingImage}
+                      uploadProgress={uploadProgress}
+                      uploadError={uploadError}
+                      uploadStatus={publishUploadStatus}
+                      fileInputRef={fileInputRef}
+                      handleFileSelect={handleFileSelect}
+                      onImageUploadSuccess={trackImageUploadSuccess}
+                    />
+                  )}
                 </div>
               ) : (
                 /* PRODUCT LISTING TABLE / GRID VIEW */
@@ -1124,6 +1457,20 @@ export default function AdminDashboard({
                     </div>
 
                     <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
+                      {/* Filter by Category */}
+                      <select
+                        value={adminProductTypeFilter}
+                        onChange={(e) => {
+                          setAdminProductTypeFilter(e.target.value as any);
+                          setAdminBrandFilter("All");
+                        }}
+                        className="bg-gray-900 border border-gray-700 rounded-xl px-2.5 py-2 text-xs text-white focus:border-[#00B14F] focus:outline-none font-bold"
+                      >
+                        <option value="All">All Categories</option>
+                        <option value="phone">📱 Smartphones</option>
+                        <option value="vehicle">🚗 Vehicles</option>
+                      </select>
+
                       {/* Filter by Brand */}
                       <select
                         value={adminBrandFilter}
@@ -1131,14 +1478,48 @@ export default function AdminDashboard({
                         className="bg-gray-900 border border-gray-700 rounded-xl px-2.5 py-2 text-xs text-white focus:border-[#00B14F] focus:outline-none"
                       >
                         <option value="All">All Brands</option>
-                        <option value="Apple">Apple</option>
-                        <option value="Samsung">Samsung</option>
-                        <option value="Google Pixel">Google Pixel</option>
-                        <option value="Xiaomi">Xiaomi</option>
-                        <option value="OnePlus">OnePlus</option>
-                        <option value="Infinix">Infinix</option>
-                        <option value="Tecno">Tecno</option>
-                        <option value="Other">Other</option>
+                        {adminProductTypeFilter === "vehicle" ? (
+                          <>
+                            <option value="Toyota">Toyota</option>
+                            <option value="Lexus">Lexus</option>
+                            <option value="Mercedes-Benz">Mercedes-Benz</option>
+                            <option value="Honda">Honda</option>
+                            <option value="Hyundai">Hyundai</option>
+                            <option value="Kia">Kia</option>
+                            <option value="Ford">Ford</option>
+                            <option value="Land Rover">Land Rover</option>
+                            <option value="BMW">BMW</option>
+                            <option value="Audi">Audi</option>
+                            <option value="Nissan">Nissan</option>
+                            <option value="Mazda">Mazda</option>
+                            <option value="Other">Other Brand</option>
+                          </>
+                        ) : adminProductTypeFilter === "phone" ? (
+                          <>
+                            <option value="Apple">Apple</option>
+                            <option value="Samsung">Samsung</option>
+                            <option value="Google Pixel">Google Pixel</option>
+                            <option value="Xiaomi">Xiaomi</option>
+                            <option value="OnePlus">OnePlus</option>
+                            <option value="Infinix">Infinix</option>
+                            <option value="Tecno">Tecno</option>
+                            <option value="Other">Other Brand</option>
+                          </>
+                        ) : (
+                          <>
+                            <option value="Apple">Apple</option>
+                            <option value="Samsung">Samsung</option>
+                            <option value="Google Pixel">Google Pixel</option>
+                            <option value="Toyota">Toyota</option>
+                            <option value="Lexus">Lexus</option>
+                            <option value="Mercedes-Benz">Mercedes-Benz</option>
+                            <option value="Honda">Honda</option>
+                            <option value="Xiaomi">Xiaomi</option>
+                            <option value="Infinix">Infinix</option>
+                            <option value="Tecno">Tecno</option>
+                            <option value="Other">Other</option>
+                          </>
+                        )}
                       </select>
 
                       {/* Filter by Condition */}
@@ -1223,11 +1604,27 @@ export default function AdminDashboard({
                               paginatedProducts.map(p => (
                                 <tr key={p.id} className="hover:bg-gray-900/50 transition-colors">
                                   <td className="p-3.5">
-                                    <img src={resolveImageUrl(p.image)} alt={p.name} className="w-12 h-12 rounded-xl object-contain bg-gray-800 border border-gray-700 p-0.5" />
+                                    <img
+                                      src={resolveImageUrl(p.thumbnail?.secure_url || p.thumbnail || p.image || p.galleryImages?.[0]?.secure_url || p.gallery?.[0], { width: 120, brand: p.brand })}
+                                      alt={p.name}
+                                      loading="lazy"
+                                      decoding="async"
+                                      referrerPolicy="no-referrer"
+                                      className="w-12 h-12 rounded-xl object-contain bg-gray-800 border border-gray-700 p-0.5"
+                                    />
                                   </td>
                                   <td className="p-3.5">
-                                    <div className="font-extrabold text-white text-xs">{p.name}</div>
-                                    <span className="text-[10px] text-gray-400">{p.brand}</span>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-[9px] px-1.5 py-0.5 rounded font-black bg-gray-800 text-gray-300">
+                                        {p.productType === "vehicle" ? "🚗" : "📱"}
+                                      </span>
+                                      <div className="font-extrabold text-white text-xs">{p.name}</div>
+                                    </div>
+                                    <span className="text-[10px] text-gray-400">
+                                      {p.productType === "vehicle" && p.year ? `${p.year} • ` : ""}{p.brand}
+                                      {p.transmission ? ` • ${p.transmission}` : ""}
+                                      {p.mileage ? ` • ${p.mileage}` : ""}
+                                    </span>
                                   </td>
                                   <td className="p-3.5">
                                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${p.condition === "Brand New" ? "bg-purple-500/20 text-purple-300" : "bg-blue-500/20 text-blue-300"}`}>
@@ -1238,17 +1635,36 @@ export default function AdminDashboard({
                                     ₦{p.price?.toLocaleString()}
                                   </td>
                                   <td className="p-3.5">
-                                    {(p.quantity ?? 1) <= 0 || p.availability === "Sold Out" ? (
-                                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/20 text-red-400">Sold Out (0)</span>
-                                    ) : (
-                                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400">In Stock ({p.quantity ?? 1})</span>
-                                    )}
+                                    {(() => {
+                                      const qty = getProductStockQuantity(p);
+                                      const status = getStockStatus(qty);
+                                      return (
+                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                          status.isSoldOut 
+                                            ? "bg-red-500/20 text-red-400" 
+                                            : status.isUrgent 
+                                            ? "bg-amber-500/20 text-amber-300" 
+                                            : "bg-emerald-500/20 text-emerald-400"
+                                        }`}>
+                                          {status.label} ({qty})
+                                        </span>
+                                      );
+                                    })()}
                                   </td>
                                   <td className="p-3.5">
                                     {p.featured ? <Star className="w-4 h-4 fill-amber-400 text-amber-400" /> : <Star className="w-4 h-4 text-gray-600" />}
                                   </td>
                                   <td className="p-3.5 text-right">
                                     <div className="flex items-center justify-end gap-1.5">
+                                      {onShareProduct && (
+                                        <button
+                                          onClick={() => onShareProduct(p)}
+                                          className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20"
+                                          title="Share Product Link"
+                                        >
+                                          <Share2 className="w-3.5 h-3.5" />
+                                        </button>
+                                      )}
                                       <button
                                         onClick={() => setViewingProduct(p)}
                                         className="p-1.5 rounded-lg bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700"
@@ -1289,16 +1705,42 @@ export default function AdminDashboard({
                       {paginatedProducts.map(p => (
                         <div key={p.id} className="p-3.5 sm:p-4 bg-[#111827] border border-gray-800 rounded-2xl space-y-3">
                           <div className="w-full h-36 sm:h-40 rounded-xl bg-gray-900 border border-gray-800 flex items-center justify-center p-2">
-                            <img src={resolveImageUrl(p.image)} alt={p.name} className="max-h-full max-w-full object-contain rounded-lg" />
+                            <img
+                              src={resolveImageUrl(p.thumbnail?.secure_url || p.thumbnail || p.image || p.galleryImages?.[0]?.secure_url || p.gallery?.[0], { width: 320, brand: p.brand })}
+                              alt={p.name}
+                              loading="lazy"
+                              decoding="async"
+                              referrerPolicy="no-referrer"
+                              className="max-h-full max-w-full object-contain rounded-lg"
+                            />
                           </div>
                           <div>
-                            <span className="text-[10px] uppercase tracking-wider font-extrabold text-gray-400">{p.brand}</span>
+                            <div className="flex items-center gap-1 mb-0.5">
+                              <span className="text-[9px] px-1.5 py-0.2 rounded font-black bg-gray-800 text-gray-300">
+                                {p.productType === "vehicle" ? "🚗 Vehicle" : "📱 Phone"}
+                              </span>
+                              <span className="text-[10px] uppercase tracking-wider font-extrabold text-gray-400">{p.brand}</span>
+                            </div>
                             <h4 className="text-xs font-bold text-white truncate">{p.name}</h4>
+                            {p.productType === "vehicle" && (p.year || p.transmission) && (
+                              <p className="text-[10px] text-gray-400 mt-0.5 truncate">
+                                {[p.year, p.transmission, p.mileage].filter(Boolean).join(" • ")}
+                              </p>
+                            )}
                             <p className="text-sm font-black text-[#00B14F] mt-1">₦{p.price?.toLocaleString()}</p>
                           </div>
                           <div className="flex items-center justify-between pt-2 border-t border-gray-800">
                             <button onClick={() => setViewingProduct(p)} className="text-xs font-bold text-gray-400 hover:text-white">View</button>
-                            <div className="flex gap-1">
+                            <div className="flex items-center gap-1">
+                              {onShareProduct && (
+                                <button
+                                  onClick={() => onShareProduct(p)}
+                                  className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20"
+                                  title="Share Product Link"
+                                >
+                                  <Share2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
                               <button onClick={() => { setEditingProduct(p); setProductForm(p); setIsAddingProduct(true); }} className="p-1.5 rounded-lg bg-gray-800 text-blue-400"><Edit className="w-3.5 h-3.5" /></button>
                               <button onClick={() => setDeleteTargetProduct(p)} className="p-1.5 rounded-lg bg-red-500/20 text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
                             </div>
@@ -1347,7 +1789,14 @@ export default function AdminDashboard({
                   {config.products.map(p => (
                     <div key={p.id} className="py-3 flex items-center justify-between gap-4">
                       <div className="flex items-center gap-3">
-                        <img src={resolveImageUrl(p.image)} alt={p.name} className="w-10 h-10 rounded-lg object-contain bg-gray-800 p-0.5" />
+                        <img
+                          src={resolveImageUrl(p.thumbnail?.secure_url || p.thumbnail || p.image || p.galleryImages?.[0]?.secure_url || p.gallery?.[0], { width: 100, brand: p.brand })}
+                          alt={p.name}
+                          loading="lazy"
+                          decoding="async"
+                          referrerPolicy="no-referrer"
+                          className="w-10 h-10 rounded-lg object-contain bg-gray-800 p-0.5"
+                        />
                         <div>
                           <h4 className="text-xs font-bold text-white">{p.name}</h4>
                           <span className="text-[10px] text-gray-400">Current Stock: {p.quantity ?? 1}</span>
@@ -1355,23 +1804,81 @@ export default function AdminDashboard({
                       </div>
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => {
-                            const updatedQty = Math.max(0, (p.quantity ?? 1) - 1);
-                            const updatedList = config.products.map(item => item.id === p.id ? { ...item, quantity: updatedQty, availability: (updatedQty === 0 ? "Sold Out" : item.availability) as any } : item);
+                          onClick={async () => {
+                            const oldQty = p.quantity ?? 1;
+                            const updatedQty = Math.max(0, oldQty - 1);
+                            const newAvailability = updatedQty === 0 ? "Sold Out" : p.availability;
+                            const updatedList = config.products.map(item => item.id === p.id ? { ...item, quantity: updatedQty, availability: newAvailability as any } : item);
                             onChangeConfig({ ...config, products: updatedList });
+
+                            // Persist to Firestore
+                            if (db && !isFirebasePlaceholder && p.id) {
+                              try {
+                                await updateDoc(doc(db, "products", p.id), {
+                                  quantity: updatedQty,
+                                  stockQuantity: updatedQty,
+                                  availability: newAvailability,
+                                  status: newAvailability,
+                                  updatedAt: new Date().toISOString()
+                                });
+                              } catch (e) {
+                                console.warn("Could not sync stock decrease to Firestore:", e);
+                              }
+                            }
                           }}
-                          className="px-2.5 py-1 rounded bg-gray-800 text-white font-bold"
+                          className="px-2.5 py-1 rounded bg-gray-800 hover:bg-gray-700 text-white font-bold cursor-pointer transition"
                         >
                           -
                         </button>
                         <span className="w-8 text-center text-xs font-black">{p.quantity ?? 1}</span>
                         <button
-                          onClick={() => {
-                            const updatedQty = (p.quantity ?? 0) + 1;
+                          onClick={async () => {
+                            const oldQty = p.quantity ?? 0;
+                            const updatedQty = oldQty + 1;
                             const updatedList = config.products.map(item => item.id === p.id ? { ...item, quantity: updatedQty, availability: "In Stock" as const } : item);
                             onChangeConfig({ ...config, products: updatedList });
+
+                            // Persist to Firestore
+                            if (db && !isFirebasePlaceholder && p.id) {
+                              try {
+                                await updateDoc(doc(db, "products", p.id), {
+                                  quantity: updatedQty,
+                                  stockQuantity: updatedQty,
+                                  availability: "In Stock",
+                                  status: "In Stock",
+                                  updatedAt: new Date().toISOString()
+                                });
+                              } catch (e) {
+                                console.warn("Could not sync stock increase to Firestore:", e);
+                              }
+                            }
+
+                            // Trigger Automatic Restock Notification Engine if 0 -> N
+                            if (oldQty === 0 && updatedQty > 0 && p.id) {
+                              try {
+                                const notifyRes = await processProductChange({
+                                  productId: p.id,
+                                  productName: p.name,
+                                  oldQuantity: oldQty,
+                                  newQuantity: updatedQty,
+                                  oldAvailability: "Sold Out",
+                                  newAvailability: "In Stock",
+                                  source: "admin_inventory_tab"
+                                });
+
+                                if (notifyRes.totalQueued > 0) {
+                                  setToastNotification({
+                                    type: "success",
+                                    message: `Restocked! ${notifyRes.totalQueued} customer notification ${notifyRes.totalQueued === 1 ? "job" : "jobs"} queued in background.`
+                                  });
+                                  setTimeout(() => setToastNotification(null), 4000);
+                                }
+                              } catch (notifyErr) {
+                                console.error("Restock notification trigger error:", notifyErr);
+                              }
+                            }
                           }}
-                          className="px-2.5 py-1 rounded bg-gray-800 text-white font-bold"
+                          className="px-2.5 py-1 rounded bg-gray-800 hover:bg-gray-700 text-white font-bold cursor-pointer transition"
                         >
                           +
                         </button>
@@ -1390,7 +1897,14 @@ export default function AdminDashboard({
               <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
                 {config.products.flatMap(p => [p.image, ...(p.gallery || [])]).filter(Boolean).map((url, idx) => (
                   <div key={idx} className="relative group rounded-xl overflow-hidden border border-gray-800 bg-gray-900 aspect-square flex items-center justify-center p-1">
-                    <img src={resolveImageUrl(url)} alt={`Media ${idx}`} className="max-h-full max-w-full object-contain" />
+                    <img
+                      src={resolveImageUrl(url, { width: 200 })}
+                      alt={`Media ${idx}`}
+                      loading="lazy"
+                      decoding="async"
+                      referrerPolicy="no-referrer"
+                      className="max-h-full max-w-full object-contain"
+                    />
                   </div>
                 ))}
               </div>
@@ -1415,22 +1929,19 @@ export default function AdminDashboard({
             </div>
           )}
 
-          {/* TAB 6: TRADE-INS */}
+          {/* TAB: NOTIFICATION ALERTS & CUSTOMER REACTIVATION */}
+          {activeTab === "alerts" && (
+            <AdminAlertsManager />
+          )}
+
+          {/* TAB: TRADE-IN VALUATIONS DATABASE */}
+          {activeTab === "tradein-valuations" && (
+            <AdminTradeInValuationManager />
+          )}
+
+          {/* TAB 6: TRADE-INS & SWAP DEALS */}
           {activeTab === "tradeins" && (
-            <div className="p-6 bg-[#111827] border border-gray-800 rounded-2xl space-y-4">
-              <h3 className="text-sm font-extrabold text-white">Device Swaps & Trade-In Appraisals</h3>
-              <div className="divide-y divide-gray-800 text-xs">
-                {tradeIns.map(t => (
-                  <div key={t.id} className="py-3 flex items-center justify-between">
-                    <div>
-                      <span className="font-bold text-white">{t.id}</span> - {t.customerName}
-                      <p className="text-gray-400">{t.submittedDevice} ➔ {t.requestedUpgrade}</p>
-                    </div>
-                    <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">{t.status}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <AdminSwapManager />
           )}
 
           {/* TAB 7: MESSAGES */}
@@ -1520,15 +2031,35 @@ export default function AdminDashboard({
                       </span>
                     </div>
 
-                    <div className="p-3 bg-[#0B0F17] rounded-xl border border-purple-500/30 flex items-center justify-between">
+                    <div className="p-3 bg-[#0B0F17] rounded-xl border border-emerald-500/30 flex items-center justify-between">
                       <div>
-                        <span className="font-bold text-white block">Escrow Buyer Protection</span>
-                        <span className="text-[10px] text-gray-400">Naira Escrow Locked System Enabled</span>
+                        <span className="font-bold text-white block">WhatsApp Direct Order System</span>
+                        <span className="text-[10px] text-gray-400">Order Now & Direct Dispatch Ready</span>
                       </div>
-                      <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                        ● Protected
+                      <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        ● Online
                       </span>
                     </div>
+                  </div>
+
+                  {/* Homepage Showcase Shortcut */}
+                  <div className="md:col-span-2 p-4 bg-gradient-to-r from-[#121824] to-gray-900 border border-emerald-500/30 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-[#00B14F]/15 border border-[#00B14F]/30 flex items-center justify-center text-[#00B14F] shrink-0">
+                        <Car className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h4 className="font-extrabold text-white text-xs">Homepage Vehicle Showcase Promotion</h4>
+                        <p className="text-[11px] text-gray-400">Manage auto-rotating video/image slides, copy texts, and timing speeds.</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setActiveTab("showcase")}
+                      className="px-4 py-2 rounded-xl bg-[#00B14F] hover:bg-[#00c95a] text-black font-extrabold text-xs flex items-center gap-1.5 shrink-0 cursor-pointer shadow-md shadow-[#00B14F]/20"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      Configure Showcase
+                    </button>
                   </div>
                 </div>
 
@@ -1560,6 +2091,20 @@ export default function AdminDashboard({
 
               {/* BRAND LOGOS MANAGEMENT SECTION */}
               <BrandLogosManager />
+            </div>
+          )}
+
+          {/* TAB 9: HOMEPAGE VEHICLE SHOWCASE MANAGER */}
+          {activeTab === "showcase" && (
+            <div className="space-y-6">
+              <VehicleShowcaseManager />
+            </div>
+          )}
+
+          {/* TAB 10: TESTIMONIALS & CUSTOMER PROOF MANAGER */}
+          {activeTab === "testimonials" && (
+            <div className="space-y-6">
+              <AdminTestimonialManager />
             </div>
           )}
 

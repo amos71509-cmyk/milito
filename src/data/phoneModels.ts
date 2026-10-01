@@ -1,10 +1,12 @@
 export interface PhoneModelItem {
   id: string;
   brand: string;
-  model: string; // Clean model name ONLY (e.g. "iPhone 17 Pro Max", "Galaxy A55")
+  model: string; // Clean model name ONLY (e.g. "SPARK 40", "CAMON 30 Pro", "iPhone 17 Pro Max")
   series?: string;
   defaultStorageOptions?: string[];
   defaultColors?: { name: string; hex: string }[];
+  ramOptions?: string[];
+  networkOptions?: string[]; // e.g. ["4G"], ["4G", "5G"], or ["5G"]
   specs?: {
     screen: string;
     camera: string;
@@ -13,6 +15,14 @@ export interface PhoneModelItem {
     os: string;
     warranty: string;
     simType: string;
+    frontCamera?: string;
+    chargingSpeed?: string;
+    refreshRate?: string;
+    displayTech?: string;
+    nfc?: string;
+    fingerprint?: string;
+    faceUnlock?: string;
+    ram?: string;
   };
 }
 
@@ -1089,255 +1099,6 @@ export const PHONE_BRANDS: BrandData[] = [
     ]
   },
   {
-    id: "Tecno",
-    name: "Tecno",
-    logo: "⚡",
-    aliases: ["Tecno"],
-    models: [
-      {
-        id: "tecno-camon-30-pro-5g",
-        brand: "Tecno",
-        model: "Camon 30 Pro 5G",
-        series: "Camon Series",
-        defaultStorageOptions: ["256GB", "512GB"],
-        defaultColors: [
-          { name: "Alps Snowy Silver", hex: "#C0C0C0" },
-          { name: "Iceland Basalt Black", hex: "#1F1F1F" }
-        ],
-        specs: {
-          screen: "6.78-inch AMOLED (144Hz)",
-          camera: "50MP OIS Main + 50MP UltraWide + 2MP",
-          chipset: "MediaTek Dimensity 8200 Ultimate 5G",
-          batterySize: "5000 mAh (70W Fast Charge)",
-          os: "Android 14 (HiOS 14)",
-          warranty: "1-Year Warranty",
-          simType: "Dual Physical SIM"
-        }
-      },
-      {
-        id: "tecno-camon-30-premier",
-        brand: "Tecno",
-        model: "Camon 30 Premier",
-        series: "Camon Series",
-        defaultStorageOptions: ["512GB"],
-        defaultColors: [{ name: "Alps Snowy Silver", hex: "#C0C0C0" }],
-        specs: {
-          screen: "6.77-inch LTPO AMOLED (120Hz)",
-          camera: "50MP OIS + 50MP Periscope Telephoto + 50MP UltraWide",
-          chipset: "MediaTek Dimensity 8200 Ultimate",
-          batterySize: "5000 mAh (70W)",
-          os: "Android 14",
-          warranty: "1-Year Warranty",
-          simType: "Dual SIM"
-        }
-      },
-      {
-        id: "tecno-camon-30-5g",
-        brand: "Tecno",
-        model: "Camon 30 5G",
-        series: "Camon Series",
-        defaultStorageOptions: ["256GB", "512GB"],
-        defaultColors: [{ name: "Iceland Basalt Black", hex: "#1F1F1F" }],
-        specs: {
-          screen: "6.78-inch AMOLED (120Hz)",
-          camera: "50MP OIS Main Camera",
-          chipset: "MediaTek Dimensity 7020 5G",
-          batterySize: "5000 mAh (70W)",
-          os: "Android 14",
-          warranty: "1-Year Warranty",
-          simType: "Dual SIM"
-        }
-      },
-      {
-        id: "tecno-camon-30",
-        brand: "Tecno",
-        model: "Camon 30",
-        series: "Camon Series",
-        defaultStorageOptions: ["128GB", "256GB"],
-        defaultColors: [{ name: "Uyuni Salt White", hex: "#F5F5F5" }],
-        specs: {
-          screen: "6.78-inch AMOLED (120Hz)",
-          camera: "50MP Main Camera",
-          chipset: "MediaTek Helio G99 Ultimate",
-          batterySize: "5000 mAh (70W)",
-          os: "Android 14",
-          warranty: "1-Year Warranty",
-          simType: "Dual SIM"
-        }
-      },
-      {
-        id: "tecno-camon-20-premier-5g",
-        brand: "Tecno",
-        model: "Camon 20 Premier 5G",
-        series: "Camon Series",
-        defaultStorageOptions: ["512GB"],
-        defaultColors: [{ name: "Dark Welkin", hex: "#232B38" }],
-        specs: {
-          screen: "6.67-inch AMOLED (120Hz)",
-          camera: "50MP RGBW OIS + 108MP UltraWide",
-          chipset: "MediaTek Dimensity 8050 5G",
-          batterySize: "5000 mAh (45W)",
-          os: "Android 13",
-          warranty: "1-Year Warranty",
-          simType: "Dual SIM"
-        }
-      },
-      {
-        id: "tecno-camon-20-pro-5g",
-        brand: "Tecno",
-        model: "Camon 20 Pro 5G",
-        series: "Camon Series",
-        defaultStorageOptions: ["256GB"],
-        defaultColors: [{ name: "Dark Welkin", hex: "#232B38" }],
-        specs: {
-          screen: "6.67-inch AMOLED (120Hz)",
-          camera: "64MP RGBW OIS Main Camera",
-          chipset: "MediaTek Dimensity 8050",
-          batterySize: "5000 mAh",
-          os: "Android 13",
-          warranty: "1-Year Warranty",
-          simType: "Dual SIM"
-        }
-      },
-      {
-        id: "tecno-camon-20-pro",
-        brand: "Tecno",
-        model: "Camon 20 Pro",
-        series: "Camon Series",
-        defaultStorageOptions: ["256GB"],
-        defaultColors: [{ name: "Predawn Black", hex: "#1C1C1E" }],
-        specs: {
-          screen: "6.67-inch AMOLED (120Hz)",
-          camera: "64MP RGBW Main Camera",
-          chipset: "MediaTek Helio G99",
-          batterySize: "5000 mAh",
-          os: "Android 13",
-          warranty: "1-Year Warranty",
-          simType: "Dual SIM"
-        }
-      },
-      {
-        id: "tecno-camon-20",
-        brand: "Tecno",
-        model: "Camon 20",
-        series: "Camon Series",
-        defaultStorageOptions: ["256GB"],
-        defaultColors: [{ name: "Predawn Black", hex: "#1C1C1E" }],
-        specs: {
-          screen: "6.67-inch AMOLED",
-          camera: "64MP Main Camera",
-          chipset: "MediaTek Helio G85",
-          batterySize: "5000 mAh",
-          os: "Android 13",
-          warranty: "1-Year Warranty",
-          simType: "Dual SIM"
-        }
-      },
-      {
-        id: "tecno-phantom-v-fold",
-        brand: "Tecno",
-        model: "Phantom V Fold",
-        series: "Phantom Series",
-        defaultStorageOptions: ["256GB", "512GB"],
-        defaultColors: [{ name: "Black", hex: "#1C1C1E" }],
-        specs: {
-          screen: "7.85-inch Foldable LTPO AMOLED (120Hz)",
-          camera: "50MP Main + 50MP Telephoto + 13MP UltraWide",
-          chipset: "MediaTek Dimensity 9000+",
-          batterySize: "5000 mAh (45W)",
-          os: "Android 13",
-          warranty: "1-Year Warranty",
-          simType: "Dual SIM"
-        }
-      },
-      {
-        id: "tecno-phantom-v-flip",
-        brand: "Tecno",
-        model: "Phantom V Flip",
-        series: "Phantom Series",
-        defaultStorageOptions: ["256GB"],
-        defaultColors: [{ name: "Iconic Black", hex: "#1C1C1E" }],
-        specs: {
-          screen: "6.9-inch Foldable LTPO AMOLED (120Hz)",
-          camera: "64MP Main + 13MP UltraWide",
-          chipset: "MediaTek Dimensity 8050",
-          batterySize: "4000 mAh (45W)",
-          os: "Android 13",
-          warranty: "1-Year Warranty",
-          simType: "Dual SIM"
-        }
-      },
-      {
-        id: "tecno-spark-20-pro-plus",
-        brand: "Tecno",
-        model: "Spark 20 Pro+",
-        series: "Spark Series",
-        defaultStorageOptions: ["256GB"],
-        defaultColors: [{ name: "Temporal Orbits", hex: "#1C1C1E" }],
-        specs: {
-          screen: "6.78-inch Curved AMOLED (120Hz)",
-          camera: "108MP Ultra-Sensing Main Camera",
-          chipset: "MediaTek Helio G99 Ultimate",
-          batterySize: "5000 mAh (33W)",
-          os: "Android 14",
-          warranty: "1-Year Warranty",
-          simType: "Dual SIM"
-        }
-      },
-      {
-        id: "tecno-spark-20-pro",
-        brand: "Tecno",
-        model: "Spark 20 Pro",
-        series: "Spark Series",
-        defaultStorageOptions: ["256GB"],
-        defaultColors: [{ name: "Moonlit Black", hex: "#1C1C1E" }],
-        specs: {
-          screen: "6.78-inch FHD+ IPS LCD (120Hz)",
-          camera: "108MP Main Camera",
-          chipset: "MediaTek Helio G99",
-          batterySize: "5000 mAh (33W)",
-          os: "Android 13",
-          warranty: "1-Year Warranty",
-          simType: "Dual SIM"
-        }
-      },
-      {
-        id: "tecno-spark-20",
-        brand: "Tecno",
-        model: "Spark 20",
-        series: "Spark Series",
-        defaultStorageOptions: ["128GB", "256GB"],
-        defaultColors: [{ name: "Gravity Black", hex: "#1C1C1E" }],
-        specs: {
-          screen: "6.56-inch HD+ (90Hz)",
-          camera: "50MP Main Camera",
-          chipset: "MediaTek Helio G85",
-          batterySize: "5000 mAh",
-          os: "Android 13",
-          warranty: "1-Year Warranty",
-          simType: "Dual SIM"
-        }
-      },
-      {
-        id: "tecno-pova-6-pro",
-        brand: "Tecno",
-        model: "Pova 6 Pro",
-        series: "Pova Series",
-        defaultStorageOptions: ["256GB"],
-        defaultColors: [{ name: "Comet Green", hex: "#2E5B3D" }],
-        specs: {
-          screen: "6.78-inch AMOLED (120Hz)",
-          camera: "108MP Ultra-Clear Main Camera",
-          chipset: "MediaTek Dimensity 6080 5G",
-          batterySize: "6000 mAh (70W Fast Charge)",
-          os: "Android 14",
-          warranty: "1-Year Warranty",
-          simType: "Dual SIM"
-        }
-      }
-    ]
-  },
-  {
     id: "Redmi/Xiaomi",
     name: "Redmi/Xiaomi",
     logo: "🧡",
@@ -1555,6 +1316,1000 @@ export const PHONE_BRANDS: BrandData[] = [
         }
       }
     ]
+  },
+  {
+    id: "Tecno",
+    name: "TECNO",
+    logo: "⚡",
+    aliases: ["TECNO", "Tecno", "tecno"],
+    models: [
+      // ==========================================
+      // SPARK SERIES
+      // ==========================================
+      {
+        id: "tecno-spark-30",
+        brand: "TECNO",
+        model: "SPARK 30",
+        series: "SPARK",
+        defaultStorageOptions: ["128GB", "256GB"],
+        ramOptions: ["6GB", "8GB"],
+        networkOptions: ["4G"],
+        specs: {
+          screen: "6.78-inch FHD+ 90Hz Display",
+          camera: "64MP Ultra-Clear Main Camera",
+          frontCamera: "13MP Dual Flash Front",
+          chipset: "MediaTek Helio G91",
+          batterySize: "5000 mAh (18W Fast Charge)",
+          chargingSpeed: "18W Fast Charge",
+          refreshRate: "90Hz",
+          os: "Android 14 (HiOS 14)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (4G)",
+          fingerprint: "Side-Mounted Fingerprint",
+          faceUnlock: "Face Unlock Supported",
+          nfc: "Yes"
+        }
+      },
+      {
+        id: "tecno-spark-30-pro",
+        brand: "TECNO",
+        model: "SPARK 30 Pro",
+        series: "SPARK",
+        defaultStorageOptions: ["128GB", "256GB"],
+        ramOptions: ["8GB"],
+        networkOptions: ["4G"],
+        specs: {
+          screen: "6.78-inch AMOLED 120Hz (TÜV Low Blue Light)",
+          camera: "108MP Ultra-Clear Main Camera",
+          frontCamera: "13MP Front Camera",
+          chipset: "MediaTek Helio G100",
+          batterySize: "5000 mAh (33W Fast Charge)",
+          chargingSpeed: "33W Fast Charge",
+          refreshRate: "120Hz",
+          os: "Android 14 (HiOS 14)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (4G)",
+          fingerprint: "In-Display Fingerprint",
+          faceUnlock: "Face Unlock Supported",
+          nfc: "Yes"
+        }
+      },
+      {
+        id: "tecno-spark-30c",
+        brand: "TECNO",
+        model: "SPARK 30C",
+        series: "SPARK",
+        defaultStorageOptions: ["64GB", "128GB", "256GB"],
+        ramOptions: ["4GB", "6GB", "8GB"],
+        networkOptions: ["4G"],
+        specs: {
+          screen: "6.67-inch HD+ 120Hz Punch-Hole Display",
+          camera: "50MP HDR Main Camera",
+          frontCamera: "8MP Front Flash",
+          chipset: "MediaTek Helio G81",
+          batterySize: "5000 mAh (18W Fast Charge)",
+          chargingSpeed: "18W Fast Charge",
+          refreshRate: "120Hz",
+          os: "Android 14 (HiOS 14)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (4G)",
+          fingerprint: "Side-Mounted Fingerprint",
+          faceUnlock: "Face Unlock Supported"
+        }
+      },
+      {
+        id: "tecno-spark-30-5g",
+        brand: "TECNO",
+        model: "SPARK 30 5G",
+        series: "SPARK",
+        defaultStorageOptions: ["128GB", "256GB"],
+        ramOptions: ["6GB", "8GB"],
+        networkOptions: ["5G", "4G"],
+        specs: {
+          screen: "6.67-inch HD+ 120Hz Display",
+          camera: "108MP Ultra-Clear 5G Camera",
+          frontCamera: "8MP Front Camera",
+          chipset: "MediaTek Dimensity 6300 5G",
+          batterySize: "5000 mAh (18W Fast Charge)",
+          chargingSpeed: "18W Fast Charge",
+          refreshRate: "120Hz",
+          os: "Android 14 (HiOS 14)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (5G)",
+          fingerprint: "Side-Mounted Fingerprint",
+          faceUnlock: "Face Unlock Supported",
+          nfc: "Yes"
+        }
+      },
+      {
+        id: "tecno-spark-40",
+        brand: "TECNO",
+        model: "SPARK 40",
+        series: "SPARK",
+        defaultStorageOptions: ["128GB", "256GB"],
+        ramOptions: ["8GB"],
+        networkOptions: ["4G"],
+        specs: {
+          screen: "6.78-inch FHD+ 120Hz IPS LCD",
+          camera: "64MP AI Triple Camera",
+          frontCamera: "16MP Dual Glow Front",
+          chipset: "MediaTek Helio G99 Ultimate",
+          batterySize: "5000 mAh (33W Fast Charge)",
+          chargingSpeed: "33W Fast Charge",
+          refreshRate: "120Hz",
+          os: "Android 15 (HiOS 15)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (4G)",
+          fingerprint: "Side-Mounted Fingerprint",
+          faceUnlock: "Face Unlock Supported",
+          nfc: "Yes"
+        }
+      },
+      {
+        id: "tecno-spark-40-pro",
+        brand: "TECNO",
+        model: "SPARK 40 Pro",
+        series: "SPARK",
+        defaultStorageOptions: ["128GB", "256GB", "512GB"],
+        ramOptions: ["8GB", "12GB"],
+        networkOptions: ["4G"],
+        specs: {
+          screen: "6.78-inch Curved AMOLED 120Hz",
+          camera: "108MP Ultra Sense Camera with OIS",
+          frontCamera: "32MP Eye-Tracking Front",
+          chipset: "MediaTek Helio G100",
+          batterySize: "5000 mAh (45W Ultra Charge)",
+          chargingSpeed: "45W Ultra Charge",
+          refreshRate: "120Hz",
+          os: "Android 15 (HiOS 15)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (4G)",
+          fingerprint: "In-Display Optical Fingerprint",
+          faceUnlock: "Face Unlock Supported",
+          nfc: "Yes"
+        }
+      },
+      {
+        id: "tecno-spark-40-pro-plus",
+        brand: "TECNO",
+        model: "SPARK 40 Pro+",
+        series: "SPARK",
+        defaultStorageOptions: ["256GB", "512GB"],
+        ramOptions: ["8GB", "12GB"],
+        networkOptions: ["5G", "4G"],
+        specs: {
+          screen: "6.78-inch 3D Curved AMOLED 144Hz",
+          camera: "108MP OIS Camera + 32MP Front Glow",
+          frontCamera: "32MP Ultra Glow Front",
+          chipset: "MediaTek Dimensity 7050",
+          batterySize: "5000 mAh (70W Hyper Charge)",
+          chargingSpeed: "70W Hyper Charge",
+          refreshRate: "144Hz",
+          os: "Android 15 (HiOS 15)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (5G)",
+          fingerprint: "In-Display Optical Fingerprint",
+          faceUnlock: "Face Unlock Supported",
+          nfc: "Yes"
+        }
+      },
+      {
+        id: "tecno-spark-40c",
+        brand: "TECNO",
+        model: "SPARK 40C",
+        series: "SPARK",
+        defaultStorageOptions: ["64GB", "128GB", "256GB"],
+        ramOptions: ["4GB", "6GB", "8GB"],
+        networkOptions: ["4G"],
+        specs: {
+          screen: "6.67-inch HD+ 120Hz Punch-Hole Display",
+          camera: "50MP Dual AI Camera",
+          frontCamera: "8MP Front Flash",
+          chipset: "MediaTek Helio G85",
+          batterySize: "5000 mAh (18W Fast Charge)",
+          chargingSpeed: "18W Fast Charge",
+          refreshRate: "120Hz",
+          os: "Android 15 (HiOS 15)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (4G)",
+          fingerprint: "Side-Mounted Fingerprint",
+          faceUnlock: "Face Unlock Supported"
+        }
+      },
+      {
+        id: "tecno-spark-40-5g",
+        brand: "TECNO",
+        model: "SPARK 40 5G",
+        series: "SPARK",
+        defaultStorageOptions: ["128GB", "256GB"],
+        ramOptions: ["8GB"],
+        networkOptions: ["5G", "4G"],
+        specs: {
+          screen: "6.78-inch FHD+ 120Hz Display",
+          camera: "108MP Ultra-Clear 5G Camera",
+          frontCamera: "16MP Front Flash",
+          chipset: "MediaTek Dimensity 6400 5G",
+          batterySize: "5000 mAh (33W Fast Charge)",
+          chargingSpeed: "33W Fast Charge",
+          refreshRate: "120Hz",
+          os: "Android 15 (HiOS 15)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (5G)",
+          fingerprint: "Side-Mounted Fingerprint",
+          faceUnlock: "Face Unlock Supported",
+          nfc: "Yes"
+        }
+      },
+
+      // ==========================================
+      // CAMON SERIES
+      // ==========================================
+      {
+        id: "tecno-camon-30",
+        brand: "TECNO",
+        model: "CAMON 30",
+        series: "CAMON",
+        defaultStorageOptions: ["256GB", "512GB"],
+        ramOptions: ["8GB", "12GB"],
+        networkOptions: ["4G"],
+        specs: {
+          screen: "6.78-inch AMOLED 120Hz Display",
+          camera: "50MP OIS Main + 50MP Eye-Tracking AF Front",
+          frontCamera: "50MP Eye-Tracking AF Front Camera",
+          chipset: "MediaTek Helio G99 Ultimate",
+          batterySize: "5000 mAh (70W Ultra Charge)",
+          chargingSpeed: "70W Ultra Charge",
+          refreshRate: "120Hz",
+          os: "Android 14 (HiOS 14)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (4G)",
+          fingerprint: "In-Display Optical Fingerprint",
+          faceUnlock: "Face Unlock Supported",
+          nfc: "Yes"
+        }
+      },
+      {
+        id: "tecno-camon-30-pro",
+        brand: "TECNO",
+        model: "CAMON 30 Pro",
+        series: "CAMON",
+        defaultStorageOptions: ["256GB", "512GB"],
+        ramOptions: ["12GB"],
+        networkOptions: ["5G", "4G"],
+        specs: {
+          screen: "6.78-inch AMOLED 144Hz Display",
+          camera: "50MP Sony IMX890 OIS + 50MP UltraWide + 50MP Eye AF Front",
+          frontCamera: "50MP Eye AF Front Camera",
+          chipset: "MediaTek Dimensity 8200 Ultimate 5G",
+          batterySize: "5000 mAh (70W Ultra Charge)",
+          chargingSpeed: "70W Ultra Charge",
+          refreshRate: "144Hz",
+          os: "Android 14 (HiOS 14)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (5G)",
+          fingerprint: "In-Display Optical Fingerprint",
+          faceUnlock: "Face Unlock Supported",
+          nfc: "Yes"
+        }
+      },
+      {
+        id: "tecno-camon-30-premier",
+        brand: "TECNO",
+        model: "CAMON 30 Premier",
+        series: "CAMON",
+        defaultStorageOptions: ["512GB"],
+        ramOptions: ["12GB"],
+        networkOptions: ["5G", "4G"],
+        specs: {
+          screen: "6.77-inch 1.5K LTPO AMOLED 120Hz (1400 nits)",
+          camera: "50MP Sony IMX890 OIS + 50MP 3x Periscope Telephoto + 50MP UltraWide",
+          frontCamera: "50MP Eye AF Front Camera",
+          chipset: "MediaTek Dimensity 8200 Ultimate 5G + Sony PolarAce Imaging Chip",
+          batterySize: "5000 mAh (70W Ultra Charge)",
+          chargingSpeed: "70W Ultra Charge",
+          refreshRate: "120Hz LTPO",
+          os: "Android 14 (HiOS 14)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (5G)",
+          fingerprint: "In-Display Optical Fingerprint",
+          faceUnlock: "Face Unlock Supported",
+          nfc: "Yes"
+        }
+      },
+      {
+        id: "tecno-camon-30-5g",
+        brand: "TECNO",
+        model: "CAMON 30 5G",
+        series: "CAMON",
+        defaultStorageOptions: ["256GB", "512GB"],
+        ramOptions: ["8GB", "12GB"],
+        networkOptions: ["5G", "4G"],
+        specs: {
+          screen: "6.78-inch AMOLED 120Hz Display",
+          camera: "50MP OIS Main + 50MP Eye AF Front Camera",
+          frontCamera: "50MP Eye AF Front Camera",
+          chipset: "MediaTek Dimensity 7020 5G",
+          batterySize: "5000 mAh (70W Ultra Charge)",
+          chargingSpeed: "70W Ultra Charge",
+          refreshRate: "120Hz",
+          os: "Android 14 (HiOS 14)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (5G)",
+          fingerprint: "In-Display Optical Fingerprint",
+          faceUnlock: "Face Unlock Supported",
+          nfc: "Yes"
+        }
+      },
+      {
+        id: "tecno-camon-30s",
+        brand: "TECNO",
+        model: "CAMON 30S",
+        series: "CAMON",
+        defaultStorageOptions: ["128GB", "256GB"],
+        ramOptions: ["6GB", "8GB"],
+        networkOptions: ["4G"],
+        specs: {
+          screen: "6.78-inch Curved AMOLED 120Hz Display",
+          camera: "50MP Sony IMX896 OIS + 13MP Front",
+          frontCamera: "13MP Front Camera",
+          chipset: "MediaTek Helio G100",
+          batterySize: "5000 mAh (33W Fast Charge)",
+          chargingSpeed: "33W Fast Charge",
+          refreshRate: "120Hz",
+          os: "Android 14 (HiOS 14)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (4G)",
+          fingerprint: "In-Display Optical Fingerprint",
+          faceUnlock: "Face Unlock Supported",
+          nfc: "Yes"
+        }
+      },
+      {
+        id: "tecno-camon-30s-pro",
+        brand: "TECNO",
+        model: "CAMON 30S Pro",
+        series: "CAMON",
+        defaultStorageOptions: ["256GB"],
+        ramOptions: ["8GB"],
+        networkOptions: ["4G"],
+        specs: {
+          screen: "6.78-inch 3D Curved AMOLED 120Hz (1300 nits)",
+          camera: "50MP Sony IMX896 OIS + 50MP Eye AF Front Camera",
+          frontCamera: "50MP Eye AF Front Camera",
+          chipset: "MediaTek Helio G100",
+          batterySize: "5000 mAh (45W Wired + 20W Wireless Charge)",
+          chargingSpeed: "45W Wired + 20W Wireless",
+          refreshRate: "120Hz",
+          os: "Android 14 (HiOS 14)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (4G)",
+          fingerprint: "In-Display Optical Fingerprint",
+          faceUnlock: "Face Unlock Supported",
+          nfc: "Yes"
+        }
+      },
+      {
+        id: "tecno-camon-40",
+        brand: "TECNO",
+        model: "CAMON 40",
+        series: "CAMON",
+        defaultStorageOptions: ["256GB", "512GB"],
+        ramOptions: ["8GB", "12GB"],
+        networkOptions: ["4G"],
+        specs: {
+          screen: "6.78-inch AMOLED 120Hz FHD+",
+          camera: "64MP Sony OIS Main + 50MP Front",
+          frontCamera: "50MP Eye-Tracking Front",
+          chipset: "MediaTek Helio G100 Ultimate",
+          batterySize: "5000 mAh (45W Fast Charge)",
+          chargingSpeed: "45W Fast Charge",
+          refreshRate: "120Hz",
+          os: "Android 15 (HiOS 15)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (4G)",
+          fingerprint: "In-Display Fingerprint",
+          faceUnlock: "Face Unlock Supported",
+          nfc: "Yes"
+        }
+      },
+      {
+        id: "tecno-camon-40-pro",
+        brand: "TECNO",
+        model: "CAMON 40 Pro",
+        series: "CAMON",
+        defaultStorageOptions: ["256GB", "512GB"],
+        ramOptions: ["12GB"],
+        networkOptions: ["5G", "4G"],
+        specs: {
+          screen: "6.78-inch 1.5K AMOLED 144Hz",
+          camera: "50MP Sony IMX906 OIS + 50MP UltraWide + 50MP Front",
+          frontCamera: "50MP Eye-Tracking AF Front",
+          chipset: "MediaTek Dimensity 8300 Ultra 5G",
+          batterySize: "5100 mAh (70W Fast Charge)",
+          chargingSpeed: "70W Fast Charge",
+          refreshRate: "144Hz",
+          os: "Android 15 (HiOS 15)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (5G)",
+          fingerprint: "In-Display Optical Fingerprint",
+          faceUnlock: "Face Unlock Supported",
+          nfc: "Yes"
+        }
+      },
+      {
+        id: "tecno-camon-40-premier-5g",
+        brand: "TECNO",
+        model: "CAMON 40 Premier 5G",
+        series: "CAMON",
+        defaultStorageOptions: ["512GB", "1TB"],
+        ramOptions: ["12GB", "16GB"],
+        networkOptions: ["5G", "4G"],
+        specs: {
+          screen: "6.78-inch 1.5K LTPO AMOLED 144Hz (1600 nits)",
+          camera: "50MP Sony LYT-808 OIS + 50MP 3x Periscope Telephoto + 50MP UltraWide",
+          frontCamera: "50MP 4K60fps Eye AF Front",
+          chipset: "MediaTek Dimensity 8350 Ultimate 5G + AI Vision Processor",
+          batterySize: "5200 mAh (70W Ultra Charge + 30W Wireless)",
+          chargingSpeed: "70W Ultra Charge + 30W Wireless",
+          refreshRate: "144Hz LTPO",
+          os: "Android 15 (HiOS 15)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (5G)",
+          fingerprint: "In-Display Ultrasonic Fingerprint",
+          faceUnlock: "Face Unlock Supported",
+          nfc: "Yes"
+        }
+      },
+
+      // ==========================================
+      // POVA SERIES
+      // ==========================================
+      {
+        id: "tecno-pova-6",
+        brand: "TECNO",
+        model: "POVA 6",
+        series: "POVA",
+        defaultStorageOptions: ["128GB", "256GB"],
+        ramOptions: ["8GB", "12GB"],
+        networkOptions: ["4G"],
+        specs: {
+          screen: "6.78-inch FHD+ AMOLED 120Hz (Dynamic-Eye Design)",
+          camera: "108MP Ultra-Clear + 32MP Dual Flash Front",
+          frontCamera: "32MP Dual Flash Front",
+          chipset: "MediaTek Helio G99 Ultimate",
+          batterySize: "6000 mAh (70W Ultra Charge)",
+          chargingSpeed: "70W Ultra Charge",
+          refreshRate: "120Hz",
+          os: "Android 14 (HiOS 14)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (4G)",
+          fingerprint: "In-Display Optical Fingerprint",
+          faceUnlock: "Face Unlock Supported",
+          nfc: "Yes"
+        }
+      },
+      {
+        id: "tecno-pova-6-pro-5g",
+        brand: "TECNO",
+        model: "POVA 6 Pro 5G",
+        series: "POVA",
+        defaultStorageOptions: ["256GB"],
+        ramOptions: ["8GB", "12GB"],
+        networkOptions: ["5G", "4G"],
+        specs: {
+          screen: "6.78-inch FHD+ AMOLED 120Hz (Dynamic Mini-LED Effect)",
+          camera: "108MP Triple AI Camera + 32MP Front",
+          frontCamera: "32MP Front Camera",
+          chipset: "MediaTek Dimensity 6080 5G",
+          batterySize: "6000 mAh (70W Ultra Charge + 10W Reverse Charge)",
+          chargingSpeed: "70W Ultra Charge",
+          refreshRate: "120Hz",
+          os: "Android 14 (HiOS 14)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (5G)",
+          fingerprint: "In-Display Optical Fingerprint",
+          faceUnlock: "Face Unlock Supported",
+          nfc: "Yes"
+        }
+      },
+      {
+        id: "tecno-pova-6-neo",
+        brand: "TECNO",
+        model: "POVA 6 Neo",
+        series: "POVA",
+        defaultStorageOptions: ["128GB", "256GB"],
+        ramOptions: ["8GB"],
+        networkOptions: ["4G"],
+        specs: {
+          screen: "6.78-inch FHD+ 120Hz Display",
+          camera: "50MP Dual Rear Camera + 8MP Front",
+          frontCamera: "8MP Front Camera",
+          chipset: "MediaTek Helio G99 Ultimate",
+          batterySize: "7000 mAh (33W Ultra Charge)",
+          chargingSpeed: "33W Ultra Charge",
+          refreshRate: "120Hz",
+          os: "Android 14 (HiOS 14)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (4G)",
+          fingerprint: "Side-Mounted Fingerprint",
+          faceUnlock: "Face Unlock Supported",
+          nfc: "Yes"
+        }
+      },
+      {
+        id: "tecno-pova-7",
+        brand: "TECNO",
+        model: "POVA 7",
+        series: "POVA",
+        defaultStorageOptions: ["128GB", "256GB"],
+        ramOptions: ["8GB", "12GB"],
+        networkOptions: ["4G"],
+        specs: {
+          screen: "6.78-inch FHD+ AMOLED 120Hz",
+          camera: "108MP AI Gaming Camera",
+          frontCamera: "32MP Front Camera",
+          chipset: "MediaTek Helio G100 Gaming Processor",
+          batterySize: "6000 mAh (70W Ultra Charge)",
+          chargingSpeed: "70W Ultra Charge",
+          refreshRate: "120Hz",
+          os: "Android 15 (HiOS 15)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (4G)",
+          fingerprint: "In-Display Optical Fingerprint",
+          faceUnlock: "Face Unlock Supported",
+          nfc: "Yes"
+        }
+      },
+      {
+        id: "tecno-pova-7-5g",
+        brand: "TECNO",
+        model: "POVA 7 5G",
+        series: "POVA",
+        defaultStorageOptions: ["128GB", "256GB"],
+        ramOptions: ["8GB", "12GB"],
+        networkOptions: ["5G", "4G"],
+        specs: {
+          screen: "6.78-inch FHD+ AMOLED 120Hz",
+          camera: "108MP AI Dual Camera + 32MP Front",
+          frontCamera: "32MP Front Camera",
+          chipset: "MediaTek Dimensity 6300 5G",
+          batterySize: "6000 mAh (70W Ultra Charge)",
+          chargingSpeed: "70W Ultra Charge",
+          refreshRate: "120Hz",
+          os: "Android 15 (HiOS 15)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (5G)",
+          fingerprint: "In-Display Optical Fingerprint",
+          faceUnlock: "Face Unlock Supported",
+          nfc: "Yes"
+        }
+      },
+      {
+        id: "tecno-pova-7-pro-5g",
+        brand: "TECNO",
+        model: "POVA 7 Pro 5G",
+        series: "POVA",
+        defaultStorageOptions: ["256GB", "512GB"],
+        ramOptions: ["12GB"],
+        networkOptions: ["5G", "4G"],
+        specs: {
+          screen: "6.78-inch FHD+ AMOLED 144Hz Mech-Light Interface",
+          camera: "108MP OIS Gaming Camera + 32MP Front",
+          frontCamera: "32MP Front Camera",
+          chipset: "MediaTek Dimensity 7050 5G",
+          batterySize: "6000 mAh (80W Ultra Charge)",
+          chargingSpeed: "80W Ultra Charge",
+          refreshRate: "144Hz",
+          os: "Android 15 (HiOS 15)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (5G)",
+          fingerprint: "In-Display Optical Fingerprint",
+          faceUnlock: "Face Unlock Supported",
+          nfc: "Yes"
+        }
+      },
+      {
+        id: "tecno-pova-7-ultra-5g",
+        brand: "TECNO",
+        model: "POVA 7 Ultra 5G",
+        series: "POVA",
+        defaultStorageOptions: ["256GB", "512GB"],
+        ramOptions: ["12GB", "16GB"],
+        networkOptions: ["5G", "4G"],
+        specs: {
+          screen: "6.8-inch 1.5K AMOLED 144Hz Gaming Display",
+          camera: "108MP OIS + 13MP UltraWide + 50MP Front",
+          frontCamera: "50MP Front Gaming Camera",
+          chipset: "MediaTek Dimensity 8200 Ultimate 5G",
+          batterySize: "7000 mAh (90W Hyper Charge)",
+          chargingSpeed: "90W Hyper Charge",
+          refreshRate: "144Hz",
+          os: "Android 15 (HiOS 15)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (5G)",
+          fingerprint: "In-Display Ultrasonic Fingerprint",
+          faceUnlock: "Face Unlock Supported",
+          nfc: "Yes"
+        }
+      },
+      {
+        id: "tecno-pova-curve-5g",
+        brand: "TECNO",
+        model: "POVA Curve 5G",
+        series: "POVA",
+        defaultStorageOptions: ["256GB"],
+        ramOptions: ["8GB", "12GB"],
+        networkOptions: ["5G", "4G"],
+        specs: {
+          screen: "6.78-inch 3D Curved AMOLED 120Hz",
+          camera: "108MP OIS Dual Camera + 32MP Front",
+          frontCamera: "32MP Front Camera",
+          chipset: "MediaTek Dimensity 7020 5G",
+          batterySize: "6000 mAh (70W Ultra Charge)",
+          chargingSpeed: "70W Ultra Charge",
+          refreshRate: "120Hz",
+          os: "Android 15 (HiOS 15)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (5G)",
+          fingerprint: "In-Display Optical Fingerprint",
+          faceUnlock: "Face Unlock Supported",
+          nfc: "Yes"
+        }
+      },
+
+      // ==========================================
+      // POP SERIES
+      // ==========================================
+      {
+        id: "tecno-pop-9",
+        brand: "TECNO",
+        model: "POP 9",
+        series: "POP",
+        defaultStorageOptions: ["64GB", "128GB"],
+        ramOptions: ["3GB", "4GB"],
+        networkOptions: ["4G"],
+        specs: {
+          screen: "6.67-inch HD+ 120Hz Punch-Hole Display",
+          camera: "13MP Dual Camera + 8MP Front",
+          frontCamera: "8MP Front Flash",
+          chipset: "Unisoc T606 Octa-Core",
+          batterySize: "5000 mAh (15W Fast Charge)",
+          chargingSpeed: "15W Fast Charge",
+          refreshRate: "120Hz",
+          os: "Android 14 (Go Edition)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (4G)",
+          fingerprint: "Side-Mounted Fingerprint",
+          faceUnlock: "Face Unlock Supported"
+        }
+      },
+      {
+        id: "tecno-pop-9-5g",
+        brand: "TECNO",
+        model: "POP 9 5G",
+        series: "POP",
+        defaultStorageOptions: ["64GB", "128GB"],
+        ramOptions: ["4GB", "8GB"],
+        networkOptions: ["5G", "4G"],
+        specs: {
+          screen: "6.67-inch HD+ 120Hz Punch-Hole Display",
+          camera: "48MP Sony IMX582 Main + 8MP Front",
+          frontCamera: "8MP Front Camera",
+          chipset: "MediaTek Dimensity 6300 5G",
+          batterySize: "5000 mAh (18W Fast Charge)",
+          chargingSpeed: "18W Fast Charge",
+          refreshRate: "120Hz",
+          os: "Android 14",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (5G)",
+          fingerprint: "Side-Mounted Fingerprint",
+          faceUnlock: "Face Unlock Supported",
+          nfc: "Yes"
+        }
+      },
+      {
+        id: "tecno-pop-8",
+        brand: "TECNO",
+        model: "POP 8",
+        series: "POP",
+        defaultStorageOptions: ["64GB", "128GB"],
+        ramOptions: ["3GB", "4GB"],
+        networkOptions: ["4G"],
+        specs: {
+          screen: "6.6-inch HD+ 90Hz Dynamic Port",
+          camera: "13MP Dual Rear + 8MP Front Flash",
+          frontCamera: "8MP Front Flash",
+          chipset: "Unisoc T606 Octa-Core",
+          batterySize: "5000 mAh (10W Charge)",
+          chargingSpeed: "10W Charge",
+          refreshRate: "90Hz",
+          os: "Android 13 (Go Edition)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (4G)",
+          fingerprint: "Side-Mounted Fingerprint",
+          faceUnlock: "Face Unlock Supported"
+        }
+      },
+      {
+        id: "tecno-pop-8-pro",
+        brand: "TECNO",
+        model: "POP 8 Pro",
+        series: "POP",
+        defaultStorageOptions: ["64GB", "128GB"],
+        ramOptions: ["4GB"],
+        networkOptions: ["4G"],
+        specs: {
+          screen: "6.6-inch HD+ 90Hz Display",
+          camera: "13MP Dual Rear + 8MP Front",
+          frontCamera: "8MP Front Camera",
+          chipset: "Unisoc T606 Octa-Core",
+          batterySize: "5000 mAh (18W Charge)",
+          chargingSpeed: "18W Charge",
+          refreshRate: "90Hz",
+          os: "Android 13 (Go Edition)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (4G)",
+          fingerprint: "Side-Mounted Fingerprint",
+          faceUnlock: "Face Unlock Supported"
+        }
+      },
+      {
+        id: "tecno-pop-7",
+        brand: "TECNO",
+        model: "POP 7",
+        series: "POP",
+        defaultStorageOptions: ["64GB"],
+        ramOptions: ["2GB", "3GB"],
+        networkOptions: ["4G"],
+        specs: {
+          screen: "6.6-inch HD+ Dot Notch Display",
+          camera: "8MP Dual Camera + 5MP Front",
+          frontCamera: "5MP Front Camera",
+          chipset: "Unisoc SC9863A1",
+          batterySize: "5000 mAh",
+          os: "Android 12 (Go Edition)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (4G)",
+          fingerprint: "Rear Fingerprint Sensor",
+          faceUnlock: "Face Unlock Supported"
+        }
+      },
+      {
+        id: "tecno-pop-7-pro",
+        brand: "TECNO",
+        model: "POP 7 Pro",
+        series: "POP",
+        defaultStorageOptions: ["64GB"],
+        ramOptions: ["3GB", "4GB"],
+        networkOptions: ["4G"],
+        specs: {
+          screen: "6.56-inch HD+ Dot Notch Display",
+          camera: "13MP Dual Camera + 5MP Front",
+          frontCamera: "5MP Front Camera",
+          chipset: "MediaTek Helio A22",
+          batterySize: "5000 mAh (10W Type-C)",
+          chargingSpeed: "10W Fast Charge",
+          os: "Android 12 (Go Edition)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (4G)",
+          fingerprint: "Rear Fingerprint Sensor",
+          faceUnlock: "Face Unlock Supported"
+        }
+      },
+      {
+        id: "tecno-pop-6",
+        brand: "TECNO",
+        model: "POP 6",
+        series: "POP",
+        defaultStorageOptions: ["32GB"],
+        ramOptions: ["2GB"],
+        networkOptions: ["4G"],
+        specs: {
+          screen: "6.1-inch HD+ Dot Notch Display",
+          camera: "5MP Dual Camera",
+          frontCamera: "5MP Front Camera",
+          chipset: "Quad-Core 1.3 GHz",
+          batterySize: "5000 mAh",
+          os: "Android 11 (Go Edition)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (4G)",
+          fingerprint: "Rear Fingerprint Sensor",
+          faceUnlock: "Face Unlock Supported"
+        }
+      },
+      {
+        id: "tecno-pop-6-pro",
+        brand: "TECNO",
+        model: "POP 6 Pro",
+        series: "POP",
+        defaultStorageOptions: ["32GB", "64GB"],
+        ramOptions: ["2GB", "3GB"],
+        networkOptions: ["4G"],
+        specs: {
+          screen: "6.56-inch HD+ Dot Notch Display",
+          camera: "8MP Dual Camera + 5MP Front",
+          frontCamera: "5MP Front Camera",
+          chipset: "MediaTek Helio A22",
+          batterySize: "5000 mAh",
+          os: "Android 12 (Go Edition)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (4G)",
+          fingerprint: "Side-Mounted Fingerprint",
+          faceUnlock: "Face Unlock Supported"
+        }
+      },
+
+      // ==========================================
+      // PHANTOM SERIES
+      // ==========================================
+      {
+        id: "tecno-phantom-v-fold-2-5g",
+        brand: "TECNO",
+        model: "PHANTOM V Fold2 5G",
+        series: "PHANTOM",
+        defaultStorageOptions: ["512GB"],
+        ramOptions: ["12GB"],
+        networkOptions: ["5G", "4G"],
+        specs: {
+          screen: "7.85-inch 2K+ 120Hz Foldable LTPO AMOLED + 6.42-inch FHD+ 120Hz Cover AMOLED",
+          camera: "50MP OIS Main + 50MP 2x Portrait + 50MP UltraWide + Dual 32MP Front",
+          frontCamera: "Dual 32MP (Cover & Inner) Cameras",
+          chipset: "MediaTek Dimensity 9000+ 5G (4nm)",
+          batterySize: "5750 mAh (70W Ultra Charge + 15W Wireless)",
+          chargingSpeed: "70W Ultra Charge + 15W Wireless",
+          refreshRate: "120Hz LTPO",
+          os: "Android 14 (HiOS Fold 14)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (5G)",
+          fingerprint: "Side-Mounted Fast Fingerprint",
+          faceUnlock: "Face Unlock Supported",
+          nfc: "Yes"
+        }
+      },
+      {
+        id: "tecno-phantom-v-flip-2-5g",
+        brand: "TECNO",
+        model: "PHANTOM V Flip2 5G",
+        series: "PHANTOM",
+        defaultStorageOptions: ["256GB"],
+        ramOptions: ["8GB"],
+        networkOptions: ["5G", "4G"],
+        specs: {
+          screen: "6.9-inch FHD+ 120Hz Foldable LTPO AMOLED + 3.64-inch 120Hz Cover Display",
+          camera: "50MP OIS Main + 50MP UltraWide + 32MP AF Front",
+          frontCamera: "32MP AF Front Camera with Flash",
+          chipset: "MediaTek Dimensity 8020 5G (6nm)",
+          batterySize: "4720 mAh (70W Ultra Charge)",
+          chargingSpeed: "70W Ultra Charge",
+          refreshRate: "120Hz LTPO",
+          os: "Android 14 (HiOS Flip 14)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (5G)",
+          fingerprint: "Side-Mounted Fast Fingerprint",
+          faceUnlock: "Face Unlock Supported",
+          nfc: "Yes"
+        }
+      },
+      {
+        id: "tecno-phantom-v-fold-5g",
+        brand: "TECNO",
+        model: "PHANTOM V Fold 5G",
+        series: "PHANTOM",
+        defaultStorageOptions: ["256GB", "512GB"],
+        ramOptions: ["12GB"],
+        networkOptions: ["5G", "4G"],
+        specs: {
+          screen: "7.85-inch 2K+ 120Hz Foldable LTPO AMOLED + 6.42-inch FHD+ 120Hz Cover",
+          camera: "50MP Main + 50MP Telephoto + 13MP UltraWide + Dual 32MP/16MP Front",
+          frontCamera: "32MP Cover + 16MP Inner Front",
+          chipset: "MediaTek Dimensity 9000+ 5G (4nm)",
+          batterySize: "5000 mAh (66W Flash Charge)",
+          chargingSpeed: "66W Flash Charge",
+          refreshRate: "120Hz LTPO",
+          os: "Android 13 (HiOS Fold)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (5G)",
+          fingerprint: "Side-Mounted Fingerprint",
+          faceUnlock: "Face Unlock Supported",
+          nfc: "Yes"
+        }
+      },
+      {
+        id: "tecno-phantom-v-flip-5g",
+        brand: "TECNO",
+        model: "PHANTOM V Flip 5G",
+        series: "PHANTOM",
+        defaultStorageOptions: ["256GB"],
+        ramOptions: ["8GB"],
+        networkOptions: ["5G", "4G"],
+        specs: {
+          screen: "6.9-inch FHD+ 120Hz Foldable LTPO AMOLED + 1.32-inch Circular Cover AMOLED",
+          camera: "64MP RGBW Main + 13MP UltraWide + 32MP Dual-Flash Front",
+          frontCamera: "32MP Dual-Flash Front Camera",
+          chipset: "MediaTek Dimensity 8050 5G",
+          batterySize: "4000 mAh (45W Flash Charge)",
+          chargingSpeed: "45W Flash Charge",
+          refreshRate: "120Hz LTPO",
+          os: "Android 13 (HiOS Flip)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (5G)",
+          fingerprint: "Side-Mounted Fingerprint",
+          faceUnlock: "Face Unlock Supported",
+          nfc: "Yes"
+        }
+      },
+      {
+        id: "tecno-phantom-x2-pro-5g",
+        brand: "TECNO",
+        model: "PHANTOM X2 Pro 5G",
+        series: "PHANTOM",
+        defaultStorageOptions: ["256GB"],
+        ramOptions: ["12GB"],
+        networkOptions: ["5G", "4G"],
+        specs: {
+          screen: "6.8-inch Curved FHD+ AMOLED 120Hz",
+          camera: "50MP Retractable Portrait Lens + 50MP Main + 13MP UltraWide + 32MP Front",
+          frontCamera: "32MP Front Camera",
+          chipset: "MediaTek Dimensity 9000 5G (4nm)",
+          batterySize: "5160 mAh (45W Fast Charge)",
+          chargingSpeed: "45W Fast Charge",
+          refreshRate: "120Hz",
+          os: "Android 12 (HiOS 12)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (5G)",
+          fingerprint: "In-Display Optical Fingerprint",
+          faceUnlock: "Face Unlock Supported",
+          nfc: "Yes"
+        }
+      },
+      {
+        id: "tecno-phantom-x2-5g",
+        brand: "TECNO",
+        model: "PHANTOM X2 5G",
+        series: "PHANTOM",
+        defaultStorageOptions: ["256GB"],
+        ramOptions: ["8GB"],
+        networkOptions: ["5G", "4G"],
+        specs: {
+          screen: "6.8-inch Curved FHD+ AMOLED 120Hz",
+          camera: "64MP RGBW OIS Main + 13MP UltraWide + 32MP Front",
+          frontCamera: "32MP Front Camera",
+          chipset: "MediaTek Dimensity 9000 5G (4nm)",
+          batterySize: "5160 mAh (45W Fast Charge)",
+          chargingSpeed: "45W Fast Charge",
+          refreshRate: "120Hz",
+          os: "Android 12 (HiOS 12)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (5G)",
+          fingerprint: "In-Display Optical Fingerprint",
+          faceUnlock: "Face Unlock Supported",
+          nfc: "Yes"
+        }
+      },
+      {
+        id: "tecno-phantom-x",
+        brand: "TECNO",
+        model: "PHANTOM X",
+        series: "PHANTOM",
+        defaultStorageOptions: ["256GB"],
+        ramOptions: ["8GB"],
+        networkOptions: ["4G"],
+        specs: {
+          screen: "6.7-inch 3D Borderless OLED 90Hz",
+          camera: "50MP Ultra-Night Main + 13MP Portrait + 8MP UltraWide + 48MP+8MP Dual Front",
+          frontCamera: "48MP + 8MP Dual Front",
+          chipset: "MediaTek Helio G95",
+          batterySize: "4700 mAh (33W Flash Charge)",
+          chargingSpeed: "33W Flash Charge",
+          refreshRate: "90Hz",
+          os: "Android 11 (HiOS 7.6)",
+          warranty: "1-Year Warranty",
+          simType: "Dual Nano SIM (4G)",
+          fingerprint: "In-Display Optical Fingerprint",
+          faceUnlock: "Face Unlock Supported"
+        }
+      }
+    ]
   }
 ];
 
@@ -1571,6 +2326,36 @@ export function getModelsForBrand(brandName: string): PhoneModelItem[] {
   );
 
   return foundBrand ? foundBrand.models : [];
+}
+
+/**
+ * Returns distinct series list for a specified brand.
+ */
+export function getSeriesForBrand(brandName: string): string[] {
+  const models = getModelsForBrand(brandName);
+  if (!models.length) return [];
+  
+  const seriesSet = new Set<string>();
+  models.forEach(m => {
+    if (m.series && m.series.trim()) {
+      seriesSet.add(m.series.trim());
+    }
+  });
+  
+  return Array.from(seriesSet);
+}
+
+/**
+ * Returns models for a brand optionally filtered by series.
+ */
+export function getModelsForBrandAndSeries(brandName: string, seriesName?: string): PhoneModelItem[] {
+  const models = getModelsForBrand(brandName);
+  if (!seriesName || seriesName === "All" || seriesName === "All Series") {
+    return models;
+  }
+  
+  const normSeries = seriesName.trim().toLowerCase();
+  return models.filter(m => m.series && m.series.trim().toLowerCase() === normSeries);
 }
 
 /**

@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { ShieldCheck, Truck, ShieldAlert, BadgeCheck, ArrowRight, Coins, RefreshCw } from "lucide-react";
+import { Truck, BadgeCheck, ArrowRight, Coins, RefreshCw, ClipboardCheck, Sparkles } from "lucide-react";
 import { NIGERIAN_STATES } from "../data";
 
 export default function TrustFeatures() {
-  const [activeTab, setActiveTab] = useState<"verified" | "delivery" | "escrow" | "trade">("verified");
+  const [activeTab, setActiveTab] = useState<"verified" | "delivery" | "order" | "trade">("verified");
   const [selectedState, setSelectedState] = useState(NIGERIAN_STATES[0].name);
 
   const selectedStateData = NIGERIAN_STATES.find(s => s.name === selectedState) || NIGERIAN_STATES[0];
@@ -22,23 +22,23 @@ export default function TrustFeatures() {
       title: "Nationwide Delivery",
       subtitle: "Insured & Monitored Courier",
       icon: Truck,
-      desc: "Fully-insured state-by-state delivery across Nigeria via major premium logistics partners. Standard tracking details sent within 3 hours.",
+      desc: "Reliable state-by-state delivery across Nigeria via major logistics partners. Dispatch details and updates sent promptly upon order confirmation.",
       actionText: "Calculate Shipping & ETA"
     },
     {
-      id: "escrow",
-      title: "Buyer Protection",
-      subtitle: "Locked Escrow Framework",
-      icon: ShieldCheck,
-      desc: "Your money stays safe in our escrow trust vault. We only transfer payment to operations after you receive and inspect your order. 100% scam proof.",
-      actionText: "Verify Escrow Flowchart"
+      id: "order",
+      title: "Order Details",
+      subtitle: "Clear & Transparent",
+      icon: ClipboardCheck,
+      desc: "Review accurate device specifications, battery health, and seller information upfront before placing your order. No hidden fees.",
+      actionText: "View Order Flow"
     },
     {
       id: "trade",
       title: "Trade-In Available",
       subtitle: "Upgrade Seamlessly",
       icon: Coins,
-      desc: "Instant cash value given for your current gadget. Bring in your existing iPhone or Galaxy, receive credit top-up value, and stroll out with your new dream phone.",
+      desc: "Fair valuation estimates given for your current gadget. Bring in your existing iPhone or Galaxy, receive credit top-up value, and upgrade easily.",
       actionText: "Browse Swap Models"
     }
   ];
@@ -48,13 +48,13 @@ export default function TrustFeatures() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto mb-16">
           <span className="text-xs uppercase font-extrabold tracking-widest text-milito-green bg-milito-green/10 px-3.5 py-1.5 rounded-full inline-block mb-3 border border-milito-green/20">
-            Guaranteed Trust
+            Marketplace Standards
           </span>
           <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight">
             Designed for Absolute Peace of Mind
           </h2>
           <p className="text-gray-600 mt-4 text-base">
-            Buying high-end devices in Nigeria shouldn't involve guesswork. At MILITO TECH HOME, we combine severe quality controls with a secured payment sandbox.
+            Buying high-end devices in Nigeria shouldn't involve guesswork. At MILITO TECH HOME, we combine clear quality controls with straightforward product information.
           </p>
         </div>
 
@@ -109,7 +109,7 @@ export default function TrustFeatures() {
                   Watch Our QC Specialists Work
                 </h4>
                 <p className="text-gray-600 text-xs md:text-sm mt-3 leading-relaxed">
-                  We don’t just ship boxes. Every single smartphone undergoes standard physical and software diagnostic testing. If a device scoring below 95% on the test suite appears, it is rejected instantly.
+                  We don’t just ship boxes. Every single smartphone undergoes standard physical and software diagnostic testing to verify screen, battery health, and hardware functionality.
                 </p>
                 
                 <div className="grid grid-cols-2 gap-3 mt-6">
@@ -133,7 +133,7 @@ export default function TrustFeatures() {
                 <div className="absolute top-3 right-3 bg-milito-green/20 text-milito-green text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase border border-milito-green/30 animate-pulse">
                   SIMULATOR LIVE
                 </div>
-                <ShieldCheck className="w-12 h-12 text-milito-green mx-auto mb-3" />
+                <Sparkles className="w-12 h-12 text-milito-green mx-auto mb-3" />
                 <h5 className="font-bold text-gray-900 text-base">QC Inspection Grade A++</h5>
                 <p className="text-gray-600 text-xs mt-1.5 px-4">
                   Fully cleared of repairs, water-damage sensors verify dry state, and screen is 100% manufacturer original.
@@ -167,7 +167,7 @@ export default function TrustFeatures() {
                   Live Shipping Cost & ETA Estimator
                 </h4>
                 <p className="text-gray-600 text-xs md:text-sm mt-3 leading-relaxed">
-                  Select your destination state below to see the precise insured shipping cost and delivery duration. We use tracked, dispatch-locked transport containers.
+                  Select your destination state below to see the estimated shipping fee and delivery duration. We use reliable logistics partners across Nigeria.
                 </p>
 
                 <div className="mt-6">
@@ -198,13 +198,13 @@ export default function TrustFeatures() {
                     <span className="text-sm text-gray-900 font-bold">{selectedStateData.code}</span>
                   </div>
                   <div className="flex justify-between items-center bg-gray-50 p-3.5 rounded-xl border border-gray-150">
-                    <span className="text-xs text-gray-605 font-medium">Transit Insurance:</span>
+                    <span className="text-xs text-gray-605 font-medium">Transit Handling:</span>
                     <span className="text-xs font-bold text-milito-green bg-milito-green/15 px-2.5 py-1 rounded border border-milito-green/20">
-                      100% INCLUDED
+                      SECURE PACKAGING
                     </span>
                   </div>
                   <div className="flex justify-between items-center bg-gray-50 p-3.5 rounded-xl border border-gray-150">
-                    <span className="text-xs text-gray-600 font-medium">Insured Shipping Fee:</span>
+                    <span className="text-xs text-gray-600 font-medium">Estimated Shipping Fee:</span>
                     <span className="text-sm text-milito-green font-extrabold w-32 text-right">
                       {new Intl.NumberFormat("en-NG", {
                         style: "currency",
@@ -222,18 +222,18 @@ export default function TrustFeatures() {
             </div>
           )}
 
-          {activeTab === "escrow" && (
+          {activeTab === "order" && (
             <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center animate-fadeIn">
               <div className="md:col-span-12">
                 <div className="text-center max-w-2xl mx-auto mb-6">
                   <span className="text-xs font-semibold uppercase tracking-wider text-milito-green">
-                    MILITO Protected Escrow Workflow
+                    Order Details
                   </span>
                   <h4 className="text-xl md:text-2xl font-bold text-gray-900 mt-1">
-                    How Buyer Protection Guards Your Money
+                    Know What You're Buying Before You Order
                   </h4>
                   <p className="text-gray-600 text-xs mt-2 leading-relaxed">
-                    We completely eliminate the fear of 'What I ordered vs. What I got'. Clicking individual milestones of the protection cycle showcases the secure validation flow.
+                    MILITO gives customers the important product information they need before placing an order, including device details, price, availability, and seller information.
                   </p>
                 </div>
 
@@ -241,26 +241,26 @@ export default function TrustFeatures() {
                   {[
                     {
                       step: "01",
-                      title: "Secure Verification Deposit",
-                      body: "When completing checkout, your payment gets deposited into the MILITO Escrow Trust vault. Our sales team is immediately notified."
+                      title: "Transparent Specifications",
+                      body: "Review accurate physical photos, battery health, storage capacity, warranty period, and device grade before starting your purchase."
                     },
                     {
                       step: "02",
-                      title: "Dispatched & Witnessed Transport",
-                      body: "We process and deliver the package via our secure GPS tracked dispatch. Shipping state can be validated in real-time."
+                      title: "Direct Order Initiation",
+                      body: "Click 'Order Now' to instantly create your order with complete product information, color selection, and delivery preferences."
                     },
                     {
                       step: "03",
-                      title: "Inspection & Final Release",
-                      body: "You inspect the device (battery, cameras, physical condition). Once you are 100% satisfied, you confirm receipt to unlock and release the operations payment."
+                      title: "Seller Fulfillment & Delivery",
+                      body: "Once your order is confirmed, the verified seller prepares and dispatches the device directly to your address or for collection."
                     }
-                  ].map((esc, index) => (
+                  ].map((ord, index) => (
                     <div key={index} className="bg-white p-5 rounded-2xl border border-gray-150 relative group shadow-sm">
                       <div className="text-3xl font-extrabold text-milito-green/20 group-hover:text-milito-green/40 transition absolute top-3 right-4">
-                        {esc.step}
+                        {ord.step}
                       </div>
-                      <h5 className="font-bold text-gray-900 text-sm pr-10">{esc.title}</h5>
-                      <p className="text-gray-605 text-xs mt-2 leading-relaxed">{esc.body}</p>
+                      <h5 className="font-bold text-gray-900 text-sm pr-10">{ord.title}</h5>
+                      <p className="text-gray-605 text-xs mt-2 leading-relaxed">{ord.body}</p>
                     </div>
                   ))}
                 </div>

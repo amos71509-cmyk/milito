@@ -18,12 +18,134 @@
         "createdAt": { "type": "string", "format": "date-time", "description": "When the document was published" }
       },
       "required": ["brand", "model", "condition", "price", "status", "featured", "storage", "color", "description", "imageUrl", "createdAt"]
+    },
+    "Order": {
+      "title": "ProtectedOrder",
+      "description": "Dedicated protected customer orders collection",
+      "type": "object",
+      "properties": {
+        "orderId": { "type": "string", "description": "Unique customer-facing order reference, e.g. MIL-20260820-XXXX" },
+        "customer": { "type": "object", "description": "Customer delivery details (name, email, phone, address, state)" },
+        "productId": { "type": "string", "description": "Product ID" },
+        "productName": { "type": "string", "description": "Product name" },
+        "productImage": { "type": "string", "description": "Product image URL" },
+        "selectedSpecification": { "type": "string", "description": "Selected specification summary" },
+        "quantity": { "type": "number", "description": "Ordered quantity" },
+        "unitPrice": { "type": "number", "description": "Validated unit price in NGN" },
+        "subtotal": { "type": "number", "description": "Order subtotal" },
+        "deliveryFee": { "type": "number", "description": "Transit delivery fee" },
+        "totalAmount": { "type": "number", "description": "Total order amount in NGN" },
+        "paymentStatus": { "type": "string", "enum": ["pending", "paid", "failed", "refunded"], "description": "Payment status" },
+        "orderStatus": { "type": "string", "enum": ["created", "protected", "processing", "in_transit", "delivered", "cancelled"], "description": "Order fulfillment status" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp when order was placed" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Timestamp when order was updated" }
+      },
+      "required": ["orderId", "customer", "productId", "productName", "productImage", "selectedSpecification", "quantity", "unitPrice", "totalAmount", "paymentStatus", "orderStatus", "createdAt"]
+    },
+    "Testimonial": {
+      "title": "Testimonial",
+      "description": "Customer proof and sanitized testimonial stories",
+      "type": "object",
+      "properties": {
+        "customerName": { "type": "string", "description": "Customer name or display name" },
+        "location": { "type": "string", "description": "Customer location (e.g., Lagos, Abuja, Enugu)" },
+        "testimonialText": { "type": "string", "description": "Customer testimonial text" },
+        "transactionType": { "type": "string", "enum": ["Purchase", "Swap", "Gadget Purchase", "Other"], "description": "Type of transaction" },
+        "device": { "type": "string", "description": "Device model name" },
+        "storage": { "type": "string", "description": "Storage capacity" },
+        "fromDevice": { "type": "string", "description": "Original device for swap transactions" },
+        "toDevice": { "type": "string", "description": "Target device for swap transactions" },
+        "transactionStatus": { "type": "string", "enum": ["Purchase Completed", "Swap Completed", "Transaction Completed"], "description": "Completion status badge" },
+        "isVerifiedTransaction": { "type": "boolean", "description": "Whether the transaction has verified proof" },
+        "verifiedOrderRef": { "type": "string", "description": "Optional verified order reference number" },
+        "originalImageUrl": { "type": "string", "description": "Private source screenshot URL" },
+        "originalImagePublicId": { "type": "string", "description": "Private source Cloudinary public ID" },
+        "publicImageUrl": { "type": "string", "description": "Sanitized, permanently redacted public screenshot URL" },
+        "publicImagePublicId": { "type": "string", "description": "Public Cloudinary image public ID" },
+        "status": { "type": "string", "enum": ["Draft", "Published", "Unpublished"], "description": "Publishing status" },
+        "orderIndex": { "type": "number", "description": "Display order index" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Update timestamp" }
+      },
+      "required": ["customerName", "testimonialText", "transactionType", "transactionStatus", "status", "createdAt"]
+    },
+    "Customer": {
+      "title": "Customer",
+      "description": "Customer profile for notification alerts and order communication",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Customer unique identifier" },
+        "name": { "type": "string", "description": "Customer full name" },
+        "phone": { "type": "string", "description": "Normalized customer phone / WhatsApp number" },
+        "email": { "type": "string", "format": "email", "description": "Optional customer email address" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last update timestamp" }
+      },
+      "required": ["id", "name", "phone", "createdAt", "updatedAt"]
+    },
+    "ProductAlert": {
+      "title": "ProductAlert",
+      "description": "Customer alert subscription for restock or price change notifications",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique alert identifier" },
+        "customerId": { "type": "string", "description": "Reference ID to customer" },
+        "productId": { "type": "string", "description": "Reference ID to product" },
+        "productName": { "type": "string", "description": "Product display name at time of subscription" },
+        "alertType": { "type": "string", "enum": ["RESTOCK", "PRICE_CHANGE"], "description": "Type of alert" },
+        "active": { "type": "boolean", "description": "Whether the alert subscription is currently active" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Subscription timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last modified timestamp" }
+      },
+      "required": ["id", "customerId", "productId", "productName", "alertType", "active", "createdAt", "updatedAt"]
+    },
+    "NotificationJob": {
+      "title": "NotificationJob",
+      "description": "Notification job queued for automated delivery processing",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique notification job ID" },
+        "customerId": { "type": "string", "description": "Target customer ID" },
+        "productId": { "type": "string", "description": "Target product ID" },
+        "alertId": { "type": "string", "description": "Triggering product alert ID" },
+        "notificationType": { "type": "string", "enum": ["RESTOCK", "PRICE_CHANGE", "PRICE_DROP", "PRICE_INCREASE"], "description": "Notification category" },
+        "channel": { "type": "string", "enum": ["WHATSAPP", "SMS", "EMAIL"], "description": "Notification channel" },
+        "title": { "type": "string", "description": "Notification title" },
+        "message": { "type": "string", "description": "Draft message content" },
+        "status": { "type": "string", "enum": ["PENDING", "PROCESSING", "SENT", "FAILED"], "description": "Job status" },
+        "attempts": { "type": "number", "description": "Delivery attempts count" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "scheduledAt": { "type": "string", "format": "date-time", "description": "Scheduled delivery timestamp" },
+        "sentAt": { "type": "string", "format": "date-time", "description": "Actual delivery timestamp" },
+        "error": { "type": "string", "description": "Error details if failed" }
+      },
+      "required": ["id", "customerId", "productId", "alertId", "notificationType", "channel", "title", "message", "status", "attempts", "createdAt"]
     }
   },
   "firestore": {
     "/products/{productId}": {
       "schema": "Product",
       "description": "Collection of all smartphones and products"
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Collection of all protected customer orders"
+    },
+    "/testimonials/{testimonialId}": {
+      "schema": "Testimonial",
+      "description": "Collection of customer testimonials and proof records"
+    },
+    "/customers/{customerId}": {
+      "schema": "Customer",
+      "description": "Collection of unique customers subscribed to notifications and orders"
+    },
+    "/productAlerts/{alertId}": {
+      "schema": "ProductAlert",
+      "description": "Customer notification alert preferences for specific products"
+    },
+    "/notificationQueue/{notificationId}": {
+      "schema": "NotificationJob",
+      "description": "Queue of notification tasks prepared for notification processing"
     }
   }
 }

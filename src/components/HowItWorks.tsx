@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, ShieldAlert, Award, Sparkles, Send, CheckCircle2 } from "lucide-react";
+import { Search, ShoppingBag, ClipboardCheck, Truck, CheckCircle2 } from "lucide-react";
 
 export default function HowItWorks() {
   const [activeStep, setActiveStep] = useState(1);
@@ -7,43 +7,43 @@ export default function HowItWorks() {
   const steps = [
     {
       number: 1,
-      title: "Choose Device",
-      subtitle: "Filter Brand & Grade",
+      title: "Choose Your Device",
+      subtitle: "Browse & Compare",
       icon: Search,
-      brief: "Browse guaranteed physical inventory. Inspect detailed battery levels, specs and choose original accessories.",
-      extended: "Filter through custom brands (Apple, Samsung, Google), choosing between factory sealed Brand New flagships or Grade A++ Premium UK Used units thoroughly cleared of functional defects."
+      brief: "Find the device you want and review its price, specifications, availability, and seller information.",
+      extended: "Browse our verified catalog across Apple, Samsung, Google Pixel, and other brands. Filter by condition (Brand New or Grade A++ UK Used), inspect battery health, check storage options, and review transparent pricing."
     },
     {
       number: 2,
-      title: "Secure Payment",
-      subtitle: "Escrow Vault Allocation",
-      icon: ShieldAlert,
-      brief: "Your checkout funds are safely provisioned under direct escrow protection, locking out scam merchants.",
-      extended: "Our payments framework is fully integrated with Nigerian standards. Money doesn't enter our operational budget until the courier delivers the phone and you confirm full satisfaction."
+      title: "Order Now",
+      subtitle: "Start Your Order",
+      icon: ShoppingBag,
+      brief: "Select your preferred device and click Order Now to begin your order through MILITO.",
+      extended: "Select your chosen device, storage option, and color. Click the 'Order Now' button to instantly open direct order communication with all product and configuration details pre-filled."
     },
     {
       number: 3,
-      title: "Order Processing",
-      subtitle: "35-Point Final Diagnostics",
-      icon: Sparkles,
-      brief: "A final mechanic audit checks touch, cameras, and network bans, wrapping with bubble protection.",
-      extended: "Before your tracking code activates, senior technicians run the phone through physical touch, biometric logs, speaker grates, and battery tests, packing it in dust-secure custom MILITO parcels."
+      title: "Confirm Your Order",
+      subtitle: "Order Confirmation",
+      icon: ClipboardCheck,
+      brief: "Confirm the product details, availability, quantity, and other relevant order information.",
+      extended: "Confirm your selected device specifications, stock availability, warranty period, delivery address or pickup preference with MILITO customer support."
     },
     {
       number: 4,
-      title: "Receive Device",
-      subtitle: "Insured Courier Hand-over",
-      icon: Send,
-      brief: "Your item is safely delivered. Dispatches log full destination coordinates for security.",
-      extended: "Through direct collaboration with insured express dispatch riders, your parcel reaches Lagos addresses in 24 hours, Abuja paths in 48 hours, and wider Nigerian cities within 2 to 3 days."
+      title: "Order Fulfillment",
+      subtitle: "Seller Processes Your Order",
+      icon: Truck,
+      brief: "Once the order is confirmed, the seller prepares the device for delivery or collection.",
+      extended: "The verified seller conducts final quality checks, packages your device securely, and dispatches it through reliable express delivery across Lagos, Abuja, and nationwide."
     },
     {
       number: 5,
-      title: "Confirm Satisfaction",
-      subtitle: "Funds Release Authentication",
+      title: "Receive Your Device",
+      subtitle: "Delivery & Completion",
       icon: CheckCircle2,
-      brief: "Run tests yourself. Once checked, sign the release code to finalize the payment exchange.",
-      extended: "Unbox the package, inspect battery statistics, cameras, and connectivity in front of the dispatch rider. If 100% satisfied, enter the release token to finalize the secure payment transfer."
+      brief: "Receive your device and complete the order once you've received what you purchased.",
+      extended: "Receive your parcel, inspect your device and included accessories to verify its condition and specifications, and enjoy your new smartphone."
     }
   ];
 
@@ -54,13 +54,13 @@ export default function HowItWorks() {
         {/* Title */}
         <div className="text-center max-w-3xl mx-auto mb-16">
           <span className="text-xs uppercase font-extrabold tracking-widest text-milito-green bg-milito-green/10 px-3.5 py-1.5 rounded-full inline-block mb-3 border border-milito-green/20">
-            Secure Process
+            Simple Buying Process
           </span>
           <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight font-sans">
-            How Verified Buying Works
+            How Buying on MILITO Works
           </h2>
           <p className="text-gray-600 mt-4 text-base">
-            We've engineered a standard 5-step transaction lifecycle inside Nigeria, guaranteeing zero-risk smartphone trade-ins, buying, and shipping.
+            We've designed a simple process that makes it easy to discover a device, connect with the seller, confirm your order, and receive your purchase.
           </p>
         </div>
 
@@ -127,7 +127,7 @@ export default function HowItWorks() {
           </div>
           <div className="flex-1">
             <h4 className="text-gray-900 font-extrabold text-base md:text-lg">
-              {steps[activeStep - 1].title} Details – <span className="text-milito-green font-bold text-sm">{steps[activeStep - 1].subtitle}</span>
+              {steps[activeStep - 1].title} – <span className="text-milito-green font-bold text-sm">{steps[activeStep - 1].subtitle}</span>
             </h4>
             <p className="text-gray-600 text-xs md:text-sm leading-relaxed mt-2">
               {steps[activeStep - 1].extended}
