@@ -105,6 +105,14 @@ export default function SwapDealsPage({
     return initialDraft?.selectedStorage || "";
   });
 
+  const [customModelName, setCustomModelName] = useState<string>(() => {
+    return initialDraft?.customModelName || "";
+  });
+
+  const [selectedRam, setSelectedRam] = useState<string>(() => {
+    return initialDraft?.selectedRam || "";
+  });
+
   const [conditionAnswers, setConditionAnswers] = useState<SwapDeviceConditionAnswers>(() => {
     if (initialDraft?.conditionAnswers && Object.keys(initialDraft.conditionAnswers).length > 0) {
       return {
@@ -230,7 +238,9 @@ export default function SwapDealsPage({
         maxReachedStep,
         selectedBrand,
         selectedModel,
+        customModelName,
         selectedStorage,
+        selectedRam,
         conditionAnswers,
         selectedTargetProductId: selectedTargetProduct?.id || null,
         selectedTargetProductSnapshot: selectedTargetProduct
@@ -251,7 +261,9 @@ export default function SwapDealsPage({
     maxReachedStep,
     selectedBrand,
     selectedModel,
+    customModelName,
     selectedStorage,
+    selectedRam,
     conditionAnswers,
     selectedTargetProduct,
     submittedRequest,
@@ -264,7 +276,9 @@ export default function SwapDealsPage({
       if (draft && !submittedRequest) {
         if (draft.selectedBrand && draft.selectedBrand !== selectedBrand) setSelectedBrand(draft.selectedBrand);
         if (draft.selectedModel && draft.selectedModel !== selectedModel) setSelectedModel(draft.selectedModel);
+        if (draft.customModelName !== undefined && draft.customModelName !== customModelName) setCustomModelName(draft.customModelName);
         if (draft.selectedStorage && draft.selectedStorage !== selectedStorage) setSelectedStorage(draft.selectedStorage);
+        if (draft.selectedRam !== undefined && draft.selectedRam !== selectedRam) setSelectedRam(draft.selectedRam);
         if (draft.currentStep && draft.currentStep !== currentStep) setCurrentStep(draft.currentStep);
         if (draft.maxReachedStep && draft.maxReachedStep !== maxReachedStep) setMaxReachedStep(draft.maxReachedStep);
         setLastSavedTimestamp(draft.updatedAt);
@@ -303,7 +317,9 @@ export default function SwapDealsPage({
     setMaxReachedStep(1);
     setSelectedBrand("");
     setSelectedModel("");
+    setCustomModelName("");
     setSelectedStorage("");
+    setSelectedRam("");
     setConditionAnswers(INITIAL_UNSELECTED_CONDITION_ANSWERS);
     setSelectedTargetProduct(null);
     setTargetProductNotice(null);
@@ -320,7 +336,9 @@ export default function SwapDealsPage({
     setMaxReachedStep(1);
     setSelectedBrand("");
     setSelectedModel("");
+    setCustomModelName("");
     setSelectedStorage("");
+    setSelectedRam("");
     setConditionAnswers(INITIAL_UNSELECTED_CONDITION_ANSWERS);
     setSelectedTargetProduct(null);
     setTargetProductNotice(null);
@@ -452,8 +470,12 @@ export default function SwapDealsPage({
                 onSelectBrand={setSelectedBrand}
                 selectedModel={selectedModel}
                 onSelectModel={setSelectedModel}
+                customModelName={customModelName}
+                onSelectCustomModelName={setCustomModelName}
                 selectedStorage={selectedStorage}
                 onSelectStorage={setSelectedStorage}
+                selectedRam={selectedRam}
+                onSelectRam={setSelectedRam}
                 onNext={() => goToStep(2)}
               />
             )}
@@ -462,7 +484,7 @@ export default function SwapDealsPage({
             {currentStep === 2 && (
               <Step2ConditionAssessment
                 selectedBrand={selectedBrand}
-                selectedModel={selectedModel}
+                selectedModel={(selectedModel === "Other Model" && customModelName) ? customModelName : selectedModel}
                 selectedStorage={selectedStorage}
                 answers={conditionAnswers}
                 onChangeAnswers={setConditionAnswers}
@@ -474,8 +496,8 @@ export default function SwapDealsPage({
             {/* Step 3: Upgrade Selection */}
             {currentStep === 3 && (
               <Step3UpgradeSelection
-                currentModel={selectedModel}
-                currentStorage={selectedStorage}
+                currentModel={(selectedModel === "Other Model" && customModelName) ? customModelName : selectedModel}
+                currentStorage={`${selectedStorage}${selectedRam ? ` • ${selectedRam} RAM` : ""}`}
                 currentEstimatedGrade={currentValuation.grade || "Grade B"}
                 currentEstimatedValue={currentValuation.estimatedValue}
                 availableProducts={availableTargetProducts}
@@ -491,7 +513,9 @@ export default function SwapDealsPage({
               <Step4SubmitRequest
                 currentBrand={selectedBrand}
                 currentModel={selectedModel}
+                customModelName={customModelName}
                 currentStorage={selectedStorage}
+                currentRam={selectedRam}
                 answers={conditionAnswers}
                 targetProduct={selectedTargetProduct}
                 onBack={() => goToStep(3)}

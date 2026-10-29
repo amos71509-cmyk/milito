@@ -388,12 +388,12 @@ export default function CustomizerDashboard({
                 <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-5 space-y-4">
                   <h4 className="text-white text-xs font-extrabold tracking-wider uppercase flex items-center gap-1.5 border-b border-white/[0.04] pb-2.5">
                     <Check className="w-4.5 h-4.5 text-emerald-400" />
-                    Featured Security Header Trust Ribbon Settings
+                    Hero Trust Badge Settings
                   </h4>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-[10px] text-gray-400 font-extrabold uppercase">Secure Active Lock Badge Label Text</label>
+                      <label className="text-[10px] text-gray-400 font-extrabold uppercase">Hero Trust Badge Label</label>
                       <input
                         type="text"
                         value={config.hero.badgeTag}

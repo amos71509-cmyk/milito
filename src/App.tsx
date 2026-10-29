@@ -4,7 +4,6 @@ import { motion } from "motion/react";
 
 // Components
 import Header from "./components/Header";
-import MilitoStandards from "./components/MilitoStandards";
 import HomepageProductTeaser from "./components/HomepageProductTeaser";
 import HomepageAutomotiveTeaser from "./components/HomepageAutomotiveTeaser";
 import StorePage from "./components/StorePage";
@@ -26,6 +25,7 @@ import CheckoutModal from "./components/CheckoutModal";
 import SupportChat from "./components/SupportChat";
 import { SiteConfig } from "./components/CustomizerDashboard";
 import AdminDashboard from "./components/AdminDashboard";
+import CategoryShoppingPage, { CategoryKey } from "./components/CategoryShoppingPage";
 import PublicProductPage from "./components/PublicProductPage";
 import ShareProductModal from "./components/ShareProductModal";
 import { NotifyMeModal } from "./components/NotifyMeModal";
@@ -36,6 +36,7 @@ import { Product, ProductAlertType, CartItem, resolveImageUrl, extractProductOri
 import { SAMPLE_PRODUCTS, TESTIMONIALS, FAQS } from "./data";
 import { UploadService } from "./services/UploadService";
 import { searchStoreProducts } from "./utils/searchUtils";
+import { DiscoveryCardId } from "./context/DiscoveryCardsContext";
 import {
   saveScrollPosition,
   getSavedScrollPosition,
@@ -77,8 +78,17 @@ const DEFAULT_CONFIG: SiteConfig = {
 };
 
 export default function App() {
-  // Page Routing State: "gadgets" vs "store" vs "vehicles" vs "swap-deals"
-  const [activePage, setActivePage] = useState<"gadgets" | "store" | "vehicles" | "swap-deals">("gadgets");
+  // Page Routing State: "gateway" (initial two-option landing) vs "gadgets" vs "store" vs "vehicles" vs "swap-deals"
+  const [activePage, setActivePage] = useState<"gateway" | "gadgets" | "store" | "vehicles" | "swap-deals">(() => {
+    if (typeof window === "undefined") return "gateway";
+    const params = new URLSearchParams(window.location.search);
+    const viewParam = params.get("view");
+    if (viewParam === "gadgets" || viewParam === "store" || viewParam === "vehicles" || viewParam === "swap-deals") {
+      return viewParam;
+    }
+    return "gateway";
+  });
+  const [activeCategory, setActiveCategory] = useState<CategoryKey | null>(null);
 
   // Public Product Route state for Shareable Sales Funnel: /product/:slug--:id or ?product=:id
   const [publicProductRoute, setPublicProductRoute] = useState<{
@@ -119,9 +129,9 @@ export default function App() {
   const [notifyAlertType, setNotifyAlertType] = useState<ProductAlertType>("RESTOCK");
   const [checkoutOrderSource, setCheckoutOrderSource] = useState<string>("direct");
 
-  // Handle browser back/forward buttons with product deep links
+  // Handle browser back/forward buttons with product deep links and gateway/experience views
   useEffect(() => {
-    const handlePopState = () => {
+    const handlePopState = (event: PopStateEvent) => {
       const path = window.location.pathname;
       const search = window.location.search;
       const params = new URLSearchParams(search);
@@ -137,13 +147,31 @@ export default function App() {
         } else {
           setPublicProductRoute({ productId: raw, source });
         }
+        return;
+      }
+
+      const qProduct = params.get("product") || params.get("p");
+      if (qProduct) {
+        setPublicProductRoute({ productId: qProduct, source });
+        return;
+      }
+
+      setPublicProductRoute(null);
+      setActiveCategory(null);
+
+      const statePage = event.state?.page;
+      const viewParam = params.get("view");
+      const targetView = statePage || viewParam;
+      if (
+        targetView === "gateway" ||
+        targetView === "gadgets" ||
+        targetView === "store" ||
+        targetView === "vehicles" ||
+        targetView === "swap-deals"
+      ) {
+        setActivePage(targetView);
       } else {
-        const qProduct = params.get("product") || params.get("p");
-        if (qProduct) {
-          setPublicProductRoute({ productId: qProduct, source });
-        } else {
-          setPublicProductRoute(null);
-        }
+        setActivePage("gateway");
       }
     };
 
@@ -162,9 +190,10 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: "instant" });
   }, []);
 
-  const handleClosePublicProductPage = useCallback((targetPage: "store" | "gadgets" | "vehicles" = "store") => {
+  const handleClosePublicProductPage = useCallback((targetPage: "gateway" | "store" | "gadgets" | "vehicles" = "store") => {
     try {
-      window.history.pushState(null, "", "/");
+      const nextUrl = targetPage === "gateway" ? "/" : `/?view=${targetPage}`;
+      window.history.pushState({ page: targetPage }, "", nextUrl);
     } catch (e) {
       // safe fallback
     }
@@ -199,16 +228,23 @@ export default function App() {
     };
   }, [activePage]);
 
-  const handleNavigatePage = (page: "gadgets" | "store" | "vehicles" | "swap-deals", sectionId?: string) => {
+  const handleNavigatePage = (page: "gateway" | "gadgets" | "store" | "vehicles" | "swap-deals", sectionId?: string) => {
+    setActiveCategory(null);
     if (publicProductRoute) {
-      try {
-        window.history.pushState(null, "", "/");
-      } catch (e) {}
       setPublicProductRoute(null);
     }
 
     // Save current page position before switching
     saveScrollPosition(activePage);
+
+    if (activePage !== page || publicProductRoute) {
+      try {
+        const nextUrl = page === "gateway" ? "/" : `/?view=${page}`;
+        window.history.pushState({ page, sectionId }, "", nextUrl);
+      } catch (e) {
+        // safe fallback
+      }
+    }
 
     if (activePage === page && !sectionId) {
       // User tapped the same page tab without a section anchor: retain position
@@ -217,7 +253,12 @@ export default function App() {
 
     setActivePage(page);
 
-    if (page === "swap-deals" || page === "store") {
+    if (
+      page === "gateway" ||
+      page === "swap-deals" ||
+      page === "store" ||
+      (activePage === "gateway" && !sectionId)
+    ) {
       window.scrollTo({ top: 0, behavior: "instant" });
       return;
     }
@@ -242,6 +283,9 @@ export default function App() {
 
   // Dedicated back action from Swap Deals page that returns user specifically to the swap-deals section where they clicked the button
   const handleBackFromSwapDeals = useCallback(() => {
+    try {
+      window.history.pushState({ page: "gadgets" }, "", "/?view=gadgets");
+    } catch (e) {}
     setActivePage("gadgets");
     setTimeout(() => {
       const el = document.getElementById("swap-deals");
@@ -323,7 +367,26 @@ export default function App() {
     try {
       const saved = localStorage.getItem("milito_tech_site_config");
       if (saved) {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (parsed?.hero) {
+          if (typeof parsed.hero.badgeTag === "string" && (parsed.hero.badgeTag.includes("Escrow") || parsed.hero.badgeTag.includes("Lock") || parsed.hero.badgeTag.includes("Secure"))) {
+            parsed.hero.badgeTag = DEFAULT_CONFIG.hero.badgeTag;
+          }
+          if (typeof parsed.hero.badgeText === "string" && (parsed.hero.badgeText.includes("Escrow") || parsed.hero.badgeText.includes("Lock") || parsed.hero.badgeText.includes("Active in Nigeria"))) {
+            parsed.hero.badgeText = DEFAULT_CONFIG.hero.badgeText;
+          }
+        }
+        // Seamlessly merge any new sample products (such as iPad and Watch devices)
+        if (Array.isArray(parsed?.products)) {
+          const existingIds = new Set(parsed.products.map((p: any) => p.id));
+          const missing = DEFAULT_CONFIG.products.filter(p => !existingIds.has(p.id));
+          if (missing.length > 0) {
+            parsed.products = [...parsed.products, ...missing];
+          }
+        } else {
+          parsed.products = DEFAULT_CONFIG.products;
+        }
+        return parsed;
       }
     } catch (e) {
       console.error("Config parser error:", e);
@@ -536,6 +599,8 @@ export default function App() {
             availability: (typeof data.stockQuantity === "number" && Number(data.stockQuantity) <= 0) || (typeof data.quantity === "number" && Number(data.quantity) <= 0) || data.status === "Sold Out" || data.availability === "Sold Out" ? "Sold Out" : (data.status || data.availability || "In Stock"),
             featured: !!data.featured,
             categorySlug: data.categorySlug || (isVehicle ? "vehicles" : "phones"),
+            assignedAccessories: Array.isArray(data.assignedAccessories) ? data.assignedAccessories : undefined,
+            assignedAccessoryIds: Array.isArray(data.assignedAccessoryIds) ? data.assignedAccessoryIds : undefined,
             createdAt: data.createdAt || "",
             updatedAt: data.updatedAt || ""
           };
@@ -674,7 +739,6 @@ export default function App() {
   } | null>(null);
   const [isTrackerOpen, setIsTrackerOpen] = useState(false);
   const [trackerInitialOrderId, setTrackerInitialOrderId] = useState<string>("");
-  const [isProtectionLightboxOpen, setIsProtectionLightboxOpen] = useState(false);
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
   const [isCompareOpen, setIsCompareOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -684,16 +748,16 @@ export default function App() {
   const mobileActiveTab = useMemo<"home" | "shop" | "swap" | "cart" | "profile">(() => {
     if (isCartOpen) return "cart";
     if (isLoginModalOpen) return "profile";
-    if (activePage === "store") return "shop";
+    if (activeCategory || activePage === "store") return "shop";
     if (activePage === "swap-deals") return "swap";
     return "home";
-  }, [isCartOpen, isLoginModalOpen, activePage]);
+  }, [isCartOpen, isLoginModalOpen, activeCategory, activePage]);
 
   // Modal open/close handlers preserving exact background scroll coordinates
   const handleOpenProductDetails = useCallback((p: Product) => {
     saveModalScroll();
-    setSelectedProductDetails(p);
-  }, []);
+    handleOpenPublicProductPage(p, "spec");
+  }, [handleOpenPublicProductPage]);
 
   const handleCloseProductDetails = useCallback(() => {
     setSelectedProductDetails(null);
@@ -751,16 +815,6 @@ export default function App() {
     restoreModalScroll();
   }, []);
 
-  const handleOpenProtectionLightbox = useCallback(() => {
-    saveModalScroll();
-    setIsProtectionLightboxOpen(true);
-  }, []);
-
-  const handleCloseProtectionLightbox = useCallback(() => {
-    setIsProtectionLightboxOpen(false);
-    restoreModalScroll();
-  }, []);
-
   const handleOpenCompare = useCallback(() => {
     saveModalScroll();
     setIsCompareOpen(true);
@@ -771,15 +825,15 @@ export default function App() {
     restoreModalScroll();
   }, []);
 
-  // Lock body scroll when inline lightbox or compare modals are active
+  // Lock body scroll when compare modal is active
   useEffect(() => {
-    if (isProtectionLightboxOpen || isCompareOpen) {
+    if (isCompareOpen) {
       lockBodyScroll();
       return () => {
         unlockBodyScroll();
       };
     }
-  }, [isProtectionLightboxOpen, isCompareOpen]);
+  }, [isCompareOpen]);
 
   // Filter & Search states for Phones Catalogue
   const [brandFilter, setBrandFilter] = useState<"All" | "Apple" | "Samsung" | "Google Pixel" | "Tecno" | "Infinix" | "Redmi">("All");
@@ -854,17 +908,24 @@ export default function App() {
     return config.products.filter((p) => p.productType === "vehicle");
   }, [config.products]);
 
+  // Store initial search & brand state for Discovery Cards & Header Search
+  const [storeInitialSearch, setStoreInitialSearch] = useState<string>("");
+  const [storeInitialBrand, setStoreInitialBrand] = useState<string>("All");
+
+  const handleSelectDiscoveryCategory = (categoryId: DiscoveryCardId) => {
+    setActiveCategory(categoryId as CategoryKey);
+    window.scrollTo({ top: 0, behavior: "instant" });
+  };
+
   const handleExecuteSearch = (customQuery?: string) => {
     if (typeof customQuery === "string") {
       setSearchQuery(customQuery);
+      setStoreInitialSearch(customQuery);
+      try {
+        sessionStorage.setItem("milito_store_search", customQuery);
+      } catch (e) {}
     }
-    // Smooth scroll down to devices inventory section
-    setTimeout(() => {
-      const el = document.getElementById("store-inventory");
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-    }, 50);
+    handleNavigatePage("store");
   };
 
   // Filter computation for Phones - Memoized for high performance
@@ -956,41 +1017,298 @@ export default function App() {
 
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
 
-  return (
-    <div className="min-h-screen bg-white text-gray-950 selection:bg-milito-green selection:text-[#1A2025] w-full max-w-full overflow-x-clip pb-20 md:pb-0">
-      
-      {/* 1. Header Navigation Component with Sticky Positioning & Instant Search */}
-      <Header
-        cart={cart}
-        onUpdateCartQty={handleUpdateCartQty}
-        onRemoveFromCart={handleRemoveFromCart}
-        onOpenCheckout={handleOpenCheckout}
-        onOpenTracker={handleOpenTracker}
-        onScrollToSection={handleScrollToSection}
-        onOpenDashboard={handleOpenDashboard}
-        activePage={activePage}
-        onNavigatePage={handleNavigatePage}
-        products={config.products}
-        onSelectProduct={handleOpenProductDetails}
-        onExecuteSearch={handleExecuteSearch}
-        isCartOpen={isCartOpen}
-        onOpenCart={() => setIsCartOpen(true)}
-        onCloseCart={() => setIsCartOpen(false)}
-        isLoginModalOpen={isLoginModalOpen}
-        onOpenLoginModal={() => setIsLoginModalOpen(true)}
-        onCloseLoginModal={() => setIsLoginModalOpen(false)}
+  const gadgetFaqs = useMemo(() => {
+    return FAQS.filter((faq) => faq.category !== "Imports");
+  }, []);
+
+  const isInitialGatewayView = !publicProductRoute && !activeCategory && activePage === "gateway";
+
+  // Horizontal Gateway Carousel state (0 = Shop Gadgets, 1 = Explore Cars) — manual user swipe only
+  const [gatewaySlideIndex, setGatewaySlideIndex] = useState<0 | 1>(0);
+  const [gatewayDragOffset, setGatewayDragOffset] = useState<number>(0);
+  const [isGatewayDragging, setIsGatewayDragging] = useState<boolean>(false);
+  const gatewayDragStartXRef = useRef<number | null>(null);
+  const gatewayWheelCooldownRef = useRef<number>(0);
+
+  const handleGatewayDragStart = (clientX: number) => {
+    gatewayDragStartXRef.current = clientX;
+    setIsGatewayDragging(true);
+    setGatewayDragOffset(0);
+  };
+
+  const handleGatewayDragMove = (clientX: number) => {
+    if (!isGatewayDragging || gatewayDragStartXRef.current === null) return;
+    const deltaX = clientX - gatewayDragStartXRef.current;
+    setGatewayDragOffset(deltaX);
+  };
+
+  const handleGatewayDragEnd = () => {
+    if (!isGatewayDragging) return;
+    const threshold = 50; // minimum px swipe to change slide
+    if (gatewayDragOffset < -threshold) {
+      // Swiped left -> next slide (or wrap)
+      setGatewaySlideIndex((prev) => (prev === 0 ? 1 : 0));
+    } else if (gatewayDragOffset > threshold) {
+      // Swiped right -> previous slide (or wrap)
+      setGatewaySlideIndex((prev) => (prev === 1 ? 0 : 1));
+    }
+    gatewayDragStartXRef.current = null;
+    setGatewayDragOffset(0);
+    setIsGatewayDragging(false);
+  };
+
+  const renderGadgetHeroCarousel = (isGatewayMode: boolean) => (
+    <section
+      style={{ backgroundColor: "#1A2025" }}
+      className={`relative flex items-center justify-center text-white overflow-hidden select-none ${
+        isGatewayMode
+          ? "min-h-screen h-full w-full py-12 sm:py-16 lg:py-20"
+          : "min-h-[calc(100vh-80px)] xl:min-h-screen py-20 border-b border-white/[0.04]"
+      }`}
+      id="hero"
+    >
+      {/* Background video */}
+      <div className="absolute inset-0 z-0 overflow-hidden select-none pointer-events-none">
+        <video
+          ref={videoRef}
+          src="https://res.cloudinary.com/militotech/video/upload/v1782058769/9f6ae906f73ccfec6f37203801e8eb81_720w_l1qwvu.mp4"
+          autoPlay={true}
+          loop={true}
+          muted={true}
+          playsInline={true}
+          className="w-full h-full object-cover opacity-45 transition-opacity duration-1000"
+        />
+        {/* Protecting layer - balanced for high contrast with hero text */}
+        <div className="absolute inset-0 bg-[#1A2025]/30"></div>
+      </div>
+
+      {/* Subtle grid with rich dark background */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff_1px,transparent_1px),linear-gradient(to_bottom,#ffffff_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-[0.03] z-0"></div>
+      <div className="absolute inset-0 bg-gradient-to-b from-[#1A2025] via-transparent to-[#1A2025] opacity-75 z-0"></div>
+
+      {/* Soft floating moving gradients / ambient green glow accents */}
+      <motion.div
+        animate={{
+          x: [-30, 30, -30],
+          y: [-40, 40, -40],
+        }}
+        transition={{
+          duration: 18,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+        className="absolute top-1/4 left-1/3 w-[360px] h-[360px] rounded-full bg-milito-green/[0.07] blur-[140px] pointer-events-none z-0"
       />
+      <motion.div
+        animate={{
+          x: [40, -40, 40],
+          y: [30, -30, 30],
+        }}
+        transition={{
+          duration: 22,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+        className="absolute bottom-1/4 right-1/4 w-[300px] h-[300px] rounded-full bg-emerald-500/[0.04] blur-[120px] pointer-events-none z-0"
+      />
+
+      {/* Subtle Floating particles */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-40 z-0">
+        {Array.from({ length: config.hero.particleCount || 15 }).map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute w-1 h-1 bg-milito-green/30 rounded-full"
+            style={{
+              left: `${(i * 7) % 100}%`,
+              top: `${((i * 13) % 40) + 40}%`,
+            }}
+            animate={{
+              y: [0, -70, 0],
+              opacity: [0.1, 0.6, 0.1],
+            }}
+            transition={{
+              duration: 7 + (i % 5) * 2.5,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: i * 0.3,
+            }}
+          />
+        ))}
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full">
+        <div className="max-w-4xl mx-auto space-y-7 text-center z-10">
+          <motion.h1
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.1 }}
+            className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-[1.1] font-sans"
+          >
+            {config.hero.titleLine1}
+            <br className="hidden sm:block" />
+            <span className="text-milito-green drop-shadow-[0_0_15px_rgba(0,177,79,0.3)]">
+              {config.hero.titleLine2Color}
+            </span>
+            <br className="hidden sm:block" />
+            {config.hero.titleLine3}
+          </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.2 }}
+            className="text-gray-300 text-sm sm:text-base lg:text-lg max-w-2xl mx-auto leading-relaxed font-semibold transition-colors duration-200"
+          >
+            {config.hero.subtitle}
+          </motion.p>
+
+          {/* Single Centered Call to Action: Shop Gadgets */}
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.3 }}
+            className="flex items-center justify-center"
+          >
+            <button
+              onClick={() => handleNavigatePage(isGatewayMode ? "gadgets" : "store")}
+              className="w-full sm:w-auto px-9 py-4 rounded-xl bg-milito-green text-black font-extrabold text-sm uppercase tracking-wider hover:brightness-110 shadow-[0_4px_25px_rgba(0,177,79,0.35)] active:scale-98 transition duration-200 cursor-pointer inline-flex items-center justify-center gap-2"
+            >
+              <span>Shop Gadgets</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </motion.div>
+
+          {/* Dynamic trust badges/cards with animated bouncing, linear courier delivery, and rotating swap */}
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.4 }}
+            className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-5 max-w-2xl mx-auto border-none animate-fadeIn"
+          >
+            {/* Card 1: Verified Devices */}
+            <div className="flex flex-col items-center text-center bg-white/[0.02] hover:bg-white/[0.04] p-3.5 rounded-xl border border-milito-green/20 backdrop-blur-sm transition-all duration-300 group">
+              <motion.div
+                animate={{ y: [0, -12, 0, -4, 0] }}
+                transition={{
+                  duration: 1.3,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+                className="w-10 h-10 rounded-full flex items-center justify-center mb-2.5 text-milito-green bg-milito-green/10 border border-milito-green/30 shadow-[0_0_15px_rgba(0,177,79,0.25)]"
+              >
+                <ShieldCheck className="w-5 h-5 text-milito-green" />
+              </motion.div>
+              <span className="block text-xs font-extrabold text-white group-hover:text-milito-green transition-colors">
+                Verified Devices
+              </span>
+              <span className="text-[9px] font-bold text-gray-400 tracking-wider mt-1 block uppercase">
+                35-point QC inspection
+              </span>
+            </div>
+
+            {/* Card 2: Nationwide Delivery */}
+            <div className="flex flex-col items-center text-center bg-white/[0.02] hover:bg-white/[0.04] p-3.5 rounded-xl border border-blue-400/20 backdrop-blur-sm transition-all duration-300 group overflow-hidden">
+              <div className="w-full h-10 relative overflow-hidden flex items-center mb-2.5 bg-blue-500/10 rounded-xl border border-blue-400/20 px-1">
+                <div className="absolute inset-x-2 bottom-2 h-[1px] border-b border-dashed border-blue-400/35 pointer-events-none" />
+                <motion.div
+                  animate={{ left: ["-28px", "calc(100% + 5px)"] }}
+                  transition={{
+                    duration: 2.8,
+                    repeat: Infinity,
+                    ease: "linear",
+                  }}
+                  className="absolute bottom-2 text-blue-400 flex items-center justify-center pointer-events-none"
+                >
+                  <Truck className="w-5 h-5 text-blue-400 fill-blue-400/20 drop-shadow-[0_0_8px_rgba(96,165,250,0.7)]" />
+                </motion.div>
+              </div>
+              <span className="block text-xs font-extrabold text-white group-hover:text-blue-400 transition-colors">
+                Nationwide Delivery
+              </span>
+              <span className="text-[9px] font-bold text-gray-400 tracking-wider mt-1 block uppercase">
+                Insured & tracked courier
+              </span>
+            </div>
+
+            {/* Card 3: Swapping-In Available */}
+            <div className="flex flex-col items-center text-center bg-white/[0.02] hover:bg-white/[0.04] p-3.5 rounded-xl border border-amber-400/20 backdrop-blur-sm transition-all duration-300 group">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{
+                  duration: 2.8,
+                  repeat: Infinity,
+                  ease: "linear",
+                }}
+                className="w-10 h-10 rounded-full flex items-center justify-center mb-2.5 text-amber-400 bg-amber-400/10 border border-amber-400/30 shadow-[0_0_15px_rgba(251,191,36,0.2)]"
+                style={{ transformOrigin: "center center" }}
+              >
+                <RefreshCw className="w-5 h-5 text-amber-400" />
+              </motion.div>
+              <span className="block text-xs font-extrabold text-white group-hover:text-amber-400 transition-colors">
+                Swapping-In Available
+              </span>
+              <span className="text-[9px] font-bold text-gray-400 tracking-wider mt-1 block uppercase">
+                Instant upgrade credit
+              </span>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    </section>
+  );
+
+  return (
+    <div
+      className={`min-h-screen bg-white text-gray-950 selection:bg-milito-green selection:text-[#1A2025] w-full max-w-full overflow-x-clip ${
+        isInitialGatewayView || activePage === "vehicles" ? "pb-0" : "pb-20 md:pb-0"
+      }`}
+    >
+      {/* 1. Header Navigation Component (Hidden on the initial two-option Gateway) */}
+      {!isInitialGatewayView && (
+        <Header
+          cart={cart}
+          onUpdateCartQty={handleUpdateCartQty}
+          onRemoveFromCart={handleRemoveFromCart}
+          onOpenCheckout={handleOpenCheckout}
+          onOpenTracker={handleOpenTracker}
+          onScrollToSection={handleScrollToSection}
+          onOpenDashboard={handleOpenDashboard}
+          activePage={activePage}
+          onNavigatePage={handleNavigatePage}
+          products={config.products}
+          onSelectProduct={handleOpenProductDetails}
+          onExecuteSearch={handleExecuteSearch}
+          isCartOpen={isCartOpen}
+          onOpenCart={() => setIsCartOpen(true)}
+          onCloseCart={() => setIsCartOpen(false)}
+          isLoginModalOpen={isLoginModalOpen}
+          onOpenLoginModal={() => setIsLoginModalOpen(true)}
+          onCloseLoginModal={() => setIsLoginModalOpen(false)}
+          isCategoryMode={Boolean(activeCategory)}
+          onNavigateHome={() => {
+            setActiveCategory(null);
+            handleNavigatePage("gadgets");
+          }}
+          onAddToCart={handleAddToCart}
+        />
+      )}
 
       {publicProductRoute ? (
         <PublicProductPage
           product={activePublicProduct}
           allProducts={config.products}
           trafficSource={publicProductRoute.source}
-          onNavigateHome={() => handleClosePublicProductPage("gadgets")}
-          onNavigateStore={() => handleClosePublicProductPage("store")}
+          onNavigateHome={() =>
+            handleClosePublicProductPage(activePublicProduct?.productType === "vehicle" ? "vehicles" : "gadgets")
+          }
+          onNavigateStore={() =>
+            handleClosePublicProductPage(activePublicProduct?.productType === "vehicle" ? "vehicles" : "store")
+          }
           onSelectProduct={(p) => {
             handleOpenPublicProductPage(p, publicProductRoute.source);
           }}
+          onAddToCart={handleAddToCart}
+          onOpenCart={() => setIsCartOpen(true)}
           onOrderNow={(prod, storage, color, price, src) => {
             handleBuyNowProtectedOrder(prod, storage, color, price, src || publicProductRoute.source);
           }}
@@ -998,339 +1316,291 @@ export default function App() {
           onShare={handleShareProduct}
           onNotifyMe={handleOpenNotifyMe}
         />
+      ) : activeCategory ? (
+        <CategoryShoppingPage
+          category={activeCategory}
+          products={config.products}
+          compareList={compareList}
+          onToggleCompare={toggleCompare}
+          onOpenDetails={handleOpenProductDetails}
+          onQuickAdd={handleQuickAdd}
+          onShareProduct={handleShareProduct}
+          onBackToHome={() => {
+            setActiveCategory(null);
+            handleNavigatePage("gadgets");
+          }}
+          onSelectCategory={(cat) => {
+            setActiveCategory(cat);
+          }}
+          onOpenCart={() => setIsCartOpen(true)}
+        />
+      ) : activePage === "gateway" ? (
+        /* INITIAL TWO-OPTION HORIZONTAL GATEWAY CAROUSEL: Side-by-side slides swiped manually by the user */
+        <main
+          className="relative w-full min-h-screen overflow-hidden bg-[#070A10] select-none touch-pan-y cursor-grab active:cursor-grabbing"
+          onTouchStart={(e) => {
+            if (e.touches && e.touches[0]) {
+              handleGatewayDragStart(e.touches[0].clientX);
+            }
+          }}
+          onTouchMove={(e) => {
+            if (e.touches && e.touches[0]) {
+              handleGatewayDragMove(e.touches[0].clientX);
+            }
+          }}
+          onTouchEnd={handleGatewayDragEnd}
+          onTouchCancel={handleGatewayDragEnd}
+          onMouseDown={(e) => {
+            // Ignore clicks on buttons so CTAs fire normally
+            if ((e.target as HTMLElement).closest("button, a")) return;
+            handleGatewayDragStart(e.clientX);
+          }}
+          onMouseMove={(e) => {
+            handleGatewayDragMove(e.clientX);
+          }}
+          onMouseUp={handleGatewayDragEnd}
+          onMouseLeave={handleGatewayDragEnd}
+          onWheel={(e) => {
+            if (Math.abs(e.deltaX) > 35 && Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+              const now = Date.now();
+              if (now - gatewayWheelCooldownRef.current > 600) {
+                gatewayWheelCooldownRef.current = now;
+                if (e.deltaX > 0) {
+                  setGatewaySlideIndex(1);
+                } else {
+                  setGatewaySlideIndex(0);
+                }
+              }
+            }
+          }}
+        >
+          {/* Horizontal Flex Track containing the two Hero Carousels side-by-side */}
+          <div
+            className={`flex flex-row w-full min-h-screen items-stretch will-change-transform ${
+              isGatewayDragging ? "transition-none" : "transition-transform duration-700 ease-out"
+            }`}
+            style={{
+              transform: `translate3d(calc(-${gatewaySlideIndex * 100}% + ${gatewayDragOffset}px), 0, 0)`,
+            }}
+          >
+            {/* Slide 1: Shop Gadgets Hero Carousel */}
+            <div className="w-full min-w-full min-h-screen flex-shrink-0 flex flex-col">
+              {renderGadgetHeroCarousel(true)}
+            </div>
+
+            {/* Slide 2: Explore Cars Hero Carousel */}
+            <div className="w-full min-w-full min-h-screen flex-shrink-0 flex flex-col">
+              <VehicleShowcaseBanner
+                isGatewayMode={true}
+                onExploreVehicles={() => handleNavigatePage("vehicles")}
+                onOpenEstimator={() => handleNavigatePage("vehicles", "vehicle-import")}
+                vehicleCount={vehicleProducts.length}
+              />
+            </div>
+          </div>
+
+          {/* Manual Side-by-Side Slide Arrows for easy swiping/switching between the two carousels */}
+          {gatewaySlideIndex === 1 && (
+            <button
+              type="button"
+              onClick={() => setGatewaySlideIndex(0)}
+              aria-label="Previous Carousel Slide"
+              className="fixed left-3 sm:left-5 top-1/2 -translate-y-1/2 z-50 w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/65 hover:bg-black/90 text-white border border-white/25 backdrop-blur-md flex items-center justify-center shadow-[0_8px_25px_rgba(0,0,0,0.5)] transition-all cursor-pointer active:scale-95"
+            >
+              <ChevronLeft className="w-6 h-6" />
+            </button>
+          )}
+          {gatewaySlideIndex === 0 && (
+            <button
+              type="button"
+              onClick={() => setGatewaySlideIndex(1)}
+              aria-label="Next Carousel Slide"
+              className="fixed right-3 sm:right-5 top-1/2 -translate-y-1/2 z-50 w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/65 hover:bg-black/90 text-white border border-white/25 backdrop-blur-md flex items-center justify-center shadow-[0_8px_25px_rgba(0,0,0,0.5)] transition-all cursor-pointer active:scale-95"
+            >
+              <ChevronRight className="w-6 h-6" />
+            </button>
+          )}
+        </main>
       ) : activePage === "vehicles" ? (
+        /* CAR-ONLY HOMEPAGE */
         <VehiclesPage
           vehicles={vehicleProducts}
           compareList={compareList}
           onToggleCompare={toggleCompare}
           onOpenDetails={handleOpenProductDetails}
           onQuickAdd={handleQuickAdd}
-          onBackToGadgets={() => handleNavigatePage("gadgets")}
+          onBackToGadgets={() => handleNavigatePage("gateway")}
           onScrollToSection={handleScrollToSection}
           onShareProduct={handleShareProduct}
         />
       ) : activePage === "swap-deals" ? (
         <SwapDealsPage
           onBack={handleBackFromSwapDeals}
-          products={config.products}
+          products={phoneProducts}
           initialTargetProduct={swapTargetProduct}
           onClearTargetProduct={() => setSwapTargetProduct(null)}
         />
       ) : activePage === "store" ? (
         <StorePage
-          products={config.products}
+          products={phoneProducts}
           compareList={compareList}
           onToggleCompare={toggleCompare}
           onOpenDetails={handleOpenProductDetails}
           onQuickAdd={handleQuickAdd}
+          initialSearch={storeInitialSearch}
+          initialBrand={storeInitialBrand}
           onShareProduct={handleShareProduct}
         />
       ) : (
+        /* GADGET-ONLY HOMEPAGE (Starts directly with Main Homepage sections — Hero Carousel is NOT repeated) */
         <>
-          {/* 2. Hero Section */}
-          <section 
-            style={{ backgroundColor: '#1A2025' }}
-            className="relative min-h-[calc(100vh-80px)] xl:min-h-screen flex items-center justify-center py-20 text-white border-b border-white/[0.04] overflow-hidden select-none" 
-            id="hero"
-          >
-        {/* Background video */}
-        <div className="absolute inset-0 z-0 overflow-hidden select-none pointer-events-none">
-          <video
-            ref={videoRef}
-            src="https://res.cloudinary.com/militotech/video/upload/v1782058769/9f6ae906f73ccfec6f37203801e8eb81_720w_l1qwvu.mp4"
-            autoPlay={true}
-            loop={true}
-            muted={true}
-            playsInline={true}
-            className="w-full h-full object-cover opacity-45 transition-opacity duration-1000"
+          {/* Plain text link with clear arrow allowing the user to revisit the Main Carousel */}
+          <div id="hero" className="bg-white pt-5 pb-1 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-7xl mx-auto">
+              <button
+                type="button"
+                onClick={() => handleNavigatePage("gateway")}
+                className="inline-flex items-center gap-2 text-sm sm:text-base font-extrabold text-[#1A2025] hover:text-milito-green transition-colors cursor-pointer group bg-transparent border-0 p-0 shadow-none"
+              >
+                <ArrowLeft className="w-5 h-5 text-milito-green stroke-[2.5] transition-transform group-hover:-translate-x-1" />
+                <span>Back to Main Carousel</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 2. HOMEPAGE PRODUCT TEASER: Visual Discovery Cards */}
+          <HomepageProductTeaser
+            onExploreStore={() => {
+              setStoreInitialSearch("");
+              setStoreInitialBrand("All");
+              try {
+                sessionStorage.setItem("milito_store_category", "All");
+                sessionStorage.setItem("milito_store_search", "");
+              } catch (e) {}
+              handleNavigatePage("store");
+            }}
+            onSelectCategory={handleSelectDiscoveryCategory}
           />
-          {/* Protecting layer - balanced for high contrast with hero text */}
-          <div className="absolute inset-0 bg-[#1A2025]/30"></div>
-        </div>
 
-        {/* Subtle grid with rich dark background */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff_1px,transparent_1px),linear-gradient(to_bottom,#ffffff_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-[0.03] z-0"></div>
-        <div className="absolute inset-0 bg-gradient-to-b from-[#1A2025] via-transparent to-[#1A2025] opacity-75 z-0"></div>
+          {/* 4. Premium Full-Bleed Swap Deals Section */}
+          <SwapDealsSection
+            onSwapClick={() => {
+              handleNavigatePage("swap-deals");
+            }}
+          />
 
-        {/* Soft floating moving gradients / ambient green glow accents */}
-        <motion.div
-          animate={{
-            x: [-30, 30, -30],
-            y: [-40, 40, -40],
-          }}
-          transition={{
-            duration: 18,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-          className="absolute top-1/4 left-1/3 w-[360px] h-[360px] rounded-full bg-milito-green/[0.07] blur-[140px] pointer-events-none z-0"
-        />
-        <motion.div
-          animate={{
-            x: [40, -40, 40],
-            y: [30, -30, 30],
-          }}
-          transition={{
-            duration: 22,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-          className="absolute bottom-1/4 right-1/4 w-[300px] h-[300px] rounded-full bg-emerald-500/[0.04] blur-[120px] pointer-events-none z-0"
-        />
+          {/* 5. Detailed 35-Point MILITO QC Section & Simulator */}
+          <MilitoQCSection />
 
-        {/* Subtle Floating particles */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-40 z-0">
-          {Array.from({ length: config.hero.particleCount || 15 }).map((_, i) => (
-            <motion.div
-              key={i}
-              className="absolute w-1 h-1 bg-milito-green/30 rounded-full"
-              style={{
-                left: `${(i * 7) % 100}%`,
-                top: `${((i * 13) % 40) + 40}%`,
-              }}
-              animate={{
-                y: [0, -70, 0],
-                opacity: [0.1, 0.6, 0.1],
-              }}
-              transition={{
-                duration: 7 + (i % 5) * 2.5,
-                repeat: Infinity,
-                ease: "easeInOut",
-                delay: i * 0.3,
-              }}
-            />
-          ))}
-        </div>
+          {/* 6. Verified Nigeria Clients Testimonials & Customer Proof */}
+          <PublicTestimonialsSection
+            onExploreDevices={() => {
+              handleNavigatePage("store");
+            }}
+            onStartSwap={() => {
+              handleNavigatePage("swap-deals");
+            }}
+          />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full">
-          <div className="max-w-4xl mx-auto space-y-8 text-center z-10">
-            
-            <motion.div 
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              className="inline-flex items-center gap-2 bg-white/[0.03] p-1.5 pr-4 rounded-full border border-white/[0.08] backdrop-blur-md"
-            >
-              <span className="text-[10px] bg-milito-green text-black font-extrabold px-3 py-1 rounded-full uppercase tracking-wider block">
-                {config.hero.badgeTag}
-              </span>
-              <span className="text-xs font-semibold text-gray-300">
-                {config.hero.badgeText}
-              </span>
-            </motion.div>
+          {/* 7. Detailed Gadget FAQ Section accordion */}
+          <section className="py-24 bg-white border-b border-gray-100" id="faq">
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="text-center max-w-2xl mx-auto mb-16">
+                <span className="text-xs uppercase font-extrabold tracking-widest text-milito-green bg-milito-green/10 px-3.5 py-1.5 rounded-full inline-block mb-3 border border-milito-green/20">
+                  Clear Answers
+                </span>
+                <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">
+                  Frequently Asked Questions
+                </h2>
+                <p className="text-gray-600 mt-2 text-sm leading-relaxed">
+                  Find fast clarification on device ordering, 35-point quality grading, and nationwide delivery.
+                </p>
+              </div>
 
-            <motion.h1 
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.1 }}
-              className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-[1.1] font-sans"
-            >
-              {config.hero.titleLine1}<br className="hidden sm:block" />
-              <span className="text-milito-green drop-shadow-[0_0_15px_rgba(0,177,79,0.3)]">{config.hero.titleLine2Color}</span><br className="hidden sm:block" />
-              {config.hero.titleLine3}
-            </motion.h1>
-
-            <motion.p 
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.2 }}
-              className="text-gray-400 text-sm sm:text-base lg:text-lg max-w-2xl mx-auto leading-relaxed font-semibold transition-colors duration-200"
-            >
-              {config.hero.subtitle}
-            </motion.p>
-
-            {/* CTAs */}
-            <motion.div 
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.3 }}
-              className="flex flex-col sm:flex-row items-center justify-center gap-4"
-            >
-              <button
-                onClick={() => handleNavigatePage("store")}
-                className="w-full sm:w-auto px-8 py-4 rounded-xl bg-milito-green text-black font-extrabold text-sm uppercase tracking-wider hover:brightness-110 shadow-[0_4px_25px_rgba(0,177,79,0.35)] active:scale-98 transition duration-200 cursor-pointer"
-              >
-                {config.hero.ctaTextPrimary || "Explore Store"}
-              </button>
-              <button
-                onClick={() => handleNavigatePage("swap-deals")}
-                className="w-full sm:w-auto px-8 py-4 rounded-xl border border-white/20 bg-white/[0.02] text-gray-300 font-extrabold text-sm hover:text-white hover:bg-white/[0.08] hover:border-white/40 transition cursor-pointer flex items-center justify-center gap-2 backdrop-blur-md"
-              >
-                <span>{config.hero.ctaTextSecondary || "Start a Swap"}</span>
-                <RefreshCw className="w-4 h-4 text-milito-green" />
-              </button>
-            </motion.div>
-
-            {/* Dynamic trust badges/cards */}
-            <motion.div 
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.4 }}
-              className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-5 max-w-2xl mx-auto border-none animate-fadeIn"
-            >
-              {[
-                { label: "Verified Devices", icon: ShieldCheck, color: "text-milito-green bg-milito-green/5 hover:bg-milito-green/10", border: "border-milito-green/20", desc: "35-point QC inspection" },
-                { label: "Nationwide Delivery", icon: Truck, color: "text-blue-400 bg-blue-400/5 hover:bg-blue-400/10", border: "border-blue-400/20", desc: "Insured & tracked courier" },
-                { label: "Swapping-In Available", icon: RefreshCw, color: "text-amber-400 bg-amber-400/5 hover:bg-amber-400/10", border: "border-amber-400/20", desc: "Instant upgrade credit" }
-              ].map((item, i) => {
-                const Icon = item.icon;
-                return (
-                  <div 
-                    key={i} 
-                    className={`flex flex-col items-center text-center bg-white/[0.02] hover:bg-white/[0.04] p-3.5 rounded-xl border ${item.border} backdrop-blur-sm transition-all duration-300 group`}
-                  >
-                    <div className={`w-9 h-9 rounded-full flex items-center justify-center mb-2.5 ${item.color} border border-current/10 transition-transform duration-300 group-hover:scale-110`}>
-                      <Icon className="w-4.5 h-4.5" />
+              {/* Accordions */}
+              <div className="space-y-4">
+                {gadgetFaqs.map((faq, index) => {
+                  const isFaqOpen = openFaqIndex === index;
+                  return (
+                    <div
+                      key={faq.id}
+                      className="bg-gray-50 rounded-2xl border border-gray-200 overflow-hidden transition-all duration-300"
+                    >
+                      <button
+                        onClick={() => setOpenFaqIndex(isFaqOpen ? null : index)}
+                        className="w-full text-left p-6 flex justify-between items-center text-sm font-extrabold text-[#1A2025] cursor-pointer focus:outline-none"
+                      >
+                        <span>{faq.question}</span>
+                        <ChevronDown
+                          className={`w-4 h-4 text-milito-green transition-transform duration-300 ${
+                            isFaqOpen ? "rotate-180" : ""
+                          }`}
+                        />
+                      </button>
+                      {isFaqOpen && (
+                        <div className="px-6 pb-6 text-xs text-gray-600 leading-relaxed border-t border-gray-200 pt-3 animate-fadeIn">
+                          {faq.answer}
+                        </div>
+                      )}
                     </div>
-                    <span className="block text-xs font-extrabold text-white group-hover:text-milito-green transition-colors">{item.label}</span>
-                    <span className="text-[9px] font-bold text-gray-500 tracking-wider mt-1 block uppercase">{item.desc}</span>
-                  </div>
-                );
-              })}
-            </motion.div>
-          </div>
-        </div>
-      </section>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
 
-      {/* 2. MILITO STANDARDS: 4 Compact Cards */}
-      <MilitoStandards />
-
-      {/* 3. HOMEPAGE PRODUCT TEASER: 3-4 Featured Devices */}
-      <HomepageProductTeaser
-        products={config.products}
-        compareList={compareList}
-        onToggleCompare={toggleCompare}
-        onOpenDetails={handleOpenProductDetails}
-        onQuickAdd={handleQuickAdd}
-        onExploreStore={() => handleNavigatePage("store")}
-        onShareProduct={handleShareProduct}
-      />
-      {/* 4. Premium Full-Bleed Swap Deals Section */}
-      <SwapDealsSection 
-        onSwapClick={() => {
-          handleNavigatePage("swap-deals");
-        }} 
-      />
-
-      {/* 5. Detailed 35-Point MILITO QC Section & Simulator */}
-      <MilitoQCSection />
-
-      {/* 6. Verified Nigeria Clients Testimonials & Customer Proof */}
-      <PublicTestimonialsSection
-        onExploreDevices={() => {
-          handleNavigatePage("store");
-        }}
-        onStartSwap={() => {
-          handleNavigatePage("swap-deals");
-        }}
-      />
-
-      {/* 7. MILITO AUTOMOTIVE PORTAL: Homepage Vehicle Discovery Teaser */}
-      <HomepageAutomotiveTeaser
-        vehicles={vehicleProducts}
-        compareList={compareList}
-        onToggleCompare={toggleCompare}
-        onOpenDetails={handleOpenProductDetails}
-        onQuickAdd={handleQuickAdd}
-        onExploreVehicles={() => handleNavigatePage("vehicles", "vehicles-catalog")}
-      />
-
-      {/* 8. Full-Width Edge-to-Edge MILITO Automotive Portal Cinematic Vehicle Showcase Banner */}
-      <VehicleShowcaseBanner
-        onExploreVehicles={() => handleNavigatePage("vehicles", "vehicles-catalog")}
-        onOpenEstimator={() => handleNavigatePage("vehicles", "vehicle-import")}
-        vehicleCount={vehicleProducts.length}
-      />
-
-      {/* 8. Detailed FAQ Section accordion */}
-      <section className="py-24 bg-white border-b border-gray-100" id="faq">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          
-          <div className="text-center max-w-2xl mx-auto mb-16">
-            <span className="text-xs uppercase font-extrabold tracking-widest text-milito-green bg-milito-green/10 px-3.5 py-1.5 rounded-full inline-block mb-3 border border-milito-green/20">
-              Clear Answers
-            </span>
-            <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">
-              Frequently Asked Questions
-            </h2>
-            <p className="text-gray-600 mt-2 text-sm leading-relaxed">
-              Find fast clarification on how payments protection, quality grading, and vehicle logistics operate.
-            </p>
-          </div>
-
-          {/* Accordions */}
-          <div className="space-y-4">
-            {FAQS.map((faq, index) => {
-              const isFaqOpen = openFaqIndex === index;
-              return (
-                <div
-                  key={faq.id}
-                  className="bg-gray-50 rounded-2xl border border-gray-200 overflow-hidden transition-all duration-300"
-                >
-                  <button
-                    onClick={() => setOpenFaqIndex(isFaqOpen ? null : index)}
-                    className="w-full text-left p-6 flex justify-between items-center text-sm font-extrabold text-[#1A2025] cursor-pointer focus:outline-none"
-                  >
-                    <span>{faq.question}</span>
-                    <ChevronDown className={`w-4 h-4 text-milito-green transition-transform duration-300 ${
-                      isFaqOpen ? "rotate-180" : ""
-                    }`} />
-                  </button>
-                  {isFaqOpen && (
-                    <div className="px-6 pb-6 text-xs text-gray-600 leading-relaxed border-t border-gray-200 pt-3 animate-fadeIn">
-                      {faq.answer}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-        </div>
-      </section>
-
-      {/* 9. Final CTA: Ready for Your Next Device? */}
-      <FinalCtaSection
-        onExploreStore={() => handleScrollToSection("store-inventory")}
-        onStartSwap={() => handleNavigatePage("swap-deals")}
-      />
+          {/* 8. Final CTA: Ready for Your Next Device? */}
+          <FinalCtaSection
+            onExploreStore={() => handleScrollToSection("store-inventory")}
+            onStartSwap={() => handleNavigatePage("swap-deals")}
+          />
         </>
       )}
 
-      {/* 10. Footer brand section details */}
-      <Footer onScrollToSection={handleScrollToSection} onOpenTracker={handleOpenTracker} />
+      {/* 9. Footer brand section details (Hidden on the initial two-option Gateway) */}
+      {!isInitialGatewayView && (
+        <Footer
+          onScrollToSection={handleScrollToSection}
+          onOpenTracker={handleOpenTracker}
+          onOpenDashboard={handleOpenDashboard}
+          experienceMode={activePage === "vehicles" ? "vehicles" : "gadgets"}
+          onNavigateGateway={() => handleNavigatePage("gateway")}
+        />
+      )}
 
-      {/* Mobile Bottom Navigation Bar (Fixed on Mobile only) */}
-      <MobileBottomNav
-        activeTab={mobileActiveTab}
-        cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
-        onNavigateHome={() => {
-          setIsCartOpen(false);
-          setIsLoginModalOpen(false);
-          handleNavigatePage("gadgets", "hero");
-        }}
-        onNavigateShop={() => {
-          setIsCartOpen(false);
-          setIsLoginModalOpen(false);
-          handleNavigatePage("store");
-        }}
-        onNavigateSwap={() => {
-          setIsCartOpen(false);
-          setIsLoginModalOpen(false);
-          handleNavigatePage("swap-deals");
-        }}
-        onOpenCart={() => {
-          setIsLoginModalOpen(false);
-          setIsCartOpen(true);
-        }}
-        onOpenProfile={() => {
-          setIsCartOpen(false);
-          setIsLoginModalOpen(true);
-        }}
-      />
+      {/* Mobile Bottom Navigation Bar (Gadget experience only) */}
+      {!isInitialGatewayView && activePage !== "vehicles" && (
+        <MobileBottomNav
+          activeTab={mobileActiveTab}
+          cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
+          onNavigateHome={() => {
+            setIsCartOpen(false);
+            setIsLoginModalOpen(false);
+            handleNavigatePage("gadgets", "hero");
+          }}
+          onNavigateShop={() => {
+            setIsCartOpen(false);
+            setIsLoginModalOpen(false);
+            handleNavigatePage("store");
+          }}
+          onNavigateSwap={() => {
+            setIsCartOpen(false);
+            setIsLoginModalOpen(false);
+            handleNavigatePage("swap-deals");
+          }}
+          onOpenCart={() => {
+            setIsLoginModalOpen(false);
+            setIsCartOpen(true);
+          }}
+          onOpenProfile={() => {
+            setIsCartOpen(false);
+            setIsLoginModalOpen(true);
+          }}
+        />
+      )}
 
-      {/* Float support chat utility */}
-      <SupportChat />
+      {/* Float support chat utility (Hidden on initial two-option Gateway) */}
+      {!isInitialGatewayView && <SupportChat />}
 
       {/* Floating Compare Bar overlay */}
       {compareList.length > 0 && (
@@ -1584,6 +1854,7 @@ export default function App() {
           product={selectedProductDetails}
           onClose={handleCloseProductDetails}
           onAddToCart={handleAddToCart}
+          onOpenCart={() => setIsCartOpen(true)}
           onBuyNow={handleBuyNowProtectedOrder}
           onSwapForThis={handleSwapForThis}
           onShare={handleShareProduct}
@@ -1614,61 +1885,6 @@ export default function App() {
             handleCloseTracker();
           }}
         />
-      )}
-
-      {/* Buyer Information / How It Works Lightbox Modal */}
-      {isProtectionLightboxOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-lg w-full border border-gray-250 overflow-hidden shadow-2xl animate-scaleUp">
-            
-            <div className="px-6 py-5 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-              <h3 className="font-bold text-gray-900 text-sm flex items-center gap-1.5">
-                <ShieldCheck className="w-5 h-5 text-milito-green" />
-                <span>How Ordering on MILITO Works</span>
-              </h3>
-              <button
-                onClick={handleCloseProtectionLightbox}
-                className="p-1 px-2.5 bg-gray-100 text-gray-600 hover:text-black hover:bg-gray-200 rounded text-xs transition cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4">
-              <p className="text-gray-600 text-xs leading-relaxed">
-                MILITO connects buyers directly with verified gadget sellers across Nigeria with transparent pricing and clear inspection:
-              </p>
-
-              <div className="space-y-3.5 pt-2">
-                {[
-                  { title: "1. Discover & Select", body: "Explore our catalog of genuine Brand New and UK Used smartphones with transparent specifications." },
-                  { title: "2. Order on WhatsApp", body: "Click Order Now on any product to open WhatsApp with pre-filled product details, or complete direct checkout." },
-                  { title: "3. Direct Fulfillment & Delivery", body: "The seller confirms your order, packs your verified device, and dispatches it promptly to your doorstep." }
-                ].map((item, index) => (
-                  <div key={index} className="flex gap-3 bg-gray-50 p-3 rounded-xl border border-gray-150">
-                    <span className="w-5 h-5 rounded-full bg-milito-green/10 text-milito-green font-extrabold flex items-center justify-center text-[10px] flex-shrink-0 mt-0.5 border border-milito-green/20">
-                      {index + 1}
-                    </span>
-                    <div>
-                      <h4 className="text-gray-900 font-extrabold text-xs">{item.title}</h4>
-                      <p className="text-[10px] text-gray-500 mt-0.5 leading-relaxed">{item.body}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="pt-2">
-                <button
-                  onClick={handleCloseProtectionLightbox}
-                  className="w-full py-3 bg-milito-green text-black font-bold rounded-xl text-xs uppercase"
-                >
-                  I Understand, Back to Shopping
-                </button>
-              </div>
-            </div>
-
-          </div>
-        </div>
       )}
 
       {/* 11. Admin Business Dashboard Modal */}

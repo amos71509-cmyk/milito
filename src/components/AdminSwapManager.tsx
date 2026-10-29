@@ -50,6 +50,7 @@ export default function AdminSwapManager() {
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [selectedSwapId, setSelectedSwapId] = useState<string | null>(null);
   const [editingNotes, setEditingNotes] = useState<{ [id: string]: string }>({});
+  const [editingOffers, setEditingOffers] = useState<{ [id: string]: string }>({});
   const [lightbox, setLightbox] = useState<LightboxState | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -58,7 +59,7 @@ export default function AdminSwapManager() {
     // 1. Initial local load
     setSwapRequests(getStoredSwapRequests());
 
-    // 2. Fetch latest from Firestore
+    // 2. Fetch latest from Firestore & Server API
     fetchSwapRequestsFromFirestore().then((res) => {
       if (res && res.length > 0) {
         setSwapRequests(res);
@@ -182,28 +183,31 @@ export default function AdminSwapManager() {
   const stats = useMemo(() => {
     return {
       total: swapRequests.length,
-      submitted: swapRequests.filter((r) => r.status === "Submitted").length,
+      pending: swapRequests.filter((r) => r.status === "Pending" || r.status === "Submitted").length,
       underReview: swapRequests.filter((r) => r.status === "Under Review").length,
-      inspection: swapRequests.filter((r) => r.status === "Awaiting Inspection").length,
+      offerReady: swapRequests.filter((r) => r.status === "Offer Ready").length,
       approved: swapRequests.filter(
-        (r) => r.status === "Approved" || r.status === "Swap Confirmed"
+        (r) => r.status === "Approved" || r.status === "Swap Confirmed" || r.status === "Completed"
       ).length,
-      completed: swapRequests.filter((r) => r.status === "Completed").length,
+      rejected: swapRequests.filter((r) => r.status === "Rejected" || r.status === "Declined").length,
     };
   }, [swapRequests]);
 
   const handleStatusChange = async (id: string, newStatus: SwapStatus) => {
-    await updateSwapRequestStatus(id, newStatus);
+    const currentReq = swapRequests.find((r) => r.id === id);
+    const offerVal = editingOffers[id] !== undefined ? Number(editingOffers[id]) : currentReq?.officialOfferValue;
+    const note = editingNotes[id] !== undefined ? editingNotes[id] : currentReq?.adminNotes;
+    await updateSwapRequestStatus(id, newStatus, note, offerVal);
   };
 
-  const handleSaveNote = async (id: string) => {
-    const note = editingNotes[id];
-    if (note !== undefined) {
-      const currentReq = swapRequests.find((r) => r.id === id);
-      if (currentReq) {
-        await updateSwapRequestStatus(id, currentReq.status, note);
-      }
-    }
+  const handleSaveReview = async (id: string) => {
+    const currentReq = swapRequests.find((r) => r.id === id);
+    if (!currentReq) return;
+    const note = editingNotes[id] !== undefined ? editingNotes[id] : currentReq.adminNotes;
+    const rawOffer = editingOffers[id];
+    const offerVal = rawOffer !== undefined && rawOffer.trim() !== "" ? Number(rawOffer) : currentReq.officialOfferValue;
+    await updateSwapRequestStatus(id, currentReq.status, note, offerVal);
+    alert(`Review & Offer saved for swap request ${id}`);
   };
 
   const handleDelete = async (id: string) => {
@@ -215,18 +219,25 @@ export default function AdminSwapManager() {
 
   const getStatusBadgeStyle = (status: SwapStatus) => {
     switch (status) {
+      case "Pending":
       case "Submitted":
         return "bg-blue-500/20 text-blue-300 border-blue-400/30";
       case "Under Review":
-        return "bg-amber-500/20 text-amber-300 border-amber-400/30";
-      case "Awaiting Inspection":
-        return "bg-purple-500/20 text-purple-300 border-purple-400/30";
+        return "bg-amber-500/20 text-amber-300 border-amber-400/30 font-bold";
+      case "Offer Ready":
+        return "bg-indigo-500/20 text-indigo-300 border-indigo-400/30 font-bold";
       case "Approved":
       case "Swap Confirmed":
       case "Completed":
-        return "bg-emerald-500/20 text-emerald-300 border-emerald-400/30";
+        return "bg-emerald-500/20 text-emerald-300 border-emerald-400/30 font-black";
+      case "Rejected":
+      case "Declined":
       case "Cancelled":
         return "bg-red-500/20 text-red-300 border-red-400/30";
+      case "Awaiting Inspection":
+        return "bg-purple-500/20 text-purple-300 border-purple-400/30";
+      case "Value Adjusted":
+        return "bg-indigo-500/20 text-indigo-300 border-indigo-400/30";
       default:
         return "bg-gray-700 text-gray-300 border-gray-600";
     }
@@ -238,11 +249,11 @@ export default function AdminSwapManager() {
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
         {[
           { label: "Total Requests", val: stats.total, color: "text-white" },
-          { label: "New Submitted", val: stats.submitted, color: "text-blue-400" },
+          { label: "Pending", val: stats.pending, color: "text-blue-400" },
           { label: "Under Review", val: stats.underReview, color: "text-amber-400" },
-          { label: "Awaiting Inspection", val: stats.inspection, color: "text-purple-400" },
-          { label: "Approved / Confirmed", val: stats.approved, color: "text-emerald-400" },
-          { label: "Completed", val: stats.completed, color: "text-emerald-300" },
+          { label: "Offer Ready", val: stats.offerReady, color: "text-indigo-400" },
+          { label: "Approved", val: stats.approved, color: "text-emerald-400" },
+          { label: "Rejected", val: stats.rejected, color: "text-rose-400" },
         ].map((s, idx) => (
           <div key={idx} className="p-3.5 bg-gray-900 border border-gray-800 rounded-2xl shadow-xs">
             <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider block">
@@ -397,15 +408,32 @@ export default function AdminSwapManager() {
                         <h4 className="text-sm font-extrabold text-white">
                           {req.currentDevice.brand} {req.currentDevice.model}
                         </h4>
-                        <div className="flex items-center gap-2 text-xs text-gray-300">
-                          <span>Storage: {req.currentDevice.storage}</span>
-                          <span>•</span>
-                          <span className="text-emerald-400 font-bold">{req.currentDevice.estimatedGrade}</span>
+                        <div className="flex flex-wrap items-center gap-1.5 text-xs text-gray-300">
+                          <span className="px-2 py-0.5 bg-gray-800 rounded font-semibold text-gray-200">
+                            Storage: {req.currentDevice.storage}
+                          </span>
+                          <span className="px-2 py-0.5 bg-gray-800 rounded font-semibold text-gray-200">
+                            RAM: {req.currentDevice.ram || "Standard / N/A"}
+                          </span>
+                          <span className="text-emerald-400 font-bold px-2 py-0.5 bg-emerald-950/60 rounded border border-emerald-800/60">
+                            {req.currentDevice.estimatedGrade}
+                          </span>
+                          {req.currentDevice.customModelName && (
+                            <span className="text-amber-400 font-bold px-2 py-0.5 bg-amber-950/60 rounded border border-amber-800/60 block w-full mt-1">
+                              Custom Model: {req.currentDevice.customModelName}
+                            </span>
+                          )}
                         </div>
                         <div className="pt-2 border-t border-gray-800 flex justify-between text-xs">
                           <span className="text-gray-400">Estimated Value:</span>
-                          <span className="font-bold text-white">{formatNaira(req.currentDevice.estimatedValue)}</span>
+                          <span className="font-bold text-white font-mono">{formatNaira(req.currentDevice.estimatedValue)}</span>
                         </div>
+                        {req.officialOfferValue !== undefined && req.officialOfferValue > 0 && (
+                          <div className="flex justify-between text-xs text-emerald-400 font-black">
+                            <span>Official Offer Value:</span>
+                            <span className="font-mono">{formatNaira(req.officialOfferValue)}</span>
+                          </div>
+                        )}
 
                         {/* Inspection Answers */}
                         {req.currentDevice.answers && (
@@ -413,7 +441,9 @@ export default function AdminSwapManager() {
                             <div>Screen: <span className="text-gray-200">{req.currentDevice.answers.screen}</span></div>
                             <div>Body: <span className="text-gray-200">{req.currentDevice.answers.body}</span></div>
                             <div>Camera: <span className="text-gray-200">{req.currentDevice.answers.camera}</span></div>
-                            <div>Battery: <span className="text-gray-200">{req.currentDevice.answers.batteryHealth}%</span></div>
+                            {typeof req.currentDevice.answers.batteryHealth === "number" && (
+                              <div>Battery Health: <span className="text-gray-200">{req.currentDevice.answers.batteryHealth}%</span></div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -514,49 +544,104 @@ export default function AdminSwapManager() {
                     )}
 
                     {/* Admin Status & Notes Controls */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-gray-800">
+                    <div className="space-y-4 pt-3 border-t border-gray-800">
                       
-                      {/* Status Selector */}
-                      <div className="space-y-1.5">
+                      {/* Quick Status Buttons */}
+                      <div className="space-y-2">
                         <label className="block text-[11px] font-extrabold uppercase text-gray-400">
-                          Update Appraisal Status:
+                          Update Status (Quick Select):
                         </label>
-                        <select
-                          value={req.status}
-                          onChange={(e) => handleStatusChange(req.id, e.target.value as SwapStatus)}
-                          className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-milito-green cursor-pointer font-bold"
-                        >
-                          {SWAP_STATUSES.map((st) => (
-                            <option key={st} value={st}>
-                              {st}
-                            </option>
-                          ))}
-                        </select>
+                        <div className="flex flex-wrap gap-1.5">
+                          {(["Pending", "Under Review", "Offer Ready", "Approved", "Rejected"] as SwapStatus[]).map((st) => {
+                            const isCurrent = req.status === st;
+                            return (
+                              <button
+                                key={st}
+                                type="button"
+                                onClick={() => handleStatusChange(req.id, st)}
+                                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border ${
+                                  isCurrent
+                                    ? st === "Approved"
+                                      ? "bg-emerald-500 text-black border-emerald-400 font-black shadow-sm"
+                                      : st === "Rejected"
+                                      ? "bg-rose-600 text-white border-rose-500 font-black shadow-sm"
+                                      : st === "Offer Ready"
+                                      ? "bg-indigo-600 text-white border-indigo-500 font-black shadow-sm"
+                                      : st === "Under Review"
+                                      ? "bg-amber-500 text-black border-amber-400 font-black shadow-sm"
+                                      : "bg-blue-600 text-white border-blue-500 font-black shadow-sm"
+                                    : "bg-gray-800 hover:bg-gray-700 text-gray-300 border-gray-700"
+                                }`}
+                              >
+                                {isCurrent && "✓ "}
+                                {st}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Detailed Status Dropdown + Offer Value + Appraisal Notes */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {/* Status Dropdown */}
+                        <div className="space-y-1.5">
+                          <label className="block text-[11px] font-extrabold uppercase text-gray-400">
+                            Appraisal Status:
+                          </label>
+                          <select
+                            value={req.status}
+                            onChange={(e) => handleStatusChange(req.id, e.target.value as SwapStatus)}
+                            className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-milito-green cursor-pointer font-bold"
+                          >
+                            {SWAP_STATUSES.map((st) => (
+                              <option key={st} value={st}>
+                                {st}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Official Offer Value Input */}
+                        <div className="space-y-1.5">
+                          <label className="block text-[11px] font-extrabold uppercase text-gray-400">
+                            Official Offer Value (₦):
+                          </label>
+                          <input
+                            type="number"
+                            placeholder={String(req.currentDevice?.estimatedValue || 0)}
+                            value={editingOffers[req.id] !== undefined ? editingOffers[req.id] : req.officialOfferValue !== undefined ? req.officialOfferValue : ""}
+                            onChange={(e) => setEditingOffers({ ...editingOffers, [req.id]: e.target.value })}
+                            className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-milito-green font-mono"
+                          />
+                        </div>
+
+                        {/* Save Button */}
+                        <div className="space-y-1.5 flex flex-col justify-end">
+                          <button
+                            type="button"
+                            onClick={() => handleSaveReview(req.id)}
+                            className="w-full py-2 px-4 bg-milito-green text-black font-extrabold text-xs uppercase tracking-wider rounded-xl hover:brightness-105 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                          >
+                            <Save className="w-3.5 h-3.5" />
+                            <span>Save Review & Offer</span>
+                          </button>
+                        </div>
                       </div>
 
                       {/* Admin Notes Field */}
                       <div className="space-y-1.5">
                         <label className="block text-[11px] font-extrabold uppercase text-gray-400">
-                          Internal / Appraisal Notes:
+                          Appraisal Team Notes for Customer:
                         </label>
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            placeholder="Add note e.g. Customer to visit Ikeja branch on Friday..."
-                            value={editingNotes[req.id] !== undefined ? editingNotes[req.id] : req.adminNotes || ""}
-                            onChange={(e) =>
-                              setEditingNotes({ ...editingNotes, [req.id]: e.target.value })
-                            }
-                            className="flex-1 bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-milito-green"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleSaveNote(req.id)}
-                            className="px-3 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-xl text-xs font-bold transition cursor-pointer"
-                          >
-                            <Save className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                        <input
+                          type="text"
+                          placeholder="e.g. Device screen passed diagnostics; battery service advisory noted. Offer ready for Ikeja branch pickup..."
+                          value={editingNotes[req.id] !== undefined ? editingNotes[req.id] : req.adminNotes || ""}
+                          onChange={(e) =>
+                            setEditingNotes({ ...editingNotes, [req.id]: e.target.value })
+                          }
+                          className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-milito-green"
+                        />
                       </div>
 
                     </div>

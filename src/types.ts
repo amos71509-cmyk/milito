@@ -33,6 +33,7 @@ export interface Product {
   id: string;
   name: string;
   brand: string;
+  category?: string; // e.g. "iPhone", "Android", "iPad", "Wrist"
   productType?: ProductType; // "phone" | "vehicle"
   condition: DeviceCondition;
   price: number; // in Naira (NGN)
@@ -81,12 +82,12 @@ export interface Product {
   description: string;
   specs?: {
     screen: string;
-    camera: string;
+    camera?: string;
     chipset: string;
     batterySize: string;
     os: string;
     warranty: string;
-    simType: string;
+    simType?: string;
     ram?: string;
     trueTone?: string;
     icloudStatus?: string;
@@ -101,6 +102,9 @@ export interface Product {
     ramExtension?: string;
     fingerprint?: string;
     faceUnlock?: string;
+    sensors?: string;
+    connectivity?: string;
+    waterResistance?: string;
   };
   rating: number;
   reviewsCount: number;
@@ -113,8 +117,19 @@ export interface Product {
   networkCapability?: "4G" | "5G" | "4G/5G" | string;
   network?: "Factory Unlocked" | "Dual SIM" | "eSIM" | "Physical SIM" | "Network Unlocked" | "SIM Unlocked" | "Locked" | string; // network standard
   categorySlug?: string;
+  assignedAccessories?: ProductAccessory[];
+  assignedAccessoryIds?: string[];
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface ProductAccessory {
+  id: string;
+  name: string;
+  type: string; // e.g., "Charger", "Pouch/Case", "Screen Guard", "Power Bank", "Earpiece", "Earbuds/AirPods", "Headset", "Camera Guard", "Other"
+  price: number;
+  image: string; // strictly admin-uploaded image URL
+  inStock?: boolean;
 }
 
 export interface CartItem {
@@ -245,11 +260,14 @@ export interface SwapDeviceConditionAnswers {
 }
 
 export type SwapStatus = 
+  | "Pending"
+  | "Under Review"
+  | "Offer Ready"
+  | "Approved"
+  | "Rejected"
   | "Submitted" 
-  | "Under Review" 
   | "Awaiting Inspection" 
   | "Value Adjusted" 
-  | "Approved" 
   | "Swap Confirmed" 
   | "Completed" 
   | "Cancelled"
@@ -275,6 +293,8 @@ export interface SwapRequest {
     brand: string;
     model: string;
     storage: string;
+    ram?: string;
+    customModelName?: string;
     answers: SwapDeviceConditionAnswers;
     estimatedGrade: "Grade A" | "Grade B" | "Grade C" | "Grade D";
     estimatedValue: number;
@@ -296,6 +316,7 @@ export interface SwapRequest {
     difference: number; // positive = top-up required, negative = cash back / value surplus
     isTopUp: boolean;
   };
+  officialOfferValue?: number;
   status: SwapStatus;
   customerNotes?: string;
   adminNotes?: string;
@@ -589,32 +610,10 @@ export function resolveImageUrl(
   return finalUrl;
 }
 
-// Fallback image helper provides verified, high-quality device images matching the brand/product type
-export function getFallbackImage(brand?: string, productType?: string): string {
-  const normBrand = (brand || "").toLowerCase().trim();
-  const isVehicle = productType === "vehicle" || normBrand.includes("toyota") || normBrand.includes("lexus") || normBrand.includes("mercedes") || normBrand.includes("bmw") || normBrand.includes("honda");
-  
-  if (isVehicle) {
-    return "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&w=800&q=80";
-  }
-  
-  if (normBrand.includes("apple") || normBrand.includes("iphone")) {
-    return "https://images.unsplash.com/photo-1695048133142-1a20484d2569?auto=format&fit=crop&w=800&q=80";
-  }
-  if (normBrand.includes("samsung") || normBrand.includes("galaxy")) {
-    return "https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?auto=format&fit=crop&w=800&q=80";
-  }
-  if (normBrand.includes("pixel") || normBrand.includes("google")) {
-    return "https://images.unsplash.com/photo-1598327105666-5b89351aff97?auto=format&fit=crop&w=800&q=80";
-  }
-  if (normBrand.includes("xiaomi") || normBrand.includes("redmi") || normBrand.includes("poco")) {
-    return "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=800&q=80";
-  }
-  if (normBrand.includes("tecno") || normBrand.includes("infinix")) {
-    return "https://images.unsplash.com/photo-1598327105666-5b89351aff97?auto=format&fit=crop&w=800&q=80";
-  }
-
-  return "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=800&q=80";
+// Fallback image helper strictly adheres to rule: NEVER substitute fake, random, or stock images.
+// Returns empty string if no image was uploaded for this product.
+export function getFallbackImage(_brand?: string, _productType?: string): string {
+  return "";
 }
 
 export interface ShowcaseMediaItem {

@@ -901,7 +901,7 @@ async function startServer() {
   app.post("/api/orders/notify-transfer", (req, res) => {
     res.setHeader("Content-Type", "application/json");
     try {
-      const { orderId, senderName, senderBank, narration, transferReference } = req.body || {};
+      const { orderId, senderName, senderBank, narration, transferReference, paymentProofUrl, receiptUrl } = req.body || {};
       if (!orderId) {
         return res.status(400).json({ success: false, error: "orderId is required." });
       }
@@ -911,19 +911,24 @@ async function startServer() {
         return res.status(404).json({ success: false, error: `Order '${orderId}' was not found.` });
       }
 
+      const proof = paymentProofUrl || receiptUrl || null;
       order.paymentStatus = "pending_verification";
       order.orderStatus = "payment_verification_pending";
+      if (proof) {
+        order.paymentProofUrl = String(proof).trim();
+      }
       order.transferNotice = {
         senderName: senderName ? String(senderName).trim() : order.customer.name,
         senderBank: senderBank ? String(senderBank).trim() : "Direct Bank Transfer",
         narration: narration ? String(narration).trim() : `Payment for ${orderId}`,
         transferReference: transferReference ? String(transferReference).trim() : null,
+        paymentProofUrl: proof ? String(proof).trim() : null,
         notifiedAt: new Date().toISOString()
       };
       order.updatedAt = new Date().toISOString();
 
       saveOrdersStore();
-      console.log(`[Server Telemetry] Customer Notified Manual Bank Transfer for ${orderId} | Status: payment_verification_pending`);
+      console.log(`[Server Telemetry] Customer Notified Manual Bank Transfer for ${orderId} | Status: payment_verification_pending | Proof: ${proof ? "Attached" : "None"}`);
 
       return res.json({
         success: true,
@@ -996,6 +1001,402 @@ async function startServer() {
       return res.status(404).json({ success: false, error: `Order '${orderId}' not found.` });
     }
     return res.json({ success: true, order });
+  });
+
+  // =========================================================================
+  // SWAP REQUESTS STORE & API
+  // =========================================================================
+  const swapRequestsFilePath = path.join(process.cwd(), "swap_requests.json");
+  let swapRequestsStore: Record<string, any> = {};
+
+  try {
+    if (fs.existsSync(swapRequestsFilePath)) {
+      const content = fs.readFileSync(swapRequestsFilePath, "utf-8");
+      swapRequestsStore = JSON.parse(content || "{}");
+      console.log(`[Server] Loaded ${Object.keys(swapRequestsStore).length} swap requests from swap_requests.json`);
+    }
+  } catch (err) {
+    console.warn("[Server] Could not read swap_requests.json, starting with fresh store:", err);
+  }
+
+  function saveSwapRequestsStore() {
+    try {
+      fs.writeFileSync(swapRequestsFilePath, JSON.stringify(swapRequestsStore, null, 2));
+    } catch (err) {
+      console.error("[Server] Failed to write swap_requests.json:", err);
+    }
+  }
+
+  function cleanPhoneDigits(val: string): string {
+    return (val || "").replace(/\D/g, "");
+  }
+
+  function verifyCustomerPhoneMatch(inputPhone: string, recordPhone: string): boolean {
+    const d1 = cleanPhoneDigits(inputPhone);
+    const d2 = cleanPhoneDigits(recordPhone);
+    if (!d1 || !d2) return false;
+    if (d1 === d2) return true;
+    const norm1 = d1.startsWith("234") && d1.length >= 12 ? "0" + d1.substring(3) : d1;
+    const norm2 = d2.startsWith("234") && d2.length >= 12 ? "0" + d2.substring(3) : d2;
+    if (norm1 === norm2) return true;
+    if (d1.length >= 7 && d2.length >= 7) {
+      const minL = Math.min(d1.length, d2.length, 9);
+      if (d1.slice(-minL) === d2.slice(-minL)) return true;
+    }
+    return false;
+  }
+
+  // API Route: Save / Submit Swap Request
+  app.post(["/api/swaps", "/api/swaps/create"], async (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    try {
+      const swapReq = req.body;
+      if (!swapReq || !swapReq.id) {
+        return res.status(400).json({ success: false, error: "Missing swap request id." });
+      }
+
+      const id = String(swapReq.id).trim().toUpperCase();
+      const updatedItem = {
+        ...swapReq,
+        id,
+        status: swapReq.status || "Pending",
+        updatedAt: new Date().toISOString()
+      };
+
+      swapRequestsStore[id] = updatedItem;
+      saveSwapRequestsStore();
+
+      // Persist to serverDb Firestore if available
+      if (serverDb) {
+        try {
+          const docRef = firestoreDoc(serverDb, "swap_requests", id);
+          await firestoreSetDoc(docRef, updatedItem, { merge: true });
+        } catch (fsErr) {
+          console.warn("[Server Firestore] Failed to save swap request:", fsErr);
+        }
+      }
+
+      console.log(`[Server Telemetry] Swap Request Saved: ${id} | Customer: ${updatedItem.customerName} | Device: ${updatedItem.currentDevice?.brand} ${updatedItem.currentDevice?.model}`);
+      return res.status(200).json({ success: true, swap: updatedItem });
+    } catch (err: any) {
+      console.error("[Server Telemetry] Error saving swap request:", err);
+      return res.status(500).json({ success: false, error: err.message || "Failed to save swap request." });
+    }
+  });
+
+  // API Route: List All Swap Requests (for Admin Dashboard)
+  app.get("/api/swaps", async (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    try {
+      // Also sync from Firestore if available
+      if (serverDb) {
+        try {
+          const snap = await firestoreGetDocs(firestoreCollection(serverDb, "swap_requests"));
+          snap.forEach((docSnap) => {
+            const data = docSnap.data();
+            if (data && data.id) {
+              swapRequestsStore[data.id.toUpperCase()] = data;
+            }
+          });
+          saveSwapRequestsStore();
+        } catch (fsErr) {
+          console.warn("[Server Firestore] Error reading swap_requests collection:", fsErr);
+        }
+      }
+
+      const list = Object.values(swapRequestsStore).sort((a: any, b: any) => {
+        return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+      });
+
+      return res.json({ success: true, swaps: list });
+    } catch (err: any) {
+      console.error("[Server Telemetry] Error listing swap requests:", err);
+      return res.status(500).json({ success: false, error: err.message || "Failed to list swap requests." });
+    }
+  });
+
+  // API Route: Verify and Track Swap Request (Customer Tracking with Phone Verification)
+  app.post("/api/swaps/verify", async (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    try {
+      const { swapId, phone } = req.body || {};
+      if (!swapId || typeof swapId !== "string" || !swapId.trim()) {
+        return res.status(400).json({ success: false, error: "Swap Reference ID is required." });
+      }
+
+      const id = swapId.trim().toUpperCase();
+      let record = swapRequestsStore[id];
+
+      // If not in memory store, attempt Firestore lookup
+      if (!record && serverDb) {
+        try {
+          const docRef = firestoreDoc(serverDb, "swap_requests", id);
+          const snap = await firestoreGetDoc(docRef);
+          if (snap.exists()) {
+            record = snap.data();
+            swapRequestsStore[id] = record;
+            saveSwapRequestsStore();
+          }
+        } catch (fsErr) {
+          console.warn("[Server Firestore] Error looking up swap by ID:", fsErr);
+        }
+      }
+
+      if (!record) {
+        return res.status(404).json({
+          success: false,
+          code: "NOT_FOUND",
+          error: `No swap request was found for reference ID '${id}'. Please verify the ID on your confirmation.`
+        });
+      }
+
+      // Phone verification
+      const inputPhone = String(phone || "").trim();
+      if (!inputPhone) {
+        return res.status(400).json({
+          success: false,
+          code: "PHONE_REQUIRED",
+          error: "Please enter the phone number you used when submitting this swap request to verify your identity."
+        });
+      }
+
+      const recordPhone = String(record.customerPhone || "").trim();
+      const isMatch = verifyCustomerPhoneMatch(inputPhone, recordPhone);
+
+      if (!isMatch) {
+        return res.status(403).json({
+          success: false,
+          code: "PHONE_MISMATCH",
+          error: "The phone number entered does not match the record for this Swap ID. For security, please enter the exact phone number submitted."
+        });
+      }
+
+      // Phone verified: return complete request safely
+      return res.status(200).json({
+        success: true,
+        verified: true,
+        swap: record
+      });
+    } catch (err: any) {
+      console.error("[Server Telemetry] Error verifying swap request:", err);
+      return res.status(500).json({ success: false, error: err.message || "Verification failed." });
+    }
+  });
+
+  // API Route: Update Swap Request Status & Admin Notes
+  app.post(["/api/swaps/:id/update-status", "/api/swaps/:id/status"], async (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    try {
+      const id = String(req.params.id || "").trim().toUpperCase();
+      const { status, adminNotes, officialOfferValue } = req.body || {};
+
+      let record = swapRequestsStore[id];
+      if (!record && serverDb) {
+        try {
+          const docRef = firestoreDoc(serverDb, "swap_requests", id);
+          const snap = await firestoreGetDoc(docRef);
+          if (snap.exists()) {
+            record = snap.data();
+          }
+        } catch (_) {}
+      }
+
+      if (!record) {
+        return res.status(404).json({ success: false, error: `Swap request '${id}' not found.` });
+      }
+
+      const now = new Date().toISOString();
+      if (status) record.status = status;
+      if (adminNotes !== undefined) record.adminNotes = adminNotes;
+      if (officialOfferValue !== undefined) record.officialOfferValue = Number(officialOfferValue);
+      record.updatedAt = now;
+
+      swapRequestsStore[id] = record;
+      saveSwapRequestsStore();
+
+      if (serverDb) {
+        try {
+          const docRef = firestoreDoc(serverDb, "swap_requests", id);
+          await firestoreSetDoc(docRef, record, { merge: true });
+        } catch (fsErr) {
+          console.warn("[Server Firestore] Failed to update swap request status:", fsErr);
+        }
+      }
+
+      console.log(`[Server Telemetry] Swap Request Updated: ${id} -> Status: ${record.status}`);
+      return res.status(200).json({ success: true, swap: record });
+    } catch (err: any) {
+      console.error("[Server Telemetry] Error updating swap status:", err);
+      return res.status(500).json({ success: false, error: err.message || "Failed to update swap request." });
+    }
+  });
+
+  // API Route: Delete Swap Request
+  app.delete("/api/swaps/:id", async (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    try {
+      const id = String(req.params.id || "").trim().toUpperCase();
+      delete swapRequestsStore[id];
+      saveSwapRequestsStore();
+      return res.json({ success: true, message: `Swap request ${id} removed.` });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // =========================================================================
+  // ACCESSORIES STORE & API
+  // =========================================================================
+  const accessoriesFilePath = path.join(process.cwd(), "accessories.json");
+  let accessoriesStore: any[] = [];
+
+  const DEFAULT_ACCESSORIES = [
+    {
+      id: "acc_charger_apple_20w",
+      name: "Apple 20W USB-C Power Adapter",
+      type: "Charger",
+      price: 18500,
+      image: "https://images.unsplash.com/photo-1583863788434-e58a36330cf0?auto=format&fit=crop&w=400&q=80",
+      inStock: true
+    },
+    {
+      id: "acc_charger_samsung_45w",
+      name: "Samsung 45W Super Fast Power Adapter",
+      type: "Charger",
+      price: 24000,
+      image: "https://images.unsplash.com/photo-1583863788434-e58a36330cf0?auto=format&fit=crop&w=400&q=80",
+      inStock: true
+    },
+    {
+      id: "acc_airpods_pro_2",
+      name: "Apple AirPods Pro 2 with MagSafe Case",
+      type: "AirPods/Earpods",
+      price: 245000,
+      image: "https://images.unsplash.com/photo-1600294037681-c80b4cb5b434?auto=format&fit=crop&w=400&q=80",
+      inStock: true
+    },
+    {
+      id: "acc_earpods_type_c",
+      name: "Original USB-C Stereo EarPods with Mic",
+      type: "AirPods/Earpods",
+      price: 12000,
+      image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=400&q=80",
+      inStock: true
+    },
+    {
+      id: "acc_power_bank_20k",
+      name: "Oraimo 20,000mAh PD Fast Charge Power Bank",
+      type: "Power Bank",
+      price: 28000,
+      image: "https://images.unsplash.com/photo-1609091839311-d5365f9ff1c5?auto=format&fit=crop&w=400&q=80",
+      inStock: true
+    },
+    {
+      id: "acc_screen_guard_9d",
+      name: "9D Full Cover Armor Tempered Glass Screen Guard",
+      type: "Screen Guard",
+      price: 3500,
+      image: "https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?auto=format&fit=crop&w=400&q=80",
+      inStock: true
+    },
+    {
+      id: "acc_camera_guard_sapphire",
+      name: "Sapphire Crystal Individual Camera Lens Guard",
+      type: "Camera Guard",
+      price: 3000,
+      image: "https://images.unsplash.com/photo-1584438784894-089d6a62b8fa?auto=format&fit=crop&w=400&q=80",
+      inStock: true
+    },
+    {
+      id: "acc_pouch_clear_magsafe",
+      name: "Shockproof Clear MagSafe Protective Silicone Case",
+      type: "Pouch/Case",
+      price: 6500,
+      image: "https://images.unsplash.com/photo-1601593346740-925612772716?auto=format&fit=crop&w=400&q=80",
+      inStock: true
+    },
+    {
+      id: "acc_headset_wireless_anc",
+      name: "Over-Ear Wireless Noise-Cancelling Bluetooth Headset",
+      type: "Headset",
+      price: 42000,
+      image: "https://images.unsplash.com/photo-1546435770-a3e426bf472b?auto=format&fit=crop&w=400&q=80",
+      inStock: true
+    }
+  ];
+
+  try {
+    if (fs.existsSync(accessoriesFilePath)) {
+      const content = fs.readFileSync(accessoriesFilePath, "utf-8");
+      accessoriesStore = JSON.parse(content || "[]");
+      if (!Array.isArray(accessoriesStore) || accessoriesStore.length === 0) {
+        accessoriesStore = DEFAULT_ACCESSORIES;
+        fs.writeFileSync(accessoriesFilePath, JSON.stringify(accessoriesStore, null, 2));
+      }
+    } else {
+      accessoriesStore = DEFAULT_ACCESSORIES;
+      fs.writeFileSync(accessoriesFilePath, JSON.stringify(accessoriesStore, null, 2));
+    }
+  } catch (err) {
+    console.warn("[Server] Could not initialize accessories.json, using defaults:", err);
+    accessoriesStore = DEFAULT_ACCESSORIES;
+  }
+
+  function saveAccessoriesStore() {
+    try {
+      fs.writeFileSync(accessoriesFilePath, JSON.stringify(accessoriesStore, null, 2));
+    } catch (err) {
+      console.error("[Server] Failed to write accessories.json:", err);
+    }
+  }
+
+  // API Routes for Accessories
+  app.get("/api/accessories", (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    return res.json({ success: true, accessories: accessoriesStore });
+  });
+
+  app.post("/api/accessories", (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    try {
+      const { id, name, type, price, image, inStock } = req.body || {};
+      if (!name || typeof name !== "string" || !name.trim()) {
+        return res.status(400).json({ success: false, error: "Accessory name is required." });
+      }
+
+      const accessoryId = id || `acc_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      const existingIndex = accessoriesStore.findIndex((a: any) => a.id === accessoryId);
+
+      const accessoryRecord = {
+        id: accessoryId,
+        name: name.trim(),
+        type: type ? String(type).trim() : "Other",
+        price: Math.max(0, Number(price) || 0),
+        image: image ? String(image).trim() : "",
+        inStock: inStock !== false,
+        updatedAt: new Date().toISOString()
+      };
+
+      if (existingIndex >= 0) {
+        accessoriesStore[existingIndex] = { ...accessoriesStore[existingIndex], ...accessoryRecord };
+      } else {
+        accessoriesStore.unshift(accessoryRecord);
+      }
+
+      saveAccessoriesStore();
+      return res.json({ success: true, accessory: accessoryRecord, accessories: accessoriesStore });
+    } catch (err: any) {
+      console.error("[Server] Error saving accessory:", err);
+      return res.status(500).json({ success: false, error: err.message || "Failed to save accessory." });
+    }
+  });
+
+  app.delete("/api/accessories/:id", (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    const { id } = req.params;
+    accessoriesStore = accessoriesStore.filter((a: any) => a.id !== id);
+    saveAccessoriesStore();
+    return res.json({ success: true, message: "Accessory deleted.", accessories: accessoriesStore });
   });
 
   // =========================================================================

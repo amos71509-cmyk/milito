@@ -16,7 +16,9 @@ import {
   Receipt, 
   Copy, 
   Smartphone,
-  Info
+  Info,
+  UploadCloud,
+  Image as ImageIcon
 } from "lucide-react";
 import { CartItem, Product, ProtectedOrder, resolveImageUrl } from "../types";
 import { NIGERIAN_STATES } from "../data";
@@ -82,6 +84,13 @@ export default function CheckoutModal({
   const [senderBank, setSenderBank] = useState("Moniepoint MFB / Other Bank");
   const [transferNarration, setTransferNarration] = useState("");
   const [isNotifyingTransfer, setIsNotifyingTransfer] = useState(false);
+
+  // Manual Transfer Screenshot / Proof State
+  const [paymentProofUrl, setPaymentProofUrl] = useState("");
+  const [paymentProofFileName, setPaymentProofFileName] = useState("");
+  const [isUploadingProof, setIsUploadingProof] = useState(false);
+  const [proofUploadError, setProofUploadError] = useState<string | null>(null);
+  const proofFileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Selected State Shipping Config
   const selectedState = useMemo(() => {
@@ -216,6 +225,39 @@ export default function CheckoutModal({
     }
   };
 
+  // Handle uploading transfer proof/screenshot
+  const handleProofFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingProof(true);
+    setProofUploadError(null);
+    setPaymentProofFileName(file.name);
+
+    try {
+      const uploadData = new FormData();
+      uploadData.append("files", file);
+      uploadData.append("folder", "milito_payment_proofs");
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: uploadData
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success || !data.files?.[0]?.secure_url) {
+        throw new Error(data.error || "Failed to upload payment receipt.");
+      }
+
+      setPaymentProofUrl(data.files[0].secure_url);
+    } catch (err: any) {
+      console.error("[CheckoutModal] Payment proof upload error:", err);
+      setProofUploadError(err.message || "Failed to upload receipt. Please try another or enter receipt link.");
+    } finally {
+      setIsUploadingProof(false);
+    }
+  };
+
   // 2. Notify Manual Bank Transfer
   const handleNotifyTransfer = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -234,7 +276,9 @@ export default function CheckoutModal({
           senderName: senderName.trim() || customerName,
           senderBank: senderBank.trim(),
           narration: transferNarration.trim() || `Payment for ${createdOrder.orderId}`,
-          transferReference: paymentReferenceInput.trim() || null
+          transferReference: paymentReferenceInput.trim() || null,
+          paymentProofUrl: paymentProofUrl.trim() || null,
+          receiptUrl: paymentProofUrl.trim() || null
         })
       });
 
@@ -474,12 +518,12 @@ export default function CheckoutModal({
                   </p>
                 </div>
 
-                {/* Continue to Payment Button */}
+                {/* Continue to Payment / Pay Now Button */}
                 <button
                   type="submit"
                   disabled={isSubmitting || itemsToCheckout.length === 0}
-                  className="w-full py-3.5 px-5 bg-[#10B981] hover:brightness-105 active:scale-98 text-black font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-[#10B981]/20 flex items-center justify-center gap-2 cursor-pointer transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
-                  id="continue-to-payment-btn"
+                  className="w-full py-4 px-5 bg-[#10B981] hover:brightness-105 active:scale-98 text-black font-black text-sm uppercase tracking-wider rounded-2xl shadow-lg shadow-[#10B981]/25 flex items-center justify-center gap-2 cursor-pointer transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed min-h-[50px]"
+                  id="checkout-pay-now-btn"
                 >
                   {isSubmitting ? (
                     <>
@@ -488,8 +532,9 @@ export default function CheckoutModal({
                     </>
                   ) : (
                     <>
-                      <span>Continue to Payment</span>
-                      <ArrowRight className="w-4 h-4" />
+                      <Lock className="w-4 h-4 text-black" />
+                      <span>Pay Now</span>
+                      <ArrowRight className="w-4 h-4 text-black" />
                     </>
                   )}
                 </button>
@@ -686,23 +731,106 @@ export default function CheckoutModal({
                     <button
                       type="button"
                       onClick={() => setShowTransferNoticeForm(true)}
-                      className="w-full py-4 px-5 rounded-2xl bg-[#10B981] hover:brightness-105 active:scale-98 text-black font-extrabold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-[#10B981]/20 cursor-pointer transition min-h-[48px]"
+                      className="w-full py-4 px-5 rounded-2xl bg-[#00B14F] hover:bg-[#009944] active:scale-98 text-black font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-[#00B14F]/25 cursor-pointer transition min-h-[48px]"
                       id="ive-made-the-transfer-btn"
                     >
                       <Check className="w-4 h-4 stroke-[3]" />
-                      <span>I've Made the Transfer</span>
+                      <span>I have made the transfer</span>
                     </button>
                     <p className="text-[11px] text-gray-500 text-center">
-                      Clicking this notifies our fulfillment team to verify your transfer in real time.
+                      Clicking this opens the payment screenshot upload option to attach your transfer receipt for verification.
                     </p>
                   </div>
                 ) : (
-                  <form onSubmit={handleNotifyTransfer} className="space-y-3 pt-2 bg-white p-4 rounded-xl border border-gray-200 animate-fadeIn">
-                    <div className="flex items-center justify-between pb-1 border-b border-gray-150">
+                  <form onSubmit={handleNotifyTransfer} className="space-y-3.5 pt-2 bg-white p-4 rounded-2xl border border-gray-200 shadow-sm animate-fadeIn">
+                    <div className="flex items-center justify-between pb-1.5 border-b border-gray-150">
                       <span className="text-xs font-bold text-gray-900 uppercase tracking-wider">
-                        Confirm Transfer Details
+                        Upload Payment Proof & Verify
                       </span>
-                      <span className="text-[10px] text-emerald-700 font-bold">Fast Verification</span>
+                      <span className="text-[10px] text-emerald-700 font-extrabold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                        Admin Verification Queue
+                      </span>
+                    </div>
+
+                    {/* Screenshot / Receipt Upload Option */}
+                    <div className="space-y-2 p-3 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+                      <label className="block text-[11px] font-black uppercase text-gray-800">
+                        Payment Screenshot / Receipt Proof
+                      </label>
+                      <p className="text-[10px] text-gray-500 leading-normal">
+                        Upload a screenshot or photo of your bank transfer receipt. Our admin will verify and attach it to your order.
+                      </p>
+
+                      <input
+                        type="file"
+                        ref={proofFileInputRef}
+                        accept="image/*,.pdf"
+                        onChange={handleProofFileChange}
+                        className="hidden"
+                      />
+
+                      {paymentProofUrl ? (
+                        <div className="flex items-center justify-between gap-3 p-2.5 rounded-lg bg-emerald-50 border border-emerald-200">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-12 h-12 rounded-md bg-white border border-emerald-200 p-0.5 overflow-hidden shrink-0 flex items-center justify-center">
+                              <img
+                                src={paymentProofUrl}
+                                alt="Payment Proof"
+                                className="w-full h-full object-cover rounded"
+                              />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-emerald-950 truncate">
+                                {paymentProofFileName || "Payment Receipt Uploaded"}
+                              </p>
+                              <span className="text-[10px] font-black text-emerald-700 uppercase flex items-center gap-1">
+                                <Check className="w-3 h-3 stroke-[3]" /> Proof Attached
+                              </span>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPaymentProofUrl("");
+                              setPaymentProofFileName("");
+                              if (proofFileInputRef.current) proofFileInputRef.current.value = "";
+                            }}
+                            className="text-xs text-red-600 hover:text-red-700 font-bold px-2 py-1 rounded hover:bg-red-50 cursor-pointer"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ) : (
+                        <div
+                          onClick={() => proofFileInputRef.current?.click()}
+                          className="border border-dashed border-gray-300 hover:border-[#00B14F] rounded-xl p-3.5 bg-white flex flex-col items-center justify-center gap-1.5 cursor-pointer transition text-center hover:bg-emerald-50/20"
+                        >
+                          {isUploadingProof ? (
+                            <div className="flex items-center gap-2 text-xs font-bold text-emerald-700 py-2">
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              <span>Uploading screenshot securely...</span>
+                            </div>
+                          ) : (
+                            <>
+                              <UploadCloud className="w-6 h-6 text-[#00B14F]" />
+                              <span className="text-xs font-bold text-gray-800">
+                                Click to Upload Payment Screenshot / Receipt
+                              </span>
+                              <span className="text-[10px] text-gray-500">
+                                PNG, JPG, JPEG, or PDF accepted (Attached securely)
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      )}
+
+                      {proofUploadError && (
+                        <p className="text-[11px] text-red-600 flex items-center gap-1 font-medium">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          <span>{proofUploadError}</span>
+                        </p>
+                      )}
                     </div>
 
                     <div>
@@ -715,7 +843,7 @@ export default function CheckoutModal({
                         value={senderName}
                         onChange={(e) => setSenderName(e.target.value)}
                         placeholder={`e.g. ${customerName || "Your Bank Name"}`}
-                        className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-[#10B981]"
+                        className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-[#00B14F]"
                       />
                     </div>
 
@@ -729,7 +857,7 @@ export default function CheckoutModal({
                           value={senderBank}
                           onChange={(e) => setSenderBank(e.target.value)}
                           placeholder="e.g. GTBank / OPay / Kuda"
-                          className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-[#10B981]"
+                          className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-[#00B14F]"
                         />
                       </div>
 
@@ -742,25 +870,25 @@ export default function CheckoutModal({
                           value={paymentReferenceInput}
                           onChange={(e) => setPaymentReferenceInput(e.target.value)}
                           placeholder="e.g. 0000132489..."
-                          className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-xs font-mono text-gray-900 focus:outline-none focus:border-[#10B981]"
+                          className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-xs font-mono text-gray-900 focus:outline-none focus:border-[#00B14F]"
                         />
                       </div>
                     </div>
 
                     <button
                       type="submit"
-                      disabled={isNotifyingTransfer}
-                      className="w-full py-3.5 px-4 rounded-xl bg-[#10B981] hover:brightness-105 text-black font-extrabold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer transition min-h-[44px] mt-2"
+                      disabled={isNotifyingTransfer || isUploadingProof}
+                      className="w-full py-3.5 px-4 rounded-xl bg-[#00B14F] hover:bg-[#009944] text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer transition min-h-[44px] mt-2"
                     >
                       {isNotifyingTransfer ? (
                         <>
                           <Loader2 className="w-4 h-4 animate-spin text-black" />
-                          <span>Submitting Transfer Notification...</span>
+                          <span>Submitting Transfer Proof...</span>
                         </>
                       ) : (
                         <>
-                          <Check className="w-4 h-4" />
-                          <span>Submit Transfer Notification</span>
+                          <Check className="w-4 h-4 stroke-[3]" />
+                          <span>Pay Now</span>
                         </>
                       )}
                     </button>

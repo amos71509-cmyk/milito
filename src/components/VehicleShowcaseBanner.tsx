@@ -15,12 +15,14 @@ interface VehicleShowcaseBannerProps {
   onExploreVehicles: () => void;
   onOpenEstimator?: () => void;
   vehicleCount?: number;
+  isGatewayMode?: boolean;
 }
 
 export default function VehicleShowcaseBanner({
   onExploreVehicles,
   onOpenEstimator,
-  vehicleCount = 0
+  vehicleCount = 0,
+  isGatewayMode = false
 }: VehicleShowcaseBannerProps) {
   const { config } = useVehicleShowcase();
 
@@ -116,7 +118,7 @@ export default function VehicleShowcaseBanner({
     });
   }, [currentIndex, activeItems, triggerPlay]);
 
-  if (!config.enabled || activeItems.length === 0) {
+  if ((!config.enabled && !isGatewayMode) || activeItems.length === 0) {
     return null;
   }
 
@@ -125,7 +127,11 @@ export default function VehicleShowcaseBanner({
   return (
     <section
       id="vehicle-showcase-section"
-      className="relative w-full overflow-hidden bg-[#070A10] border-y border-emerald-500/20 text-white min-h-[540px] sm:min-h-[580px] lg:min-h-[620px] flex items-center"
+      className={`relative w-full overflow-hidden bg-[#070A10] text-white flex items-center ${
+        isGatewayMode
+          ? "min-h-screen h-full"
+          : "border-y border-emerald-500/20 min-h-[540px] sm:min-h-[580px] lg:min-h-[620px]"
+      }`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -210,8 +216,8 @@ export default function VehicleShowcaseBanner({
         )}
 
         {/* 2. RICH DARK GRADIENT OVERLAYS FOR CRISP READABILITY & CONTRAST */}
-        {/* Horizontal Dark Mask (Dense on left for text readability, clear on right for vehicle view) */}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#070A10]/95 via-[#070A10]/85 to-[#070A10]/50 z-20 pointer-events-none" />
+        {/* Balanced Dark Mask for Centered Readability */}
+        <div className="absolute inset-0 bg-[#070A10]/65 z-20 pointer-events-none" />
         
         {/* Vertical Top/Bottom Edge Vignettes */}
         <div className="absolute inset-0 bg-gradient-to-t from-[#070A10] via-transparent to-[#070A10]/75 z-20 pointer-events-none" />
@@ -222,20 +228,11 @@ export default function VehicleShowcaseBanner({
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff_1px,transparent_1px),linear-gradient(to_bottom,#ffffff_1px,transparent_1px)] bg-[size:3.5rem_3.5rem] opacity-[0.025] z-20 pointer-events-none" />
       </div>
 
-      {/* 3. INNER CONTENT CONTAINER (Constrained for optimal typographic line-length and hierarchy) */}
-      <div className="relative z-30 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20 flex flex-col justify-between h-full">
+      {/* 3. INNER CONTENT CONTAINER (Centered for optimal typographic hierarchy) */}
+      <div className="relative z-30 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20 flex flex-col items-center justify-center text-center h-full">
         
-        {/* TOP BAR: BADGE */}
-        <div className="flex items-center justify-between gap-3 mb-6 sm:mb-8">
-          {/* Eyebrow Badge */}
-          <div className="inline-flex items-center gap-2 text-xs uppercase font-black tracking-widest text-[#10B981] bg-[#0A1F16]/90 px-4 py-2 rounded-full border border-[#10B981]/40 shadow-lg shadow-black/40 backdrop-blur-md">
-            <Sparkles className="w-4 h-4 text-[#10B981] animate-pulse" />
-            <span>MILITO Automotive Portal</span>
-          </div>
-        </div>
-
-        {/* MIDDLE CONTENT: HEADLINE, SUBHEADLINE & BODY DESCRIPTION */}
-        <div className="max-w-3xl space-y-4">
+        {/* CENTERED CONTENT: HEADLINE, SUBHEADLINE, BODY DESCRIPTION & CTA */}
+        <div className="max-w-4xl mx-auto space-y-6 text-center flex flex-col items-center">
           <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.1] uppercase drop-shadow-lg">
             {config.headline || "LOOKING FOR A VEHICLE?"}
           </h2>
@@ -244,13 +241,24 @@ export default function VehicleShowcaseBanner({
             {config.subheadline || "Source your next ride through MILITO."}
           </p>
 
-          <p className="text-sm sm:text-base text-gray-200 font-normal leading-relaxed max-w-2xl drop-shadow-sm pt-1">
+          <p className="text-sm sm:text-base lg:text-lg text-gray-200 font-semibold leading-relaxed max-w-2xl mx-auto drop-shadow-sm">
             {config.description ||
               "Browse verified Foreign Used (Tokunbo) and Nigerian Used vehicles with authentic Customs Service clearance, 35-point mechanical inspection, and door-to-door delivery across Nigeria."}
           </p>
 
-          {/* HIGHLIGHTS / FEATURE PILLS (High contrast dark badges) */}
-          <div className="pt-3 flex flex-wrap items-center gap-2.5 sm:gap-3">
+          {/* Single Centered Call to Action: Explore Cars */}
+          <div className="pt-2 flex items-center justify-center w-full">
+            <button
+              onClick={onExploreVehicles}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-9 py-4 rounded-xl bg-[#10B981] hover:bg-[#0ea372] text-black font-black text-sm uppercase tracking-wider shadow-[0_4px_25px_rgba(16,185,129,0.35)] hover:brightness-110 active:scale-98 transition-all duration-200 cursor-pointer group"
+            >
+              <span>{isGatewayMode ? "EXPLORE CARS" : (config.ctaText || "EXPLORE CARS")}</span>
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </button>
+          </div>
+
+          {/* HIGHLIGHTS / FEATURE PILLS (Centered) */}
+          <div className="pt-3 flex flex-wrap items-center justify-center gap-2.5 sm:gap-3">
             <div className="flex items-center gap-2 bg-[#0C121E]/90 text-white px-3.5 py-2 rounded-xl border border-white/20 shadow-md backdrop-blur-md text-xs sm:text-sm font-semibold">
               <Car className="w-4 h-4 text-[#10B981] shrink-0" />
               <span>Direct Tokunbo Stock {vehicleCount > 0 ? `(${vehicleCount} live)` : "(1 live)"}</span>
@@ -264,35 +272,10 @@ export default function VehicleShowcaseBanner({
               <span>Engine & Gearbox Inspection</span>
             </div>
           </div>
-        </div>
 
-        {/* BOTTOM ACTION BAR & CONTROLS */}
-        <div className="mt-8 sm:mt-10 pt-6 border-t border-white/15 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-5">
-          
-          {/* Call to Action Buttons */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-            <button
-              onClick={onExploreVehicles}
-              className="inline-flex items-center justify-center gap-2.5 px-7 py-4 rounded-xl bg-[#10B981] hover:bg-[#0ea372] text-black font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg shadow-[#10B981]/30 hover:shadow-[#10B981]/50 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group"
-            >
-              <span>{config.ctaText || "EXPLORE VEHICLES →"}</span>
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform" />
-            </button>
-
-            {onOpenEstimator && (
-              <button
-                onClick={onOpenEstimator}
-                className="inline-flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-white/10 hover:bg-white/20 text-white font-extrabold text-xs sm:text-sm uppercase tracking-wider border border-white/25 shadow-sm transition-all cursor-pointer backdrop-blur-md"
-              >
-                <Calculator className="w-4 h-4 text-[#10B981]" />
-                <span>Customs Duty Estimator</span>
-              </button>
-            )}
-          </div>
-
-          {/* Slide Navigation Controls & Interactive Dots */}
+          {/* Slide Navigation Controls & Interactive Dots (Centered) */}
           {activeItems.length > 1 && (
-            <div className="flex items-center justify-between sm:justify-end gap-3 self-end sm:self-center">
+            <div className="pt-4 flex items-center justify-center gap-3">
               {/* Previous Slide Button */}
               <button
                 onClick={(e) => {

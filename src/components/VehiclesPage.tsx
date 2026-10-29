@@ -23,6 +23,7 @@ import { motion, useReducedMotion, AnimatePresence } from "motion/react";
 import { Product } from "../types";
 import ProductCard from "./ProductCard";
 import VehicleImport from "./VehicleImport";
+import HomepageAutomotiveTeaser from "./HomepageAutomotiveTeaser";
 
 interface VehiclesPageProps {
   vehicles: Product[];
@@ -362,81 +363,24 @@ export default function VehiclesPage({
   return (
     <div className="bg-gray-50/60 min-h-screen pb-20 animate-fadeIn text-[#0F172A]">
       
-      {/* 1. TOP HEADER & BREADCRUMB SECTION */}
-      <section className="relative bg-[#111827] text-white pt-10 pb-12 sm:pt-14 sm:pb-16 overflow-hidden border-b border-gray-800">
-        {/* Subtle grid pattern */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff_1px,transparent_1px),linear-gradient(to_bottom,#ffffff_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-[0.03] pointer-events-none" />
-        <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#00B14F]/10 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          
-          {/* Breadcrumb row */}
-          <div className="flex items-center justify-between gap-3 mb-6">
-            <button
-              onClick={onBackToGadgets}
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-gray-200 text-xs font-bold transition cursor-pointer"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Back to Phones & Gadgets</span>
-            </button>
-
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => onScrollToSection("vehicle-import")}
-                className="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold text-[#00B14F] hover:underline cursor-pointer"
-              >
-                <span>Customs Duty Estimator ↓</span>
-              </button>
-              <a
-                href="https://wa.me/2348000000000?text=Hello%20MILITO%20Automotive,%20I%20want%20to%20inquire%20about%20a%20vehicle."
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#00B14F]/20 border border-[#00B14F]/40 text-[#00B14F] hover:bg-[#00B14F] hover:text-black text-xs font-black transition"
-              >
-                <PhoneCall className="w-3 h-3" />
-                <span>WhatsApp Desk</span>
-              </a>
-            </div>
-          </div>
-
-          {/* Core Title and Subtitle */}
-          <div className="text-center max-w-3xl mx-auto">
-            <motion.div
-              initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: -6 }}
-              animate={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#00B14F]/15 border border-[#00B14F]/30 text-[#00B14F] text-xs font-black uppercase tracking-widest mb-3"
-            >
-              <Car className="w-3.5 h-3.5" />
-              <span>MILITO AUTOMOTIVE</span>
-            </motion.div>
-
-            <motion.h1
-              initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 10 }}
-              animate={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.05 }}
-              className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight"
-            >
-              Find Your Next Ride
-            </motion.h1>
-
-            <motion.p
-              initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 8 }}
-              animate={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.1 }}
-              className="text-gray-300 mt-2.5 text-xs sm:text-sm md:text-base leading-relaxed max-w-2xl mx-auto"
-            >
-              Browse available vehicles by make, model, price, condition and location. Every car is inspected for authentic documentation, mechanical fitness and transparent pricing.
-            </motion.p>
-          </div>
-
+      {/* Plain text link with clear arrow allowing the user to revisit the Main Carousel */}
+      <div className="bg-white pt-4 pb-2 px-3 sm:px-6 lg:px-8 border-b border-gray-100">
+        <div className="max-w-7xl mx-auto">
+          <button
+            type="button"
+            onClick={onBackToGadgets}
+            className="inline-flex items-center gap-2 text-sm sm:text-base font-extrabold text-[#1A2025] hover:text-[#00B14F] transition-colors cursor-pointer group bg-transparent border-0 p-0 shadow-none"
+          >
+            <ArrowLeft className="w-5 h-5 text-[#00B14F] stroke-[2.5] transition-transform group-hover:-translate-x-1" />
+            <span>Back to Main Carousel</span>
+          </button>
         </div>
-      </section>
+      </div>
 
-      {/* 2. STICKY AUTOMOTIVE SHOPPING NAVIGATION CONTROLS */}
+      {/* STICKY AUTOMOTIVE SHOPPING NAVIGATION CONTROLS */}
       <div 
         id="vehicles-sticky-controls"
-        className="sticky top-20 sm:top-24 z-30 bg-white/95 backdrop-blur-md border-b border-gray-200/90 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.06)] transition-all duration-200 w-full"
+        className="sticky top-16 sm:top-20 z-30 bg-white/95 backdrop-blur-md border-b border-gray-200/90 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.06)] transition-all duration-200 w-full"
       >
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3 space-y-2 sm:space-y-2.5">
           
@@ -753,7 +697,7 @@ export default function VehiclesPage({
       </div>
 
       {/* 5. VEHICLE SOURCING STEPS / HOW IT WORKS */}
-      <section className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section id="car-buying-steps" className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto mb-12">
           <span className="text-xs uppercase font-extrabold tracking-widest text-[#00B14F] bg-[#00B14F]/10 px-3.5 py-1.5 rounded-full inline-block mb-3 border border-[#00B14F]/20">
             How It Works
@@ -816,7 +760,7 @@ export default function VehiclesPage({
             className="inline-flex items-center gap-2 px-8 py-3.5 rounded-2xl bg-[#111827] hover:bg-black text-white text-xs font-black uppercase tracking-wider transition-all shadow-md cursor-pointer group"
           >
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-            <span>Return to Phones & Gadgets Storefront</span>
+            <span>Return to MILITO Gateway</span>
           </button>
         </div>
       </section>

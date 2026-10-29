@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
-import { ShoppingCart, Menu, X, User, Trash2, LogIn, LogOut, Check, Search, ShieldCheck, Car, Sparkles, ArrowRight } from "lucide-react";
-import { CartItem, Product, resolveImageUrl } from "../types";
+import { ShoppingCart, Menu, X, User, Trash2, LogIn, LogOut, Check, Search, ShieldCheck, Car, Sparkles, ArrowRight, Plus, Lock, Package } from "lucide-react";
+import { CartItem, Product, ProductAccessory, resolveImageUrl } from "../types";
 import { useBranding } from "../context/BrandingContext";
 import { lockBodyScroll, unlockBodyScroll } from "../utils/scrollRetention";
 import WhatsAppOrderButton from "./WhatsAppOrderButton";
 import { searchStoreProducts } from "../utils/searchUtils";
+import { createAccessoryCartProduct } from "../utils/deliveryDate";
 
 interface HeaderProps {
   cart: CartItem[];
@@ -14,8 +15,8 @@ interface HeaderProps {
   onOpenTracker: () => void;
   onScrollToSection: (id: string) => void;
   onOpenDashboard: () => void;
-  activePage?: "gadgets" | "vehicles" | "swap-deals" | "store";
-  onNavigatePage?: (page: "gadgets" | "vehicles" | "swap-deals" | "store", sectionId?: string) => void;
+  activePage?: "gateway" | "gadgets" | "vehicles" | "swap-deals" | "store";
+  onNavigatePage?: (page: "gateway" | "gadgets" | "vehicles" | "swap-deals" | "store", sectionId?: string) => void;
   products?: Product[];
   onSelectProduct?: (product: Product) => void;
   onExecuteSearch?: (query: string) => void;
@@ -25,6 +26,9 @@ interface HeaderProps {
   isLoginModalOpen?: boolean;
   onOpenLoginModal?: () => void;
   onCloseLoginModal?: () => void;
+  isCategoryMode?: boolean;
+  onNavigateHome?: () => void;
+  onAddToCart?: (product: Product, selectedStorage?: string, selectedColor?: { name: string; hex: string }) => void;
 }
 
 export default function Header({
@@ -46,6 +50,9 @@ export default function Header({
   isLoginModalOpen: controlledIsLoginModalOpen,
   onOpenLoginModal: controlledOnOpenLoginModal,
   onCloseLoginModal: controlledOnCloseLoginModal,
+  isCategoryMode = false,
+  onNavigateHome,
+  onAddToCart,
 }: HeaderProps) {
   const { branding } = useBranding();
   const [logoFailed, setLogoFailed] = useState(false);
@@ -90,6 +97,103 @@ export default function Header({
     }
   }, [isCartOpen, isLoginModalOpen]);
 
+  // Recommended gadget accessories based on cart items + catalog
+  const recommendedAccessories = useMemo<Array<{ accessory: ProductAccessory; parentProduct?: Product }>>(() => {
+    const list: Array<{ accessory: ProductAccessory; parentProduct?: Product }> = [];
+    const seenIds = new Set<string>();
+
+    // 1. Collect strictly from products in the cart that have assigned accessories
+    let hasPhoneWithAssigned = false;
+    cart.forEach((item) => {
+      if (item.product.assignedAccessories && item.product.assignedAccessories.length > 0) {
+        hasPhoneWithAssigned = true;
+        item.product.assignedAccessories.forEach((acc) => {
+          if (acc && acc.id && acc.price > 0 && !seenIds.has(acc.id)) {
+            seenIds.add(acc.id);
+            list.push({ accessory: acc, parentProduct: item.product });
+          }
+        });
+      }
+    });
+
+    // Per requirement: If accessories are assigned to products in the cart, ONLY those assigned accessories appear
+    if (hasPhoneWithAssigned) {
+      return list;
+    }
+
+    // Fallback: If products in cart don't have assigned accessories yet, check catalog
+    if (products && products.length > 0 && list.length < 5) {
+      products.forEach((prod) => {
+        if (prod.assignedAccessories && prod.assignedAccessories.length > 0) {
+          prod.assignedAccessories.forEach((acc) => {
+            if (acc && acc.id && acc.price > 0 && !seenIds.has(acc.id) && list.length < 6) {
+              seenIds.add(acc.id);
+              list.push({ accessory: acc, parentProduct: prod });
+            }
+          });
+        }
+      });
+    }
+
+    // 3. Fallback verified accessories if none found
+    if (list.length === 0) {
+      const fallbackAccs: ProductAccessory[] = [
+        {
+          id: "apple-20w-fast-charger",
+          name: "Apple 20W USB-C Fast Adapter",
+          type: "Charger",
+          price: 18500,
+          image: "https://images.unsplash.com/photo-1583863788434-e58a36330cf0?auto=format&fit=crop&w=400&q=80",
+          inStock: true,
+        },
+        {
+          id: "samsung-45w-fast-charger",
+          name: "Samsung 45W Super Fast Power Adapter",
+          type: "Charger",
+          price: 24000,
+          image: "https://images.unsplash.com/photo-1583863788434-e58a36330cf0?auto=format&fit=crop&w=400&q=80",
+          inStock: true,
+        },
+        {
+          id: "tempered-glass-screen-protector",
+          name: "9H Armor Tempered Glass Screen Protector",
+          type: "Screen Protector",
+          price: 6500,
+          image: "https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?auto=format&fit=crop&w=400&q=80",
+          inStock: true,
+        },
+        {
+          id: "magsafe-shockproof-case",
+          name: "MagSafe Armor Shockproof Clear Case",
+          type: "Case",
+          price: 9500,
+          image: "https://images.unsplash.com/photo-1541872703-74c5e44368f9?auto=format&fit=crop&w=400&q=80",
+          inStock: true,
+        },
+      ];
+      fallbackAccs.forEach((acc) => {
+        list.push({ accessory: acc });
+      });
+    }
+
+    return list;
+  }, [cart, products]);
+
+  const handleAddAccessoryToCart = (acc: ProductAccessory, parent?: Product) => {
+    if (!onAddToCart) return;
+    const accProduct = createAccessoryCartProduct(acc, parent);
+    onAddToCart(accProduct, "Standard", { name: "Default", hex: "#000" });
+  };
+
+  const isAccessoryInCart = (accId: string, accName: string) => {
+    return cart.some(
+      (item) =>
+        item.id.includes(accId) ||
+        item.product.id.includes(accId) ||
+        item.product.name.toLowerCase() === accName.toLowerCase()
+    );
+  };
+
   // Click outside and escape key handler for search dropdown
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -110,11 +214,20 @@ export default function Header({
     };
   }, []);
 
-  // Filter products for immediate search results
+  // Filter products for immediate search results (strictly scoped to current experience)
+  const isVehicleExperience = activePage === "vehicles";
+
+  const scopedProducts = useMemo(() => {
+    if (!products || products.length === 0) return [];
+    return products.filter((p) =>
+      isVehicleExperience ? p.productType === "vehicle" : (p.productType || "phone") !== "vehicle"
+    );
+  }, [products, isVehicleExperience]);
+
   const searchResults = useMemo(() => {
-    if (!searchQuery.trim() || !products || products.length === 0) return [];
-    return searchStoreProducts(products, searchQuery).slice(0, 7);
-  }, [searchQuery, products]);
+    if (!searchQuery.trim() || scopedProducts.length === 0) return [];
+    return searchStoreProducts(scopedProducts, searchQuery).slice(0, 7);
+  }, [searchQuery, scopedProducts]);
 
   const handleSelectSearchResult = (product: Product) => {
     setIsSearchOpen(false);
@@ -122,7 +235,7 @@ export default function Header({
     if (onSelectProduct) {
       onSelectProduct(product);
     } else if (onNavigatePage) {
-      if (product.productType === "vehicle") {
+      if (isVehicleExperience) {
         onNavigatePage("vehicles");
       } else {
         onNavigatePage("store");
@@ -136,11 +249,9 @@ export default function Header({
     if (!query) return;
 
     setIsSearchOpen(false);
-    const lower = query.toLowerCase();
-    const isVehicleQuery = ["car", "cars", "vehicle", "toyota", "lexus", "benz", "mercedes", "honda", "camry", "corolla", "prado", "tokunbo"].some((k) => lower.includes(k));
 
-    if (isVehicleQuery && onNavigatePage) {
-      onNavigatePage("vehicles");
+    if (isVehicleExperience && onNavigatePage) {
+      onNavigatePage("vehicles", "vehicles-catalog");
     } else if (onExecuteSearch) {
       onExecuteSearch(query);
     } else if (onNavigatePage) {
@@ -156,28 +267,59 @@ export default function Header({
     }
   };
 
-  const logoClicksRef = useRef(0);
+  const tapTimesRef = useRef<number[]>([]);
+  const lastTapProcessedRef = useRef<number>(0);
   const noticeTimeoutRef = useRef<any>(null);
-  const lastScrollTimeRef = useRef(0);
   const [clickNotice, setClickNotice] = useState("");
 
-  const handleBrandClick = () => {
+  const handleBrandTap = (e?: React.SyntheticEvent) => {
+    if (e) {
+      e.stopPropagation();
+    }
     const now = Date.now();
-    // Throttle the scrolling interaction during fast taps to prevent jumpy jitter
-    if (now - lastScrollTimeRef.current > 3000) {
-      onScrollToSection("hero");
-      lastScrollTimeRef.current = now;
+    // Deduplicate touchstart/touchend/click firing for the same tap within 200ms
+    if (now - lastTapProcessedRef.current < 200) {
+      return;
+    }
+    lastTapProcessedRef.current = now;
+
+    // Filter to taps in the last 4.5 seconds
+    tapTimesRef.current = tapTimesRef.current.filter((t) => now - t < 4500);
+    tapTimesRef.current.push(now);
+    const taps = tapTimesRef.current.length;
+
+    // 2. If 5 or more taps reached, immediately open Admin Dashboard!
+    if (taps >= 5) {
+      tapTimesRef.current = [];
+      if (noticeTimeoutRef.current) clearTimeout(noticeTimeoutRef.current);
+
+      setClickNotice("🔓 Admin Access: Opening Dashboard!");
+      onOpenDashboard();
+
+      noticeTimeoutRef.current = setTimeout(() => {
+        setClickNotice("");
+      }, 3500);
+      return;
     }
 
-    if (noticeTimeoutRef.current) {
-      clearTimeout(noticeTimeoutRef.current);
+    // 3. Clear, encouraging feedback as user taps towards 5
+    if (taps >= 2) {
+      const remaining = 5 - taps;
+      if (noticeTimeoutRef.current) clearTimeout(noticeTimeoutRef.current);
+      setClickNotice(`⚙️ Admin Access: tap ${remaining} more time${remaining > 1 ? "s" : ""}...`);
+      noticeTimeoutRef.current = setTimeout(() => {
+        setClickNotice("");
+      }, 2000);
     }
 
-    setClickNotice("🔓 Access Unlocked: Opening Developer Dashboard!");
-    onOpenDashboard();
-    noticeTimeoutRef.current = setTimeout(() => {
-      setClickNotice("");
-    }, 3000);
+    // 4. Single-tap default navigation only on initial tap
+    if (taps === 1) {
+      if (isCategoryMode && onNavigateHome) {
+        onNavigateHome();
+      } else {
+        onScrollToSection("hero");
+      }
+    }
   };
 
   // Authentication states
@@ -231,7 +373,19 @@ export default function Header({
     setUserName("");
   };
 
-  const handleNavClick = (sectionId: string, pageTarget?: "gadgets" | "store" | "vehicles" | "swap-deals") => {
+  const handleNavClick = (sectionId: string, pageTarget?: "gateway" | "gadgets" | "store" | "vehicles" | "swap-deals") => {
+    if (pageTarget === "gateway") {
+      if (onNavigatePage) {
+        onNavigatePage("gateway");
+      }
+      return;
+    }
+
+    if ((sectionId === "hero" || pageTarget === "gadgets") && onNavigateHome && !isVehicleExperience) {
+      onNavigateHome();
+      return;
+    }
+
     if (pageTarget) {
       if (onNavigatePage) {
         onNavigatePage(pageTarget as any, sectionId);
@@ -253,12 +407,8 @@ export default function Header({
       } else {
         onScrollToSection(sectionId);
       }
-    } else if (sectionId === "vehicles" || sectionId === "vehicle-import") {
-      if (onNavigatePage) {
-        onNavigatePage("vehicles", sectionId);
-      } else {
-        onScrollToSection(sectionId);
-      }
+    } else if (isVehicleExperience) {
+      onScrollToSection(sectionId);
     } else {
       if (onNavigatePage) {
         onNavigatePage("gadgets", sectionId);
@@ -268,19 +418,26 @@ export default function Header({
     }
   };
 
-  const navLinks = [
-    { label: "Home", sectionId: "hero", page: "gadgets" },
-    { label: "Store", sectionId: "store", page: "store" },
-    { label: "🚗 Vehicles", sectionId: "vehicles", page: "vehicles", isVehicleTab: true },
-    { label: "Trade-In", sectionId: "trade-in", page: "swap-deals" },
-    { label: "Customs", sectionId: "vehicle-import", page: "vehicles" },
-  ];
+  const navLinks = isVehicleExperience
+    ? [
+        { label: "← Main Carousel", sectionId: "", page: "gateway" },
+        { label: "Vehicle Catalog", sectionId: "vehicles-catalog", page: "vehicles" },
+        { label: "Customs Estimator", sectionId: "vehicle-import", page: "vehicles" },
+        { label: "Buying Steps", sectionId: "car-buying-steps", page: "vehicles" },
+      ]
+    : [
+        { label: "← Main Carousel", sectionId: "", page: "gateway" },
+        { label: "Home", sectionId: "hero", page: "gadgets" },
+        { label: "Store", sectionId: "store", page: "store" },
+        { label: "Trade-In", sectionId: "trade-in", page: "swap-deals" },
+        { label: "Quality Check", sectionId: "how-it-works", page: "gadgets" },
+      ];
 
   return (
     <>
       {clickNotice && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[99] bg-black/90 text-milito-green text-xs font-bold px-4 py-2.5 rounded-full border border-milito-green/30 shadow-[0_4px_25px_rgba(0,177,79,0.2)] animate-pulse tracking-wide flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-milito-green animate-ping"></div>
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[10000] bg-black/95 text-milito-green text-xs font-black px-4 py-2.5 rounded-full border border-milito-green/50 shadow-[0_4px_30px_rgba(0,177,79,0.35)] tracking-wide flex items-center gap-2 pointer-events-none animate-bounce">
+          <div className="w-2.5 h-2.5 rounded-full bg-milito-green animate-ping"></div>
           {clickNotice}
         </div>
       )}
@@ -292,318 +449,346 @@ export default function Header({
             
             {/* Top-Left: MILITO Logo */}
             <div 
-              className="flex-shrink-0 flex items-center gap-1.5 sm:gap-2 cursor-pointer select-none"
-              onClick={handleBrandClick}
+              role="button"
+              tabIndex={0}
+              aria-label="MILITO TECH HOME Logo - tap 5x for Admin Dashboard"
+              style={{ touchAction: 'manipulation' }}
+              className={`flex-shrink-0 flex items-center gap-1.5 sm:gap-2.5 cursor-pointer select-none active:opacity-75 transition-opacity ${
+                isCategoryMode ? "py-1" : ""
+              }`}
+              onClick={handleBrandTap}
             >
               {branding.logoUrl && !logoFailed ? (
-                <div className="flex items-center gap-1.5 sm:gap-2 py-1">
+                <div className="flex items-center gap-1.5 sm:gap-2.5 py-0 pointer-events-none">
                   <img 
-                    src={resolveImageUrl(branding.logoUrl, { width: 240 })} 
+                    src={resolveImageUrl(branding.logoUrl, { width: 420 })} 
                     alt="MILITO TECH HOME Logo" 
                     onError={() => setLogoFailed(true)}
-                    className="h-8 sm:h-11 md:h-14 max-w-[100px] sm:max-w-[140px] md:max-w-[200px] w-auto object-contain bg-transparent p-0 border-0 shadow-none mix-blend-multiply transition-all duration-200"
+                    className="h-14 sm:h-[72px] md:h-[76px] max-w-[180px] sm:max-w-[260px] md:max-w-[320px] w-auto object-contain bg-transparent p-0 border-0 shadow-none mix-blend-multiply scale-110 sm:scale-125 origin-left transition-all duration-200 pointer-events-none"
                   />
-                  <span className="font-extrabold text-[#1A2025] text-xs sm:text-base md:text-lg tracking-wider hidden xl:inline">
-                    MILITO <span className="text-milito-green">TECH</span>
+                  <span className={`font-black text-[#1A2025] tracking-wider pointer-events-none ${
+                    isCategoryMode
+                      ? "text-sm sm:text-lg md:text-xl inline"
+                      : "text-xs sm:text-base md:text-lg hidden xl:inline"
+                  }`}>
+                    MILITO <span className="text-milito-green">{isVehicleExperience ? "AUTO" : "TECH"}</span>
                   </span>
                 </div>
               ) : (
-                <>
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-milito-green flex items-center justify-center font-extrabold text-[#1A2025] leading-none text-base sm:text-xl shadow-[0_3px_10px_rgba(0,177,79,0.2)]">
+                <div className="flex items-center gap-2 sm:gap-3 pointer-events-none">
+                  <div className="w-11 h-11 sm:w-14 sm:h-14 text-xl sm:text-3xl rounded-xl bg-milito-green flex items-center justify-center font-black text-[#1A2025] leading-none shadow-[0_3px_10px_rgba(0,177,79,0.2)]">
                     M
                   </div>
                   <div className="flex flex-col">
-                    <span className="font-extrabold text-[#1A2025] text-xs sm:text-base tracking-wider leading-tight">
-                      MILITO <span className="text-milito-green">TECH</span>
+                    <span className="font-black text-[#1A2025] tracking-wider leading-tight text-base sm:text-xl md:text-2xl">
+                      MILITO <span className="text-milito-green">{isVehicleExperience ? "AUTO" : "TECH"}</span>
                     </span>
-                    <span className="text-[7.5px] sm:text-[9px] tracking-[0.2em] uppercase text-gray-500 font-bold -mt-0.5">
-                      HOME
+                    <span className="text-[8px] sm:text-[10px] tracking-[0.2em] uppercase text-gray-500 font-bold -mt-0.5">
+                      {isVehicleExperience ? "MOTORS" : "HOME"}
                     </span>
                   </div>
-                </>
+                </div>
               )}
             </div>
 
-            {/* Prominent Search Bar (Between Logo and Hamburger/Menu Controls) */}
-            <div className="flex-1 max-w-xs sm:max-w-md md:max-w-lg lg:max-w-xl mx-1 sm:mx-3 relative min-w-0" ref={searchContainerRef}>
-              <form onSubmit={handleSearchSubmit} className="relative w-full">
-                <div className="relative flex items-center group">
-                  <Search className="absolute left-2.5 sm:left-3.5 w-3.5 sm:w-4 h-3.5 sm:h-4 text-gray-400 pointer-events-none transition-colors group-focus-within:text-milito-green" />
-                  <input
-                    ref={searchInputRef}
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => {
-                      setSearchQuery(e.target.value);
-                      setIsSearchOpen(true);
-                    }}
-                    onFocus={() => setIsSearchOpen(true)}
-                    placeholder="Search phones, cars, gadgets..."
-                    aria-label="Search catalogue"
-                    className="w-full pl-8 sm:pl-10 pr-7 sm:pr-8 py-1.5 sm:py-2 text-xs sm:text-sm bg-gray-100/90 hover:bg-gray-100 focus:bg-white text-gray-900 placeholder-gray-400 rounded-full border border-gray-200/90 focus:outline-none focus:border-milito-green focus:ring-2 focus:ring-milito-green/30 transition-all duration-200 shadow-inner"
-                  />
-                  {searchQuery ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSearchQuery("");
-                        if (searchInputRef.current) searchInputRef.current.focus();
+            {/* Prominent Search Bar (Between Logo and Hamburger/Menu Controls) - Hidden inside Category space, Store page, and Vehicles page (which has its own sticky search bar) */}
+            {!isCategoryMode && activePage !== "store" && activePage !== "vehicles" && (
+              <div className="flex-1 max-w-xs sm:max-w-md md:max-w-lg lg:max-w-xl mx-1 sm:mx-3 relative min-w-0" ref={searchContainerRef}>
+                <form onSubmit={handleSearchSubmit} className="relative w-full">
+                  <div className="relative flex items-center group">
+                    <Search className="absolute left-2.5 sm:left-3.5 w-3.5 sm:w-4 h-3.5 sm:h-4 text-gray-400 pointer-events-none transition-colors group-focus-within:text-milito-green" />
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => {
+                        setSearchQuery(e.target.value);
+                        setIsSearchOpen(true);
                       }}
-                      className="absolute right-2 sm:right-2.5 p-1 text-gray-400 hover:text-gray-700 rounded-full cursor-pointer"
-                      title="Clear search"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  ) : null}
-                </div>
-              </form>
-
-              {/* Instant Search Results / Recommendations Dropdown */}
-              {isSearchOpen && (
-                <div className="fixed top-17 left-2 right-2 sm:absolute sm:top-full sm:left-0 sm:right-0 mt-1.5 sm:mt-2 bg-white rounded-2xl shadow-2xl border border-gray-200/90 overflow-hidden z-50 max-h-[70vh] sm:max-h-[60vh] flex flex-col animate-scaleUp">
-                  
-                  {/* Results Header */}
-                  {searchQuery.trim().length > 0 ? (
-                    <div className="p-3 bg-gray-50 border-b border-gray-150 flex items-center justify-between text-xs">
-                      <span className="font-bold text-gray-700">
-                        {searchResults.length > 0
-                          ? `Found ${searchResults.length} matching items`
-                          : "No direct match"}
-                      </span>
-                      <span className="text-[10px] text-gray-500">Press Enter for all</span>
-                    </div>
-                  ) : (
-                    <div className="p-3 bg-gray-50 border-b border-gray-150 text-xs">
-                      <span className="font-extrabold text-gray-700 uppercase tracking-wider text-[10px]">
-                        Popular Searches in Catalogue
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Results Body */}
-                  <div className="overflow-y-auto divide-y divide-gray-100 flex-1">
-                    {searchQuery.trim().length === 0 ? (
-                      <div className="p-3.5 space-y-3">
-                        <div className="flex flex-wrap gap-1.5">
-                          {["iPhone 15 Pro", "Samsung S24", "🚗 Tokunbo Cars", "Foreign Used", "Google Pixel", "MacBook", "Grade A++"].map((tag) => (
-                            <button
-                              key={tag}
-                              type="button"
-                              onClick={() => handleQuickTagClick(tag.replace("🚗 ", ""))}
-                              className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-gray-100 hover:bg-milito-green hover:text-black text-gray-750 transition-colors cursor-pointer border border-gray-200"
-                            >
-                              {tag}
-                            </button>
-                          ))}
-                        </div>
-                        <p className="text-[11px] text-gray-400 italic">
-                          Search by brand, model, specs, price (e.g. "under 500k"), or vehicle make.
-                        </p>
-                      </div>
-                    ) : searchResults.length > 0 ? (
-                      searchResults.map((product) => {
-                        const isVehicle = product.productType === "vehicle";
-                        const thumbUrl = resolveImageUrl(
-                          product.thumbnail?.secure_url || product.thumbnail || product.image || product.galleryImages?.[0]?.secure_url || product.gallery?.[0],
-                          { width: 100, brand: product.brand }
-                        );
-
-                        return (
-                          <div
-                            key={product.id}
-                            onClick={() => handleSelectSearchResult(product)}
-                            className="p-2.5 sm:p-3 hover:bg-gray-50 flex items-center gap-3 cursor-pointer transition-colors"
-                          >
-                            <div className="w-12 h-12 flex-shrink-0 rounded-lg bg-gray-100 border border-gray-200 p-1 flex items-center justify-center overflow-hidden">
-                              <img
-                                src={thumbUrl}
-                                alt={product.name}
-                                className="w-full h-full object-contain"
-                                loading="lazy"
-                              />
-                            </div>
-
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <h4 className="text-xs sm:text-sm font-bold text-gray-900 truncate">
-                                  {product.name}
-                                </h4>
-                                {isVehicle ? (
-                                  <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-0.5">
-                                    <Car className="w-2.5 h-2.5" /> Vehicle
-                                  </span>
-                                ) : (
-                                  <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded bg-gray-100 text-gray-700 border border-gray-250">
-                                    {product.condition || "Phone"}
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-[11px] text-gray-500 truncate mt-0.5">
-                                {isVehicle
-                                  ? `${product.brand} • ${product.year || ""} • ${product.transmission || ""}`
-                                  : `${product.brand} • ${(product.storageOptions || []).slice(0, 2).join("/") || "Unlocked"}`}
-                              </p>
-                            </div>
-
-                            <div className="text-right flex-shrink-0">
-                              <div className="text-xs sm:text-sm font-extrabold text-milito-green font-mono">
-                                {formatPrice(product.price)}
-                              </div>
-                              <span className={`text-[9px] font-bold ${
-                                product.availability === "Sold Out" ? "text-red-500" : "text-emerald-700"
-                              }`}>
-                                {product.availability || "In Stock"}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <div className="p-6 text-center">
-                        <p className="text-xs font-semibold text-gray-700">
-                          No matching devices or vehicles for "{searchQuery}"
-                        </p>
-                        <p className="text-[11px] text-gray-500 mt-1">
-                          Try searching by model name like "iPhone 14", "Galaxy S23", "Toyota", or "Camry".
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Dropdown Footer Action */}
-                  {searchQuery.trim().length > 0 && searchResults.length > 0 && (
-                    <div className="p-2.5 bg-gray-50 border-t border-gray-150 text-center">
+                      onFocus={() => setIsSearchOpen(true)}
+                      placeholder="Search phones, iPads, smartwatches..."
+                      aria-label="Search catalogue"
+                      className="w-full pl-8 sm:pl-10 pr-7 sm:pr-8 py-1.5 sm:py-2 text-xs sm:text-sm bg-gray-100/90 hover:bg-gray-100 focus:bg-white text-gray-900 placeholder-gray-400 rounded-full border border-gray-200/90 focus:outline-none focus:border-milito-green focus:ring-2 focus:ring-milito-green/30 transition-all duration-200 shadow-inner"
+                    />
+                    {searchQuery ? (
                       <button
                         type="button"
-                        onClick={() => handleSearchSubmit()}
-                        className="w-full py-2 px-3 rounded-xl bg-milito-green hover:brightness-105 text-black font-extrabold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                        onClick={() => {
+                          setSearchQuery("");
+                          if (searchInputRef.current) searchInputRef.current.focus();
+                        }}
+                        className="absolute right-2 sm:right-2.5 p-1 text-gray-400 hover:text-gray-700 rounded-full cursor-pointer"
+                        title="Clear search"
                       >
-                        <span>View all matching results</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    ) : null}
+                  </div>
+                </form>
+
+                {/* Instant Search Results / Recommendations Dropdown */}
+                {isSearchOpen && (
+                  <div className="fixed top-17 left-2 right-2 sm:absolute sm:top-full sm:left-0 sm:right-0 mt-1.5 sm:mt-2 bg-white rounded-2xl shadow-2xl border border-gray-200/90 overflow-hidden z-50 max-h-[70vh] sm:max-h-[60vh] flex flex-col animate-scaleUp">
+                    
+                    {/* Results Header */}
+                    {searchQuery.trim().length > 0 ? (
+                      <div className="p-3 bg-gray-50 border-b border-gray-150 flex items-center justify-between text-xs">
+                        <span className="font-bold text-gray-700">
+                          {searchResults.length > 0
+                            ? `Found ${searchResults.length} matching items`
+                            : "No direct match"}
+                        </span>
+                        <span className="text-[10px] text-gray-500">Press Enter for all</span>
+                      </div>
+                    ) : (
+                      <div className="p-3 bg-gray-50 border-b border-gray-150 text-xs">
+                        <span className="font-extrabold text-gray-700 uppercase tracking-wider text-[10px]">
+                          Popular Device Searches
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Results Body */}
+                    <div className="overflow-y-auto divide-y divide-gray-100 flex-1">
+                      {searchQuery.trim().length === 0 ? (
+                        <div className="p-3.5 space-y-3">
+                          <div className="flex flex-wrap gap-1.5">
+                            {["iPhone 15 Pro", "Samsung S24", "iPad Pro", "Google Pixel", "Apple Watch", "Grade A++"].map((tag) => (
+                              <button
+                                key={tag}
+                                type="button"
+                                onClick={() => handleQuickTagClick(tag)}
+                                className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-gray-100 hover:bg-milito-green hover:text-black text-gray-750 transition-colors cursor-pointer border border-gray-200"
+                              >
+                                {tag}
+                              </button>
+                            ))}
+                          </div>
+                          <p className="text-[11px] text-gray-400 italic">
+                            Search by brand, model, storage, condition, or price (e.g. "under 500k").
+                          </p>
+                        </div>
+                      ) : searchResults.length > 0 ? (
+                        searchResults.map((product) => {
+                          const isVehicle = product.productType === "vehicle";
+                          const thumbUrl = resolveImageUrl(
+                            product.thumbnail?.secure_url || product.thumbnail || product.image || product.galleryImages?.[0]?.secure_url || product.gallery?.[0],
+                            { width: 100, brand: product.brand }
+                          );
+
+                          return (
+                            <div
+                              key={product.id}
+                              onClick={() => handleSelectSearchResult(product)}
+                              className="p-2.5 sm:p-3 hover:bg-gray-50 flex items-center gap-3 cursor-pointer transition-colors"
+                            >
+                              <div className="w-12 h-12 flex-shrink-0 rounded-lg bg-gray-100 border border-gray-200 p-1 flex items-center justify-center overflow-hidden">
+                                <img
+                                  src={thumbUrl}
+                                  alt={product.name}
+                                  className="w-full h-full object-contain"
+                                  loading="lazy"
+                                />
+                              </div>
+
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <h4 className="text-xs sm:text-sm font-bold text-gray-900 truncate">
+                                    {product.name}
+                                  </h4>
+                                  {isVehicle ? (
+                                    <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-0.5">
+                                      <Car className="w-2.5 h-2.5" /> Vehicle
+                                    </span>
+                                  ) : (
+                                    <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded bg-gray-100 text-gray-700 border border-gray-250">
+                                      {product.condition || "Phone"}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[11px] text-gray-500 truncate mt-0.5">
+                                  {isVehicle
+                                    ? `${product.brand} • ${product.year || ""} • ${product.transmission || ""}`
+                                    : `${product.brand} • ${(product.storageOptions || []).slice(0, 2).join("/") || "Unlocked"}`}
+                                </p>
+                              </div>
+
+                              <div className="text-right flex-shrink-0">
+                                <div className="text-xs sm:text-sm font-extrabold text-milito-green font-mono">
+                                  {formatPrice(product.price)}
+                                </div>
+                                <span className={`text-[9px] font-bold ${
+                                  product.availability === "Sold Out" ? "text-red-500" : "text-emerald-700"
+                                }`}>
+                                  {product.availability || "In Stock"}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <div className="p-6 text-center">
+                          <p className="text-xs font-semibold text-gray-700">
+                            No matching devices for "{searchQuery}"
+                          </p>
+                          <p className="text-[11px] text-gray-500 mt-1">
+                            Try searching by model name like "iPhone 14", "Galaxy S23", or "iPad Pro".
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Dropdown Footer Action */}
+                    {searchQuery.trim().length > 0 && searchResults.length > 0 && (
+                      <div className="p-2.5 bg-gray-50 border-t border-gray-150 text-center">
+                        <button
+                          type="button"
+                          onClick={() => handleSearchSubmit()}
+                          className="w-full py-2 px-3 rounded-xl bg-milito-green hover:brightness-105 text-black font-extrabold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                        >
+                          <span>View all matching results</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Category Mode: Shows ONLY MILITO logo + Cart icon + Hamburger/menu */}
+            {isCategoryMode ? (
+              <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
+                {/* Cart Button */}
+                <button
+                  onClick={() => setIsCartOpen(true)}
+                  className="relative p-2 sm:p-2.5 rounded-full bg-gray-100 hover:bg-gray-200 hover:text-gray-900 transition-all border border-gray-200 cursor-pointer text-gray-850"
+                  title="View Shopping Cart"
+                  aria-label="View Shopping Cart"
+                >
+                  <ShoppingCart className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-current" />
+                  {cart.length > 0 && (
+                    <span className="absolute -top-1 -right-1 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-milito-green text-black text-[10px] font-black shadow-md">
+                      {cart.reduce((sum, item) => sum + item.quantity, 0)}
+                    </span>
+                  )}
+                </button>
+
+                {/* Hamburger/Menu Toggle */}
+                <button
+                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                  className="p-2 sm:p-2.5 text-gray-700 hover:text-black rounded-xl hover:bg-gray-100 transition-colors cursor-pointer border border-gray-200/80"
+                  aria-label="Toggle Navigation Menu"
+                >
+                  {isMobileMenuOpen ? <X className="w-5 h-5 sm:w-6 sm:h-6" /> : <Menu className="w-5 h-5 sm:w-6 sm:h-6" />}
+                </button>
+              </div>
+            ) : (
+              <>
+                {/* Desktop Navigation Links */}
+                <nav className="hidden lg:flex items-center space-x-1 xl:space-x-2">
+                  {navLinks.map((link) => {
+                    const isCurrentActive = 
+                      link.page === "store" 
+                        ? activePage === "store"
+                        : link.page === "gadgets" && link.sectionId === "hero"
+                        ? activePage === "gadgets"
+                        : link.page === "swap-deals"
+                        ? activePage === "swap-deals"
+                        : false;
+
+                    return (
+                      <button
+                        key={link.label}
+                        onClick={() => handleNavClick(link.sectionId, link.page as any)}
+                        className={`text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer px-2.5 py-1.5 rounded-xl whitespace-nowrap shrink-0 ${
+                          isCurrentActive
+                            ? "text-[#00B14F] bg-[#00B14F]/10 font-black"
+                            : "text-gray-700 hover:text-milito-green hover:bg-gray-100/60"
+                        }`}
+                      >
+                        {link.label}
+                      </button>
+                    );
+                  })}
+                </nav>
+
+                {/* Desktop Icons Area */}
+                <div className="hidden md:flex items-center space-x-3">
+                  {isLoggedIn ? (
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 bg-gray-100 px-3 py-1.5 rounded-full border border-gray-200">
+                        <div className="w-2 h-2 rounded-full bg-milito-green"></div>
+                        <span className="text-xs text-gray-700 font-semibold">{userName}</span>
+                      </div>
+                      <button
+                        onClick={handleLogout}
+                        className="p-2 text-gray-500 hover:text-red-500 transition-colors cursor-pointer"
+                        title="Sign Out"
+                      >
+                        <LogOut className="w-4 h-4" />
                       </button>
                     </div>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setAuthMode("login");
+                        setIsLoginModalOpen(true);
+                      }}
+                      className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-full bg-gray-100 hover:bg-gray-200 hover:text-gray-900 transition-all border border-gray-200 cursor-pointer text-gray-800"
+                    >
+                      <User className="w-3.5 h-3.5" />
+                      Login
+                    </button>
                   )}
 
-                </div>
-              )}
-            </div>
-
-            {/* Desktop Navigation Links */}
-            <nav className="hidden lg:flex items-center space-x-1 xl:space-x-2">
-              {navLinks.map((link) => {
-                const isCurrentActive = 
-                  link.page === "store" 
-                    ? activePage === "store"
-                    : link.page === "gadgets"
-                    ? activePage === "gadgets" || activePage === ("home" as any)
-                    : link.page === "swap-deals"
-                    ? activePage === "swap-deals"
-                    : link.page === "vehicles"
-                    ? activePage === "vehicles"
-                    : false;
-                
-                if (link.isVehicleTab) {
-                  return (
+                  {/* Cart Button (Gadget experience only) */}
+                  {!isVehicleExperience && (
                     <button
-                      key={link.label}
-                      onClick={() => handleNavClick(link.sectionId, link.page as any)}
-                      className={`text-xs font-extrabold uppercase tracking-wider px-2.5 py-1.5 rounded-full transition-all cursor-pointer flex items-center gap-1 ${
-                        activePage === "vehicles"
-                          ? "bg-[#1A2025] text-white shadow-sm ring-2 ring-[#00B14F]/40"
-                          : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200"
-                      }`}
+                      onClick={() => setIsCartOpen(true)}
+                      className="relative p-2 rounded-full bg-gray-100 hover:bg-gray-200 hover:text-gray-900 transition-all border border-gray-200 cursor-pointer text-gray-850"
+                      title="View Shopping Cart"
                     >
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#00B14F] animate-pulse"></span>
-                      <span>🚗 Vehicles</span>
+                      <ShoppingCart className="w-4.5 h-4.5 text-current" />
+                      {cart.length > 0 && (
+                        <span className="absolute -top-1 -right-1 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-milito-green text-black text-[10px] font-black shadow-md">
+                          {cart.reduce((sum, item) => sum + item.quantity, 0)}
+                        </span>
+                      )}
                     </button>
-                  );
-                }
+                  )}
+                </div>
 
-                return (
-                  <button
-                    key={link.label}
-                    onClick={() => handleNavClick(link.sectionId, link.page as any)}
-                    className={`text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer px-2 py-1.5 rounded-xl ${
-                      isCurrentActive
-                        ? "text-[#00B14F] bg-[#00B14F]/10 font-black"
-                        : "text-gray-700 hover:text-milito-green hover:bg-gray-100/60"
-                    }`}
-                  >
-                    {link.label}
-                  </button>
-                );
-              })}
-            </nav>
+                {/* Mobile Controls: Cart + Hamburger/Menu */}
+                <div className="flex md:hidden items-center space-x-1.5 sm:space-x-2 flex-shrink-0">
+                  {/* Mobile Cart (Gadget experience only) */}
+                  {!isVehicleExperience && (
+                    <button
+                      onClick={() => setIsCartOpen(true)}
+                      className="relative p-1.5 sm:p-2 rounded-full bg-gray-100 text-gray-850 border border-gray-200 cursor-pointer"
+                      title="Shopping Cart"
+                    >
+                      <ShoppingCart className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+                      {cart.length > 0 && (
+                        <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-milito-green text-black text-[9px] font-black">
+                          {cart.reduce((sum, item) => sum + item.quantity, 0)}
+                        </span>
+                      )}
+                    </button>
+                  )}
 
-            {/* Desktop Icons Area */}
-            <div className="hidden md:flex items-center space-x-3">
-              {isLoggedIn ? (
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1.5 bg-gray-100 px-3 py-1.5 rounded-full border border-gray-200">
-                    <div className="w-2 h-2 rounded-full bg-milito-green animate-pulse"></div>
-                    <span className="text-xs text-gray-700 font-semibold">{userName}</span>
-                  </div>
+                  {/* Existing Hamburger/Menu Toggle */}
                   <button
-                    onClick={handleLogout}
-                    className="p-2 text-gray-500 hover:text-red-500 transition-colors cursor-pointer"
-                    title="Sign Out"
+                    onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                    className="p-1.5 sm:p-2 text-gray-700 hover:text-black rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+                    aria-label="Toggle Navigation Menu"
                   >
-                    <LogOut className="w-4 h-4" />
+                    {isMobileMenuOpen ? <X className="w-5 h-5 sm:w-6 sm:h-6" /> : <Menu className="w-5 h-5 sm:w-6 sm:h-6" />}
                   </button>
                 </div>
-              ) : (
-                <button
-                  onClick={() => {
-                    setAuthMode("login");
-                    setIsLoginModalOpen(true);
-                  }}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-full bg-gray-100 hover:bg-gray-200 hover:text-gray-900 transition-all border border-gray-200 cursor-pointer text-gray-800"
-                >
-                  <User className="w-3.5 h-3.5" />
-                  Login
-                </button>
-              )}
-
-              {/* Cart Button */}
-              <button
-                onClick={() => setIsCartOpen(true)}
-                className="relative p-2 rounded-full bg-gray-100 hover:bg-gray-200 hover:text-gray-900 transition-all border border-gray-200 cursor-pointer text-gray-850"
-                title="View Shopping Cart"
-              >
-                <ShoppingCart className="w-4.5 h-4.5 text-current" />
-                {cart.length > 0 && (
-                  <span className="absolute -top-1 -right-1 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-milito-green text-black text-[10px] font-black shadow-md">
-                    {cart.reduce((sum, item) => sum + item.quantity, 0)}
-                  </span>
-                )}
-              </button>
-            </div>
-
-            {/* Mobile Controls: Cart + Hamburger/Menu */}
-            <div className="flex md:hidden items-center space-x-1.5 sm:space-x-2 flex-shrink-0">
-              {/* Mobile Cart */}
-              <button
-                onClick={() => setIsCartOpen(true)}
-                className="relative p-1.5 sm:p-2 rounded-full bg-gray-100 text-gray-850 border border-gray-200 cursor-pointer"
-                title="Shopping Cart"
-              >
-                <ShoppingCart className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
-                {cart.length > 0 && (
-                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-milito-green text-black text-[9px] font-black">
-                    {cart.reduce((sum, item) => sum + item.quantity, 0)}
-                  </span>
-                )}
-              </button>
-
-              {/* Existing Hamburger/Menu Toggle */}
-              <button
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="p-1.5 sm:p-2 text-gray-700 hover:text-black rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
-                aria-label="Toggle Navigation Menu"
-              >
-                {isMobileMenuOpen ? <X className="w-5 h-5 sm:w-6 sm:h-6" /> : <Menu className="w-5 h-5 sm:w-6 sm:h-6" />}
-              </button>
-            </div>
+              </>
+            )}
 
           </div>
         </div>
@@ -616,46 +801,19 @@ export default function Header({
                 <img
                   src={branding.logoUrl}
                   alt="Website Logo"
-                  className="h-10 sm:h-12 max-w-[200px] object-contain mix-blend-multiply bg-transparent p-0 border-0 shadow-none"
+                  className="h-12 sm:h-14 max-w-[220px] object-contain mix-blend-multiply bg-transparent p-0 border-0 shadow-none"
                 />
               </div>
             )}
             <div className="flex flex-col space-y-2.5 font-semibold text-base">
               {navLinks.map((link) => {
-                if (link.isVehicleTab) {
-                  return (
-                    <button
-                      key={link.label}
-                      onClick={() => {
-                        handleNavClick(link.sectionId, link.page as any);
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className={`text-left p-2.5 rounded-xl font-bold flex items-center justify-between transition-all ${
-                        activePage === "vehicles"
-                          ? "bg-[#1A2025] text-white"
-                          : "bg-emerald-50 text-emerald-900 border border-emerald-200"
-                      }`}
-                    >
-                      <span className="flex items-center gap-2">
-                        <span>🚗</span>
-                        <span>Vehicles & Customs Hub</span>
-                      </span>
-                      <span className="text-[10px] uppercase font-extrabold bg-[#00B14F] text-black px-2 py-0.5 rounded-full">
-                        Explore
-                      </span>
-                    </button>
-                  );
-                }
-
                 const isCurrentActive = 
                   link.page === "store" 
                     ? activePage === "store"
-                    : link.page === "gadgets"
-                    ? activePage === "gadgets" || activePage === ("home" as any)
+                    : link.page === "gadgets" && link.sectionId === "hero"
+                    ? activePage === "gadgets"
                     : link.page === "swap-deals"
                     ? activePage === "swap-deals"
-                    : link.page === "vehicles"
-                    ? activePage === "vehicles"
                     : false;
 
                 return (
@@ -675,14 +833,26 @@ export default function Header({
                   </button>
                 );
               })}
+              {!isVehicleExperience && (
+                <button
+                  onClick={() => {
+                    onOpenTracker();
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="text-left py-2 px-3 text-gray-800 hover:text-milito-green transition-colors font-bold"
+                >
+                  Track Order
+                </button>
+              )}
               <button
                 onClick={() => {
-                  onOpenTracker();
+                  onOpenDashboard();
                   setIsMobileMenuOpen(false);
                 }}
-                className="text-left py-2 px-3 text-gray-800 hover:text-milito-green transition-colors font-bold"
+                className="text-left py-2 px-3 text-gray-600 hover:text-milito-green transition-colors font-bold text-xs flex items-center gap-1.5"
               >
-                Track Order
+                <span>⚙️</span>
+                <span>Admin Dashboard</span>
               </button>
             </div>
 
@@ -769,7 +939,8 @@ export default function Header({
                         </button>
                       </div>
                     ) : (
-                      <div className="divide-y divide-gray-150">
+                      <>
+                        <div className="divide-y divide-gray-150">
                         {cart.map((item) => (
                           <div key={item.id} className="flex py-4 first:pt-0 last:pb-0 gap-4">
                             <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-md border border-gray-200 bg-gray-50 p-1 flex items-center justify-center">
@@ -832,39 +1003,107 @@ export default function Header({
                           </div>
                         ))}
                       </div>
+
+                      {/* Recommended Gadget Accessories in Cart */}
+                      {recommendedAccessories.length > 0 && (
+                        <div className="pt-4 border-t border-gray-200 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5">
+                              <Sparkles className="w-4 h-4 text-milito-green" />
+                              <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider">
+                                Recommended Accessories
+                              </h4>
+                            </div>
+                            <span className="text-[10px] text-gray-500 font-bold">Frequently added</span>
+                          </div>
+
+                          <div className="space-y-2">
+                            {recommendedAccessories.map(({ accessory, parentProduct }) => {
+                              const added = isAccessoryInCart(accessory.id, accessory.name);
+                              return (
+                                <div
+                                  key={accessory.id}
+                                  className="flex items-center justify-between gap-3 p-2.5 rounded-xl border border-gray-200 bg-gray-50/70 hover:bg-gray-100/90 transition-colors"
+                                >
+                                  <div className="flex items-center gap-2.5 min-w-0">
+                                    <div className="w-11 h-11 rounded-lg border border-gray-200 bg-white p-1 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                      {accessory.image ? (
+                                        <img
+                                          src={accessory.image}
+                                          alt={accessory.name}
+                                          className="w-full h-full object-contain"
+                                        />
+                                      ) : (
+                                        <Package className="w-5 h-5 text-gray-400" />
+                                      )}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <p className="text-xs font-bold text-gray-900 truncate leading-tight">
+                                        {accessory.name}
+                                      </p>
+                                      <div className="flex items-center gap-2 mt-0.5">
+                                        <span className="text-xs font-mono font-black text-milito-green">
+                                          {formatPrice(accessory.price)}
+                                        </span>
+                                        {accessory.type && (
+                                          <span className="text-[9px] uppercase font-bold text-gray-500 bg-white px-1.5 py-0.5 rounded border border-gray-200">
+                                            {accessory.type}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {added ? (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-100 text-emerald-800 text-[10px] font-extrabold flex-shrink-0">
+                                      <Check className="w-3 h-3 text-emerald-600 stroke-[3]" />
+                                      Added
+                                    </span>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleAddAccessoryToCart(accessory, parentProduct)}
+                                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white hover:bg-milito-green text-gray-900 hover:text-black border border-gray-300 hover:border-milito-green text-xs font-black shadow-xs active:scale-95 transition-all cursor-pointer flex-shrink-0"
+                                    >
+                                      <Plus className="w-3.5 h-3.5" />
+                                      <span>Add</span>
+                                    </button>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </>
                     )}
                   </div>
 
                   {/* Cart Footer */}
                   {cart.length > 0 && (
-                    <div className="border-t border-gray-200 px-6 py-6 bg-gray-50">
+                    <div className="border-t border-gray-200 px-6 py-5 bg-gray-50">
                       <div className="flex justify-between text-base font-bold text-gray-900 mb-2">
                         <span>Subtotal</span>
                         <span className="text-xl text-milito-green font-black font-mono">{formatPrice(cartTotal)}</span>
                       </div>
-                      <p className="text-[11px] text-gray-600 mb-6 flex items-center gap-1 bg-white p-2.5 rounded border border-gray-200 shadow-sm leading-normal">
-                        <ShieldCheck className="w-5 h-5 text-milito-green flex-shrink-0" />
-                        <span>Verified MILITO items. Direct order confirmation, prompt seller fulfillment, and reliable nationwide delivery.</span>
+                      <p className="text-[11px] text-gray-600 mb-4 flex items-center gap-1.5 bg-white p-2.5 rounded-xl border border-gray-200 shadow-xs leading-normal">
+                        <ShieldCheck className="w-4 h-4 text-milito-green flex-shrink-0" />
+                        <span>Verified MILITO gadgets. Prompt dispatch & direct tracking nationwide.</span>
                       </p>
 
-                      <div className="space-y-3">
-                        {/* 1. Order Cart via Order Now Button */}
-                        <WhatsAppOrderButton
-                          cartItems={cart}
-                          customTotal={cartTotal}
-                          label="Order Now"
-                          id="cart-drawer-order-now-btn"
-                        />
-
-                        {/* 2. Direct Order Summary Checkout */}
+                      <div className="space-y-2.5">
+                        {/* Check Out button */}
                         <button
                           onClick={() => {
                             setIsCartOpen(false);
                             onOpenCheckout();
                           }}
-                          className="w-full flex items-center justify-center rounded-xl bg-milito-green px-6 py-3.5 text-sm font-bold text-black shadow-md hover:brightness-105 active:scale-98 transition duration-200 cursor-pointer"
+                          className="w-full flex items-center justify-center gap-2 rounded-2xl bg-[#00B14F] hover:bg-[#009944] px-6 py-4 text-sm font-black uppercase tracking-wider text-black shadow-lg shadow-[#00B14F]/25 hover:shadow-xl active:scale-98 transition duration-200 cursor-pointer min-h-[50px]"
+                          id="cart-drawer-checkout-btn"
                         >
-                          Review & Complete Order
+                          <Lock className="w-4 h-4 text-black" />
+                          <span>Check Out</span>
+                          <ArrowRight className="w-4 h-4 text-black" />
                         </button>
 
                         <button

@@ -1,4 +1,5 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
 import { 
   getFirestore, 
   initializeFirestore, 
@@ -14,42 +15,69 @@ export const isFirebasePlaceholder =
   firebaseConfig.projectId === "YOUR_PROJECT_ID" ||
   firebaseConfig.apiKey === "";
 
-let app;
+let app: any = null;
 let db: any = null;
+let auth: any = null;
+
+const databaseId = (firebaseConfig as any)?.firestoreDatabaseId;
 
 if (!isFirebasePlaceholder) {
   try {
     app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-    // Use initializeFirestore with persistent local cache and experimentalForceLongPolling: true
-    // to ensure reliable connection behind sandboxed environments and handle offline states.
     try {
-      db = initializeFirestore(app, {
-        localCache: persistentLocalCache({
-          tabManager: persistentMultipleTabManager(),
-        }),
-        experimentalForceLongPolling: true,
-      });
+      auth = getAuth(app);
+    } catch (authErr) {
+      console.warn("Firebase auth initialization skipped or failed:", authErr);
+    }
+
+    // Initialize Firestore with specific databaseId (CRITICAL: Required for non-default database instances in AI Studio)
+    try {
+      db = databaseId
+        ? initializeFirestore(
+            app,
+            {
+              localCache: persistentLocalCache({
+                tabManager: persistentMultipleTabManager(),
+              }),
+              experimentalForceLongPolling: true,
+            },
+            databaseId
+          )
+        : initializeFirestore(app, {
+            localCache: persistentLocalCache({
+              tabManager: persistentMultipleTabManager(),
+            }),
+            experimentalForceLongPolling: true,
+          });
     } catch (cacheError) {
-      console.warn("Firestore initialization with cache failed, falling back to simple long polling:", cacheError);
+      console.warn("Firestore initialization with persistent cache failed, falling back to simple long polling:", cacheError);
       try {
-        db = initializeFirestore(app, {
-          experimentalForceLongPolling: true,
-        });
+        db = databaseId
+          ? initializeFirestore(
+              app,
+              {
+                experimentalForceLongPolling: true,
+              },
+              databaseId
+            )
+          : initializeFirestore(app, {
+              experimentalForceLongPolling: true,
+            });
       } catch (innerError) {
-        db = getFirestore(app);
+        db = databaseId ? getFirestore(app, databaseId) : getFirestore(app);
       }
     }
   } catch (error) {
     console.error("Firebase initialization failed:", error);
     try {
-      db = getFirestore(app);
+      db = databaseId ? getFirestore(app, databaseId) : getFirestore(app);
     } catch (fallbackError) {
       console.error("Firebase standard getFirestore fallback failed:", fallbackError);
     }
   }
 }
 
-export { db };
+export { db, auth };
 
 // ERROR HANDLERS COMPLIANCE
 export enum OperationType {
@@ -77,10 +105,10 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
     authInfo: {
-      userId: null,
-      email: null,
-      emailVerified: null,
-      isAnonymous: null,
+      userId: auth?.currentUser?.uid || null,
+      email: auth?.currentUser?.email || null,
+      emailVerified: auth?.currentUser?.emailVerified || null,
+      isAnonymous: auth?.currentUser?.isAnonymous || null,
     },
     operationType,
     path

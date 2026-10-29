@@ -1,9 +1,12 @@
 {
+  "projectId": "milito-tech-home",
+  "appId": "1:401344229368:web:c6db5d470d39a46045700d",
   "apiKey": "AIzaSyBlFT7jp9Y9UxOCe4yWtkRegsmWI3Nx_sA",
   "authDomain": "milito-tech-home.firebaseapp.com",
-  "projectId": "milito-tech-home",
+  "firestoreDatabaseId": "ai-studio-militotechhome-ec091c07-11af-47e9-b66f-19af891062d3",
   "storageBucket": "milito-tech-home.firebasestorage.app",
   "messagingSenderId": "401344229368",
-  "appId": "1:401344229368:web:967b7fbfa7897cd945700d",
-  "measurementId": "G-WX7G484BG8"
+  "measurementId": "",
+  "oAuthClientId": "401344229368-a88f5cm7mt5ovaj7ha3kma59hpc27dm1.apps.googleusercontent.com",
+  "recaptchaSiteKey": ""
 }

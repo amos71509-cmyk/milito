@@ -21,7 +21,9 @@ import { UploadService } from "../../services/UploadService";
 
 interface Step4SubmitRequestProps {
   currentModel: string;
+  customModelName?: string;
   currentStorage: string;
+  currentRam?: string;
   currentBrand: string;
   answers: SwapDeviceConditionAnswers;
   targetProduct: Product;
@@ -60,7 +62,9 @@ const NIGERIAN_STATES = [
 
 export default function Step4SubmitRequest({
   currentModel,
+  customModelName,
   currentStorage,
+  currentRam,
   currentBrand,
   answers,
   targetProduct,
@@ -258,8 +262,10 @@ export default function Step4SubmitRequest({
         customerLocation: customerLocation,
         currentDevice: {
           brand: currentBrand,
-          model: currentModel,
+          model: (currentModel === "Other Model" && customModelName) ? customModelName : currentModel,
+          customModelName: customModelName || undefined,
           storage: currentStorage,
+          ram: currentRam || undefined,
           answers: answers,
           estimatedGrade: grade,
           estimatedValue: estimatedValue,

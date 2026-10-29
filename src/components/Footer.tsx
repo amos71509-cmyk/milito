@@ -1,3 +1,4 @@
+import React, { useRef, useState } from "react";
 import { Mail, Phone, MapPin, Instagram, MessageSquare, ShieldAlert } from "lucide-react";
 import { useBranding } from "../context/BrandingContext";
 import { MILITO_WHATSAPP_CLEAN_NUMBER, MILITO_WHATSAPP_DISPLAY } from "../utils/whatsapp";
@@ -5,30 +6,97 @@ import { MILITO_WHATSAPP_CLEAN_NUMBER, MILITO_WHATSAPP_DISPLAY } from "../utils/
 interface FooterProps {
   onScrollToSection: (id: string) => void;
   onOpenTracker: () => void;
+  onOpenDashboard?: () => void;
+  experienceMode?: "gadgets" | "vehicles";
+  onNavigateGateway?: () => void;
 }
 
-export default function Footer({ onScrollToSection, onOpenTracker }: FooterProps) {
+export default function Footer({
+  onScrollToSection,
+  onOpenTracker,
+  onOpenDashboard,
+  experienceMode = "gadgets",
+  onNavigateGateway
+}: FooterProps) {
   const { branding } = useBranding();
   const currentYear = new Date().getFullYear();
+  const isVehicleExperience = experienceMode === "vehicles";
+
+  const tapTimesRef = useRef<number[]>([]);
+  const lastTapProcessedRef = useRef<number>(0);
+  const noticeTimeoutRef = useRef<any>(null);
+  const [clickNotice, setClickNotice] = useState("");
+
+  const handleLogoTap = (e?: React.SyntheticEvent) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    const now = Date.now();
+    if (now - lastTapProcessedRef.current < 200) {
+      return;
+    }
+    lastTapProcessedRef.current = now;
+
+    tapTimesRef.current = tapTimesRef.current.filter((t) => now - t < 4500);
+    tapTimesRef.current.push(now);
+    const taps = tapTimesRef.current.length;
+
+    if (taps >= 5 && onOpenDashboard) {
+      tapTimesRef.current = [];
+      if (noticeTimeoutRef.current) clearTimeout(noticeTimeoutRef.current);
+      setClickNotice("🔓 Admin Access: Opening Dashboard!");
+      onOpenDashboard();
+      noticeTimeoutRef.current = setTimeout(() => {
+        setClickNotice("");
+      }, 3500);
+      return;
+    }
+
+    if (taps >= 2 && onOpenDashboard) {
+      const remaining = 5 - taps;
+      if (noticeTimeoutRef.current) clearTimeout(noticeTimeoutRef.current);
+      setClickNotice(`⚙️ Admin Access: tap ${remaining} more time${remaining > 1 ? "s" : ""}...`);
+      noticeTimeoutRef.current = setTimeout(() => {
+        setClickNotice("");
+      }, 2000);
+    }
+
+    if (taps === 1) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
 
   return (
-    <footer style={{ backgroundColor: '#1A2025' }} className="border-t border-white/[0.08] pt-20 pb-8 text-gray-300">
+    <footer style={{ backgroundColor: '#1A2025' }} className="hidden md:block border-t border-white/[0.08] pt-12 md:pt-20 pb-24 md:pb-8 text-gray-300 relative">
+      {clickNotice && (
+        <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-[10000] bg-black/95 text-milito-green text-xs font-black px-4 py-2.5 rounded-full border border-milito-green/50 shadow-[0_4px_30px_rgba(0,177,79,0.35)] tracking-wide flex items-center gap-2 pointer-events-none animate-bounce">
+          <div className="w-2.5 h-2.5 rounded-full bg-milito-green animate-ping"></div>
+          {clickNotice}
+        </div>
+      )}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
           
           {/* Column 1: Brand details */}
           <div className="space-y-6">
-            <div className="flex items-center gap-2 cursor-pointer" onClick={() => onScrollToSection("hero")}>
+            <div 
+              role="button"
+              tabIndex={0}
+              aria-label="MILITO Logo"
+              style={{ touchAction: 'manipulation' }}
+              className="flex items-center gap-2 cursor-pointer select-none active:opacity-75 transition-opacity" 
+              onClick={handleLogoTap}
+            >
               {branding.logoUrl ? (
                 <div className="flex items-center gap-3">
                   <img 
                     src={branding.logoUrl} 
-                    alt="MILITO TECH HOME Logo" 
+                    alt="MILITO Logo" 
                     className="h-14 sm:h-16 md:h-20 max-w-[250px] sm:max-w-[300px] object-contain bg-transparent p-0 border-0 shadow-none"
                   />
                   <span className="font-extrabold text-xl tracking-wider text-white font-sans hidden sm:inline">
-                    MILITO <span className="text-milito-green">TECH</span>
+                    MILITO <span className="text-milito-green">{isVehicleExperience ? "AUTO" : "TECH"}</span>
                   </span>
                 </div>
               ) : (
@@ -38,10 +106,10 @@ export default function Footer({ onScrollToSection, onOpenTracker }: FooterProps
                   </div>
                   <div className="flex flex-col">
                     <span className="font-extrabold text-lg tracking-wider text-white font-sans">
-                      MILITO <span className="text-milito-green">TECH</span>
+                      MILITO <span className="text-milito-green">{isVehicleExperience ? "AUTO" : "TECH"}</span>
                     </span>
                     <span className="text-[9px] tracking-[0.2em] uppercase text-gray-400 font-bold -mt-1">
-                      HOME
+                      {isVehicleExperience ? "MOTORS" : "HOME"}
                     </span>
                   </div>
                 </>
@@ -49,7 +117,9 @@ export default function Footer({ onScrollToSection, onOpenTracker }: FooterProps
             </div>
 
             <p className="text-xs text-gray-300 leading-relaxed">
-              Nigeria's foremost premium tech retail hub for genuine Brand New, Pristine Grade A++ UK Used smartphones, trade-ins, and secure custom vehicle importations.
+              {isVehicleExperience
+                ? "Nigeria's premier automotive portal for verified Foreign Used (Tokunbo) and Nigerian Used vehicles, 35-point mechanical inspection, and genuine Nigeria Customs Service clearance."
+                : "Nigeria's foremost premium tech retail hub for genuine Brand New and Pristine Grade A++ UK Used smartphones, iPads, smartwatches, and instant device trade-ins."}
             </p>
 
             <div className="flex space-x-4">
@@ -67,39 +137,75 @@ export default function Footer({ onScrollToSection, onOpenTracker }: FooterProps
 
           {/* Column 2: Quick Links */}
           <div>
-            <h4 className="text-white font-bold text-xs uppercase tracking-widest mb-6 font-sans">Device Solutions</h4>
-            <ul className="space-y-3.5 text-xs font-semibold">
-              <li>
-                <button onClick={() => onScrollToSection("shop")} className="hover:text-milito-green text-gray-300 transition cursor-pointer">
-                  Shop Phones Catalog
-                </button>
-              </li>
-              <li>
-                <button onClick={() => onScrollToSection("trade-in")} className="hover:text-milito-green text-gray-300 transition cursor-pointer">
-                  Trade-In Evaluation
-                </button>
-              </li>
-              <li>
-                <button onClick={() => onScrollToSection("vehicles")} className="hover:text-milito-green text-gray-300 transition cursor-pointer flex items-center gap-1">
-                  <span>🚗</span> Vehicles & Direct Stock
-                </button>
-              </li>
-              <li>
-                <button onClick={() => onScrollToSection("vehicle-import")} className="hover:text-milito-green text-gray-300 transition cursor-pointer">
-                  Customs Clearance Estimates
-                </button>
-              </li>
-              <li>
-                <button onClick={onOpenTracker} className="hover:text-milito-green text-gray-300 transition cursor-pointer">
-                  Track Parcel Delivery
-                </button>
-              </li>
-              <li>
-                <button onClick={() => onScrollToSection("faq")} className="hover:text-milito-green text-gray-300 transition cursor-pointer">
-                  Help & Ordering FAQs
-                </button>
-              </li>
-            </ul>
+            <h4 className="text-white font-bold text-xs uppercase tracking-widest mb-6 font-sans">
+              {isVehicleExperience ? "Automotive Solutions" : "Device Solutions"}
+            </h4>
+            {isVehicleExperience ? (
+              <ul className="space-y-3.5 text-xs font-semibold">
+                <li>
+                  <button onClick={() => onScrollToSection("featured-vehicles")} className="hover:text-milito-green text-gray-300 transition cursor-pointer">
+                    Featured Vehicles
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => onScrollToSection("vehicles-catalog")} className="hover:text-milito-green text-gray-300 transition cursor-pointer">
+                    Full Vehicle Catalog
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => onScrollToSection("vehicle-import")} className="hover:text-milito-green text-gray-300 transition cursor-pointer">
+                    Customs Clearance Estimator
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => onScrollToSection("car-buying-steps")} className="hover:text-milito-green text-gray-300 transition cursor-pointer">
+                    How Car Buying Works
+                  </button>
+                </li>
+                {onNavigateGateway && (
+                  <li>
+                    <button onClick={onNavigateGateway} className="hover:text-milito-green text-gray-300 transition cursor-pointer">
+                      Back to MILITO Gateway
+                    </button>
+                  </li>
+                )}
+              </ul>
+            ) : (
+              <ul className="space-y-3.5 text-xs font-semibold">
+                <li>
+                  <button onClick={() => onScrollToSection("shop")} className="hover:text-milito-green text-gray-300 transition cursor-pointer">
+                    Shop Gadgets Catalog
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => onScrollToSection("trade-in")} className="hover:text-milito-green text-gray-300 transition cursor-pointer">
+                    Trade-In Evaluation
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => onScrollToSection("how-it-works")} className="hover:text-milito-green text-gray-300 transition cursor-pointer">
+                    35-Point Quality Inspection
+                  </button>
+                </li>
+                <li>
+                  <button onClick={onOpenTracker} className="hover:text-milito-green text-gray-300 transition cursor-pointer">
+                    Track Parcel Delivery
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => onScrollToSection("faq")} className="hover:text-milito-green text-gray-300 transition cursor-pointer">
+                    Help & Ordering FAQs
+                  </button>
+                </li>
+                {onNavigateGateway && (
+                  <li>
+                    <button onClick={onNavigateGateway} className="hover:text-milito-green text-gray-300 transition cursor-pointer">
+                      Back to MILITO Gateway
+                    </button>
+                  </li>
+                )}
+              </ul>
+            )}
           </div>
 
           {/* Column 3: Physical Desks Address */}
@@ -111,7 +217,7 @@ export default function Footer({ onScrollToSection, onOpenTracker }: FooterProps
                 <div>
                   <strong className="text-white font-bold">Lagos Desk Office:</strong>
                   <p className="text-gray-300 mt-1">
-                    No 14, Otigba Street, Ikeja Computer Village, Ikeja, Lagos State.
+                    No 14, Otigba Street, Ikeja, Lagos State.
                   </p>
                 </div>
               </li>
@@ -130,10 +236,10 @@ export default function Footer({ onScrollToSection, onOpenTracker }: FooterProps
           {/* Column 4: WhatsApp Contacts */}
           <div>
             <h4 className="text-white font-bold text-xs uppercase tracking-widest mb-6 font-sans">Customer Hotline</h4>
-            <ul className="space-y-4 text-xs font-semibold">
+            <ul className="flex flex-col gap-4 text-xs font-semibold">
               <li className="flex items-center gap-2.5 text-gray-300">
                 <Phone className="w-4 h-4 text-milito-green" />
-                <span>{MILITO_WHATSAPP_DISPLAY} (WhatsApp Sales)</span>
+                <span>{MILITO_WHATSAPP_DISPLAY} (WhatsApp Desk)</span>
               </li>
               <li className="flex items-center gap-2.5 text-gray-300">
                 <Phone className="w-4 h-4 text-milito-green" />
@@ -155,7 +261,7 @@ export default function Footer({ onScrollToSection, onOpenTracker }: FooterProps
         </div>
 
         {/* Payment vectors and disclaimer */}
-        <div className="border-t border-white/[0.08] pt-8 flex flex-col md:flex-row items-center justify-between gap-6 text-[11px]">
+        <div className="border-t border-white/[0.08] pt-8 flex flex-col md:flex-row items-center justify-between gap-0 md:gap-6 text-[11px]">
           <div className="flex flex-wrap items-center gap-4 text-gray-400 font-semibold justify-center">
             <span>ACCEPTED PAYMENTS:</span>
             <span className="bg-white/5 px-2.5 py-1 rounded border border-white/10 text-white font-mono shadow-sm">VISA</span>
@@ -165,8 +271,8 @@ export default function Footer({ onScrollToSection, onOpenTracker }: FooterProps
             <span className="bg-white/5 px-2.5 py-1 rounded border border-white/10 text-white font-mono shadow-sm">BANK TRANSFER</span>
           </div>
 
-          <p className="text-gray-400 text-center md:text-right font-medium hidden md:block">
-            © {currentYear} MILITO TECH HOME. Built for premium devices, transparent ordering and reliable delivery. All Rights Reserved.
+          <p className="hidden md:block text-gray-400 text-center md:text-right font-medium">
+            © {currentYear} {isVehicleExperience ? "MILITO AUTOMOTIVE" : "MILITO TECH HOME"}. Built for transparent ordering and reliable nationwide delivery. All Rights Reserved.
           </p>
         </div>
 

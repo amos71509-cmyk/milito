@@ -1,0 +1,6 @@
+{
+  "summary":  "Implementation plan for restructuring MILITO into a three-part experience: a full-screen dual-carousel initial gateway (Shop Gadgets and Explore Cars with no header or footer), a strictly isolated Gadget Homepage, and a strictly isolated Car Homepage, while preserving existing carousel designs, admin-managed media, browser Back navigation, mobile layouts, and Firebase data.",
+  "updatedAt":  "2026-10-28T07:17:17.987415823Z",
+  "requestFeedback":  true,
+  "userFacing":  true
+}

@@ -1,42 +1,26 @@
 import React from "react";
-import { ArrowRight, ShoppingBag, Sparkles, ShieldCheck } from "lucide-react";
+import { ArrowRight, ShoppingBag, Sparkles, Smartphone, Tablet, Watch } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
-import { Product } from "../types";
-import ProductCard from "./ProductCard";
+import { useDiscoveryCards, DiscoveryCardId } from "../context/DiscoveryCardsContext";
 
 interface HomepageProductTeaserProps {
-  products: Product[];
-  compareList: Product[];
-  onToggleCompare: (product: Product) => void;
-  onOpenDetails: (product: Product) => void;
-  onQuickAdd: (product: Product) => void;
   onExploreStore: () => void;
-  onShareProduct?: (product: Product) => void;
+  onSelectCategory: (categoryId: DiscoveryCardId) => void;
 }
 
+const CATEGORIES_LIST: { id: DiscoveryCardId; defaultTitle: string; icon: typeof Smartphone }[] = [
+  { id: "iphone", defaultTitle: "Find my iPhone", icon: Smartphone },
+  { id: "android", defaultTitle: "Look for my Android", icon: Smartphone },
+  { id: "ipad", defaultTitle: "Discover my next iPad", icon: Tablet },
+  { id: "wrist", defaultTitle: "Search for my Wrist", icon: Watch },
+];
+
 export default function HomepageProductTeaser({
-  products,
-  compareList,
-  onToggleCompare,
-  onOpenDetails,
-  onQuickAdd,
   onExploreStore,
-  onShareProduct,
+  onSelectCategory,
 }: HomepageProductTeaserProps) {
   const shouldReduceMotion = useReducedMotion();
-
-  // Pick 3 to 4 real phone products from the catalogue (prioritize featured if available)
-  const teaserProducts = React.useMemo(() => {
-    const phoneOnly = products.filter((p) => (p.productType || "phone") !== "vehicle");
-    const featured = phoneOnly.filter((p) => p.featured);
-    const regular = phoneOnly.filter((p) => !p.featured);
-    const combined = [...featured, ...regular];
-    return combined.slice(0, 4);
-  }, [products]);
-
-  if (teaserProducts.length === 0) {
-    return null;
-  }
+  const { config } = useDiscoveryCards();
 
   return (
     <section className="py-16 sm:py-20 bg-white border-b border-gray-150 relative" id="product-teaser">
@@ -45,16 +29,6 @@ export default function HomepageProductTeaser({
         {/* Section Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 sm:mb-12 gap-5">
           <div>
-            <motion.div
-              initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: -6 }}
-              whileInView={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.3 }}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#00B14F]/10 border border-[#00B14F]/20 text-[#00B14F] text-xs font-extrabold uppercase tracking-wider mb-2.5"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Product Discovery</span>
-            </motion.div>
 
             <motion.h2
               initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 10 }}
@@ -82,28 +56,65 @@ export default function HomepageProductTeaser({
             whileInView={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.4, delay: 0.2 }}
-            className="flex items-center gap-2 text-xs font-medium text-gray-500 bg-gray-50 border border-gray-200 px-3.5 py-2 rounded-xl self-start md:self-auto"
+            className="flex items-center gap-2 text-xs font-semibold text-gray-600 bg-gray-50 border border-gray-200 px-3.5 py-2 rounded-xl self-start md:self-auto"
           >
-            <ShieldCheck className="w-4 h-4 text-[#00B14F] flex-shrink-0" />
-            <span>Real verified Nigerian stock with 35-point QC</span>
+            <Sparkles className="w-4 h-4 text-[#00B14F] flex-shrink-0" />
+            <span>Select a category to explore catalogue</span>
           </motion.div>
         </div>
 
-        {/* Compact 3-4 Product Grid */}
+        {/* The 4 Category Discovery Cards in exact same grid dimensions and card structure */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-5 items-start">
-          {teaserProducts.map((prod) => (
-            <ProductCard
-              key={prod.id}
-              product={prod}
-              isComparing={compareList.some((p) => p.id === prod.id)}
-              onToggleCompare={onToggleCompare}
-              onOpenDetails={onOpenDetails}
-              onQuickAdd={onQuickAdd}
-            />
-          ))}
+          {CATEGORIES_LIST.map((item) => {
+            const cardData = config.cards[item.id];
+            const title = cardData?.title || item.defaultTitle;
+            const imageUrl = cardData?.imageUrl || "";
+            const Icon = item.icon;
+
+            return (
+              <div
+                key={item.id}
+                onClick={() => onSelectCategory(item.id)}
+                className="group relative bg-white rounded-3xl overflow-hidden border border-gray-250 hover:border-[#00B14F]/50 shadow-md hover:shadow-xl transition-all duration-300 flex flex-col will-change-transform cursor-pointer"
+              >
+                {/* 1:1 Aspect Ratio Image Container */}
+                <div className="w-full aspect-square relative bg-gray-100 overflow-hidden group-hover:bg-gray-200 transition-colors flex items-center justify-center">
+                  {imageUrl ? (
+                    <img
+                      src={imageUrl}
+                      alt={title}
+                      loading="lazy"
+                      decoding="async"
+                      className="w-full h-full object-cover block transition-transform duration-300 group-hover:scale-105"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 text-gray-400 p-4 text-center select-none">
+                      <div className="w-12 h-12 rounded-2xl bg-gray-200/80 flex items-center justify-center mb-2 text-gray-400 group-hover:text-[#00B14F] group-hover:bg-[#00B14F]/10 transition-colors">
+                        <Icon className="w-6 h-6 stroke-[1.5]" />
+                      </div>
+                      <span className="text-[11px] font-bold text-gray-600 leading-tight">Image not uploaded yet</span>
+                      <span className="text-[9px] font-medium text-gray-400 mt-0.5">Admin can add in dashboard</span>
+                    </div>
+                  )}
+
+                  {/* Subtle click cue on hover */}
+                  <div className="absolute inset-x-0 bottom-0 bg-[#1A2025]/90 backdrop-blur-xs py-1.5 text-center text-[10px] font-bold text-gray-200 opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0 duration-300">
+                    Click to Browse
+                  </div>
+                </div>
+
+                {/* Category Phrase Only */}
+                <div className="p-3 sm:p-4 text-center bg-white flex items-center justify-center min-h-[56px] border-t border-gray-100">
+                  <h3 className="font-extrabold text-xs sm:text-sm md:text-base text-gray-900 group-hover:text-[#00B14F] transition-colors leading-snug">
+                    {title}
+                  </h3>
+                </div>
+              </div>
+            );
+          })}
         </div>
 
-        {/* Clear Action Button to Full Store */}
+        {/* Action Button to Full Store */}
         <motion.div
           initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 12 }}
           whileInView={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}

@@ -15,12 +15,16 @@ import {
   Cpu,
   Fingerprint,
   Wifi,
-  Layers
+  Layers,
+  Package,
+  Plus,
+  Trash2
 } from "lucide-react";
-import { Product, CloudinaryImageMeta } from "../types";
+import { Product, ProductAccessory, CloudinaryImageMeta } from "../types";
 import { MediaUploader } from "./MediaUploader";
 import { useBranding } from "../context/BrandingContext";
 import { getStockStatus, getProductStockQuantity } from "../utils/stockUtils";
+import { AccessoryService } from "../services/AccessoryService";
 import {
   PHONE_BRANDS,
   getModelsForBrand,
@@ -282,6 +286,21 @@ export function BrandProductForm({
   const [selectedBrand, setSelectedBrand] = useState<string>(productForm.brand || "Apple");
   const [selectedSeries, setSelectedSeries] = useState<string>("All Series");
   const [modelSearchQuery, setModelSearchQuery] = useState<string>("");
+
+  // Live Catalog Accessories for Recommended Accessories Selector
+  const [catalogAccessories, setCatalogAccessories] = useState<ProductAccessory[]>(() => AccessoryService.getStoredLocal());
+
+  useEffect(() => {
+    AccessoryService.fetchAll().then((items) => {
+      if (items && items.length > 0) {
+        setCatalogAccessories(items);
+      }
+    });
+    const unsubscribe = AccessoryService.subscribe((updated) => {
+      setCatalogAccessories(updated);
+    });
+    return () => unsubscribe();
+  }, []);
 
   // Helper to find logo URL for a brand
   const getBrandLogoUrl = (brandName: string): string | undefined => {
@@ -1293,6 +1312,387 @@ export function BrandProductForm({
           onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
           className="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-xs text-white focus:border-[#00B14F] focus:outline-none leading-relaxed"
         />
+      </div>
+
+      {/* STEP 6: OPTIONAL ACCESSORIES / COMPLETE YOUR PACKAGE */}
+      <div className="p-5 bg-[#111827] border border-gray-800 rounded-2xl shadow-xl space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-gray-800">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 font-bold text-sm">
+              6
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                <Package className="w-4 h-4 text-purple-400" />
+                <span>Optional Accessories / Complete Your Package</span>
+              </h4>
+              <p className="text-xs text-gray-400">
+                Assign specific accessories (Charger, Case, Screen Guard, Power Bank, Earbuds) for this device. Only assigned items with admin images appear on the Spec page.
+              </p>
+            </div>
+          </div>
+
+          <span className="text-[11px] font-extrabold px-2.5 py-1 rounded-lg bg-gray-800 text-gray-300 self-start sm:self-auto border border-gray-700">
+            {(productForm.assignedAccessories || []).length} Assigned
+          </span>
+        </div>
+
+        {/* Recommended Accessories Selector from Catalog */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="block text-[11px] font-extrabold uppercase tracking-wider text-gray-300">
+              Recommended Accessories Selector (From Accessories Store):
+            </label>
+            <span className="text-[10px] text-gray-400">Click any accessory to assign/unassign for this product</span>
+          </div>
+
+          {catalogAccessories.length === 0 ? (
+            <div className="p-3 text-center text-xs text-gray-500 bg-gray-900/60 rounded-xl border border-gray-800">
+              No accessories found in the Accessories store. Add them in the Accessories section or use the presets below.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-[320px] overflow-y-auto p-1">
+              {catalogAccessories.map((catAcc) => {
+                const isAssigned = (productForm.assignedAccessories || []).some(
+                  (a) => a.id === catAcc.id || a.name.toLowerCase() === catAcc.name.toLowerCase()
+                );
+
+                return (
+                  <div
+                    key={catAcc.id}
+                    onClick={() => {
+                      if (isAssigned) {
+                        // Unassign
+                        setProductForm((prev) => ({
+                          ...prev,
+                          assignedAccessories: (prev.assignedAccessories || []).filter(
+                            (a) => a.id !== catAcc.id && a.name.toLowerCase() !== catAcc.name.toLowerCase()
+                          )
+                        }));
+                      } else {
+                        // Assign
+                        const newAcc: ProductAccessory = {
+                          id: catAcc.id,
+                          name: catAcc.name,
+                          type: catAcc.type,
+                          price: catAcc.price,
+                          image: catAcc.image,
+                          inStock: catAcc.inStock !== false
+                        };
+                        setProductForm((prev) => ({
+                          ...prev,
+                          assignedAccessories: [...(prev.assignedAccessories || []), newAcc]
+                        }));
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    className={`flex items-center justify-between gap-2.5 p-2.5 rounded-xl border transition-all cursor-pointer select-none text-left ${
+                      isAssigned
+                        ? "bg-[#00B14F]/10 border-[#00B14F] shadow-sm shadow-[#00B14F]/20 text-white"
+                        : "bg-gray-900/80 border-gray-800 hover:border-gray-700 text-gray-300 hover:bg-gray-850"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-10 h-10 rounded-lg bg-gray-950 border border-gray-800 p-1 flex items-center justify-center shrink-0 overflow-hidden">
+                        {catAcc.image ? (
+                          <img
+                            src={catAcc.image}
+                            alt={catAcc.name}
+                            className="w-full h-full object-contain"
+                          />
+                        ) : (
+                          <Package className="w-4 h-4 text-gray-500" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold truncate leading-snug">{catAcc.name}</p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-xs font-mono font-black text-[#00B14F]">
+                            ₦{catAcc.price?.toLocaleString()}
+                          </span>
+                          <span className="text-[9px] uppercase font-bold text-gray-400 bg-gray-950 px-1.5 py-0.5 rounded border border-gray-800">
+                            {catAcc.type}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="shrink-0">
+                      {isAssigned ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-[#00B14F] text-black text-[10px] font-black">
+                          <Check className="w-3 h-3 stroke-[3]" />
+                          <span>Assigned</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-gray-800 text-gray-400 hover:text-white text-[10px] font-bold">
+                          <Plus className="w-3 h-3" />
+                          <span>Assign</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Quick Add Presets Bar */}
+        <div>
+          <label className="block text-[11px] font-extrabold uppercase tracking-wider text-gray-400 mb-2">
+            Or Quick-Add Presets / Custom Accessory:
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {[
+              {
+                type: "Charger",
+                name: isAppleDevice ? "Apple 20W USB-C Power Adapter" : "Fast USB-C Power Adapter",
+                price: isAppleDevice ? 18500 : 14000,
+                image: "https://images.unsplash.com/photo-1583863788434-e58a36330cf0?auto=format&fit=crop&w=400&q=80"
+              },
+              {
+                type: "Pouch/Case",
+                name: "Shockproof Clear Silicone Case",
+                price: 5000,
+                image: "https://images.unsplash.com/photo-1601593346740-925612772716?auto=format&fit=crop&w=400&q=80"
+              },
+              {
+                type: "Screen Guard",
+                name: "9D Full Cover Tempered Glass",
+                price: 3500,
+                image: "https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?auto=format&fit=crop&w=400&q=80"
+              },
+              {
+                type: "Power Bank",
+                name: "20,000mAh PD Fast Charge Power Bank",
+                price: 28000,
+                image: "https://images.unsplash.com/photo-1609091839311-d5365f9ff1c5?auto=format&fit=crop&w=400&q=80"
+              },
+              {
+                type: "Earbuds/AirPods",
+                name: isAppleDevice ? "AirPods Pro (2nd Gen) with MagSafe" : "True Wireless Stereo Earbuds Pro",
+                price: isAppleDevice ? 245000 : 35000,
+                image: "https://images.unsplash.com/photo-1600294037681-c80b4cb5b434?auto=format&fit=crop&w=400&q=80"
+              },
+              {
+                type: "Camera Guard",
+                name: "Sapphire Crystal Camera Lens Guard",
+                price: 3000,
+                image: "https://images.unsplash.com/photo-1584438784894-089d6a62b8fa?auto=format&fit=crop&w=400&q=80"
+              },
+              {
+                type: "Earpiece",
+                name: "Stereo In-Ear Earphones with Mic",
+                price: 4500,
+                image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=400&q=80"
+              },
+              {
+                type: "Headset",
+                name: "Over-Ear Wireless Noise-Cancelling Headset",
+                price: 42000,
+                image: "https://images.unsplash.com/photo-1546435770-a3e426bf472b?auto=format&fit=crop&w=400&q=80"
+              }
+            ].map((preset) => (
+              <button
+                key={preset.type}
+                type="button"
+                onClick={() => {
+                  const newAccessory: ProductAccessory = {
+                    id: `acc_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+                    name: preset.name,
+                    type: preset.type,
+                    price: preset.price,
+                    image: preset.image,
+                    inStock: true
+                  };
+                  setProductForm((prev) => ({
+                    ...prev,
+                    assignedAccessories: [...(prev.assignedAccessories || []), newAccessory]
+                  }));
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-gray-800 text-gray-200 border border-gray-700 hover:border-[#00B14F] hover:text-[#00B14F] hover:bg-gray-850 transition-all cursor-pointer shadow-xs active:scale-95"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ {preset.type}</span>
+              </button>
+            ))}
+
+            <button
+              type="button"
+              onClick={() => {
+                const newAccessory: ProductAccessory = {
+                  id: `acc_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+                  name: "New Accessory",
+                  type: "Other",
+                  price: 5000,
+                  image: "",
+                  inStock: true
+                };
+                setProductForm((prev) => ({
+                  ...prev,
+                  assignedAccessories: [...(prev.assignedAccessories || []), newAccessory]
+                }));
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40 hover:bg-purple-500/30 transition-all cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>+ Custom Accessory</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Assigned Accessories Items List */}
+        <div className="space-y-3 pt-2">
+          {(!productForm.assignedAccessories || productForm.assignedAccessories.length === 0) ? (
+            <div className="p-4 rounded-xl border border-dashed border-gray-800 text-center text-xs text-gray-500 bg-gray-900/40">
+              No accessories assigned yet. Tap any preset button above to assign accessories for this phone.
+            </div>
+          ) : (
+            productForm.assignedAccessories.map((acc, index) => (
+              <div
+                key={acc.id || index}
+                className="p-3.5 rounded-xl bg-gray-900/90 border border-gray-800 space-y-3"
+              >
+                <div className="flex items-center justify-between gap-2 border-b border-gray-800/80 pb-2">
+                  <span className="text-xs font-black text-gray-300 flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-md bg-gray-800 text-gray-400 flex items-center justify-center text-[10px]">
+                      {index + 1}
+                    </span>
+                    <span>{acc.name || "Accessory Item"}</span>
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProductForm((prev) => ({
+                        ...prev,
+                        assignedAccessories: (prev.assignedAccessories || []).filter((_, idx) => idx !== index)
+                      }));
+                    }}
+                    className="p-1 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/10 transition cursor-pointer"
+                    title="Remove accessory"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-start">
+                  {/* Thumbnail Preview */}
+                  <div className="sm:col-span-2 flex sm:flex-col items-center gap-2">
+                    <div className="w-16 h-16 rounded-xl bg-black border border-gray-800 flex items-center justify-center overflow-hidden shrink-0">
+                      {acc.image ? (
+                        <img
+                          src={acc.image}
+                          alt={acc.name}
+                          className="w-full h-full object-contain p-1"
+                        />
+                      ) : (
+                        <Package className="w-6 h-6 text-gray-600" />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Fields */}
+                  <div className="sm:col-span-10 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    {/* Name */}
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase text-gray-400 mb-1">
+                        Name
+                      </label>
+                      <input
+                        type="text"
+                        value={acc.name}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setProductForm((prev) => {
+                            const updated = [...(prev.assignedAccessories || [])];
+                            updated[index] = { ...updated[index], name: val };
+                            return { ...prev, assignedAccessories: updated };
+                          });
+                        }}
+                        className="w-full bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-[#00B14F] focus:outline-none"
+                        placeholder="e.g. 20W Fast Charger"
+                      />
+                    </div>
+
+                    {/* Type */}
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase text-gray-400 mb-1">
+                        Category / Type
+                      </label>
+                      <select
+                        value={acc.type || "Other"}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setProductForm((prev) => {
+                            const updated = [...(prev.assignedAccessories || [])];
+                            updated[index] = { ...updated[index], type: val };
+                            return { ...prev, assignedAccessories: updated };
+                          });
+                        }}
+                        className="w-full bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-[#00B14F] focus:outline-none"
+                      >
+                        <option value="Charger">Charger</option>
+                        <option value="Pouch/Case">Pouch/Case</option>
+                        <option value="Screen Guard">Screen Guard</option>
+                        <option value="Power Bank">Power Bank</option>
+                        <option value="Earpiece">Earpiece</option>
+                        <option value="Earbuds/AirPods">Earbuds/AirPods</option>
+                        <option value="Headset">Headset</option>
+                        <option value="Camera Guard">Camera Guard</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+
+                    {/* Price in Naira */}
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase text-gray-400 mb-1">
+                        Price (₦)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="500"
+                        value={acc.price}
+                        onChange={(e) => {
+                          const val = Number(e.target.value) || 0;
+                          setProductForm((prev) => {
+                            const updated = [...(prev.assignedAccessories || [])];
+                            updated[index] = { ...updated[index], price: val };
+                            return { ...prev, assignedAccessories: updated };
+                          });
+                        }}
+                        className="w-full bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-[#00B14F] focus:outline-none font-mono"
+                      />
+                    </div>
+
+                    {/* Image URL */}
+                    <div className="sm:col-span-3">
+                      <label className="block text-[10px] font-bold uppercase text-gray-400 mb-1">
+                        Admin Image URL <span className="text-gray-500 font-normal">(Required: only genuine admin-provided image is rendered)</span>
+                      </label>
+                      <input
+                        type="url"
+                        value={acc.image}
+                        onChange={(e) => {
+                          const val = e.target.value.trim();
+                          setProductForm((prev) => {
+                            const updated = [...(prev.assignedAccessories || [])];
+                            updated[index] = { ...updated[index], image: val };
+                            return { ...prev, assignedAccessories: updated };
+                          });
+                        }}
+                        className="w-full bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-[#00B14F] focus:outline-none"
+                        placeholder="https://res.cloudinary.com/... or image link"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
       {/* LIVE PRODUCT PREVIEW CARD */}

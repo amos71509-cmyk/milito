@@ -39,7 +39,57 @@ export const SAMPLE_PRODUCTS: Product[] = [
     network: "Factory Unlocked 5G",
     faceId: "Working",
     rating: 4.9,
-    reviewsCount: 124
+    reviewsCount: 124,
+    assignedAccessories: [
+      {
+        id: "iphone-charger-20w",
+        name: "Apple 20W USB-C Power Adapter",
+        type: "Charger",
+        price: 18500,
+        image: "https://images.unsplash.com/photo-1583863788434-e58a36330cf0?auto=format&fit=crop&w=400&q=80",
+        inStock: true
+      },
+      {
+        id: "iphone-15-silicone-case",
+        name: "MagSafe Shockproof Silicone Case",
+        type: "Pouch/Case",
+        price: 7500,
+        image: "https://images.unsplash.com/photo-1601593346740-925612772716?auto=format&fit=crop&w=400&q=80",
+        inStock: true
+      },
+      {
+        id: "iphone-15-screen-guard",
+        name: "9D Full Cover Curved Screen Protector",
+        type: "Screen Guard",
+        price: 4500,
+        image: "https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?auto=format&fit=crop&w=400&q=80",
+        inStock: true
+      },
+      {
+        id: "airpods-pro-2-acc",
+        name: "AirPods Pro (2nd Gen) with MagSafe Case",
+        type: "Earbuds/AirPods",
+        price: 245000,
+        image: "https://images.unsplash.com/photo-1600294037681-c80b4cb5b434?auto=format&fit=crop&w=400&q=80",
+        inStock: true
+      },
+      {
+        id: "anker-powerbank-20k",
+        name: "20,000mAh PD Fast Charge Power Bank",
+        type: "Power Bank",
+        price: 32000,
+        image: "https://images.unsplash.com/photo-1609091839311-d5365f9ff1c5?auto=format&fit=crop&w=400&q=80",
+        inStock: true
+      },
+      {
+        id: "iphone-camera-guard",
+        name: "Sapphire Crystal Camera Lens Guard",
+        type: "Camera Guard",
+        price: 3500,
+        image: "https://images.unsplash.com/photo-1584438784894-089d6a62b8fa?auto=format&fit=crop&w=400&q=80",
+        inStock: true
+      }
+    ]
   },
   {
     id: "samsung-s24-ultra",
@@ -79,7 +129,49 @@ export const SAMPLE_PRODUCTS: Product[] = [
     fingerprint: "Working",
     faceId: "Working",
     rating: 4.8,
-    reviewsCount: 96
+    reviewsCount: 96,
+    assignedAccessories: [
+      {
+        id: "samsung-45w-charger",
+        name: "Samsung 45W Super Fast Power Adapter",
+        type: "Charger",
+        price: 24000,
+        image: "https://images.unsplash.com/photo-1583863788434-e58a36330cf0?auto=format&fit=crop&w=400&q=80",
+        inStock: true
+      },
+      {
+        id: "s24-ultra-armor-case",
+        name: "Heavy Duty Shockproof Armor Case",
+        type: "Pouch/Case",
+        price: 8500,
+        image: "https://images.unsplash.com/photo-1601593346740-925612772716?auto=format&fit=crop&w=400&q=80",
+        inStock: true
+      },
+      {
+        id: "s24-ultra-screen-guard",
+        name: "Anti-Reflective UV Curved Glass Protector",
+        type: "Screen Guard",
+        price: 6000,
+        image: "https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?auto=format&fit=crop&w=400&q=80",
+        inStock: true
+      },
+      {
+        id: "galaxy-buds2-pro",
+        name: "Samsung Galaxy Buds2 Pro Wireless Earbuds",
+        type: "Earbuds/AirPods",
+        price: 135000,
+        image: "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?auto=format&fit=crop&w=400&q=80",
+        inStock: true
+      },
+      {
+        id: "samsung-powerbank-10k",
+        name: "25W Fast Wireless 10,000mAh Power Bank",
+        type: "Power Bank",
+        price: 28000,
+        image: "https://images.unsplash.com/photo-1609091839311-d5365f9ff1c5?auto=format&fit=crop&w=400&q=80",
+        inStock: true
+      }
+    ]
   },
   {
     id: "google-pixel-9-pro",
@@ -464,6 +556,305 @@ export const SAMPLE_PRODUCTS: Product[] = [
     faceId: "Working",
     rating: 4.2,
     reviewsCount: 15
+  },
+  {
+    id: "ipad-pro-11-m4",
+    name: "Apple iPad Pro 11-inch (M4 Chip)",
+    brand: "Apple",
+    category: "iPad",
+    condition: "Brand New",
+    price: 1550000,
+    originalPrice: 1650000,
+    badge: "M4 Powerhouse",
+    availability: "In Stock",
+    batteryHealth: "100%",
+    batteryHealthValue: "100%",
+    image: "https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?q=80&w=800&auto=format&fit=crop",
+    gallery: [
+      "https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?q=80&w=800&auto=format&fit=crop"
+    ],
+    storageOptions: ["256GB", "512GB", "1TB"],
+    colorOptions: [
+      { name: "Space Black", hex: "#232426" },
+      { name: "Silver", hex: "#E3E4E5" }
+    ],
+    description: "The thinnest Apple product ever, featuring the revolutionary Ultra Retina XDR Tandem OLED display, mind-blowing M4 performance, and support for Apple Pencil Pro.",
+    specs: {
+      screen: "11-inch Ultra Retina XDR Tandem OLED (120Hz ProMotion)",
+      camera: "12MP Wide + LiDAR Scanner, 12MP Landscape Ultra Wide Front",
+      chipset: "Apple M4 Chip (10-core GPU, Hardware Ray Tracing)",
+      ram: "8GB / 16GB Unified Memory",
+      batterySize: "31.29 watt-hour rechargeable lithium-polymer",
+      os: "iPadOS 17, upgradable to iPadOS 18",
+      warranty: "1 Year International Apple Warranty",
+      simType: "Wi-Fi 6E (Optional 5G eSIM)"
+    },
+    networkCapability: "Wi-Fi 6E / 5G",
+    network: "Wi-Fi Only & 5G Cellular",
+    faceId: "Working",
+    rating: 4.9,
+    reviewsCount: 42
+  },
+  {
+    id: "ipad-air-11-m2",
+    name: "Apple iPad Air 11-inch (M2 Chip)",
+    brand: "Apple",
+    category: "iPad",
+    condition: "Brand New",
+    price: 980000,
+    originalPrice: 1050000,
+    badge: "M2 Fresh",
+    availability: "In Stock",
+    batteryHealth: "100%",
+    batteryHealthValue: "100%",
+    image: "https://images.unsplash.com/photo-1561154464-82e9adf32764?q=80&w=800&auto=format&fit=crop",
+    gallery: [
+      "https://images.unsplash.com/photo-1561154464-82e9adf32764?q=80&w=800&auto=format&fit=crop"
+    ],
+    storageOptions: ["128GB", "256GB", "512GB"],
+    colorOptions: [
+      { name: "Space Gray", hex: "#4B4E54" },
+      { name: "Starlight", hex: "#EBE6DD" },
+      { name: "Blue", hex: "#C5D3E8" },
+      { name: "Purple", hex: "#D8D3E5" }
+    ],
+    description: "Supercharged by the Apple M2 chip with phenomenal speed, a vivid Liquid Retina display, Touch ID power button, and compatibility with Apple Pencil Pro.",
+    specs: {
+      screen: "11-inch Liquid Retina IPS Display (P3 wide color, True Tone)",
+      camera: "12MP Wide back camera, 12MP Center Stage front camera",
+      chipset: "Apple M2 Chip",
+      ram: "8GB RAM",
+      batterySize: "28.93 watt-hour lithium-polymer",
+      os: "iPadOS 17.5",
+      warranty: "1 Year Apple Warranty",
+      simType: "Wi-Fi 6E + eSIM 5G"
+    },
+    networkCapability: "5G",
+    network: "Wi-Fi + Cellular (eSIM)",
+    fingerprint: "Working",
+    rating: 4.8,
+    reviewsCount: 38
+  },
+  {
+    id: "ipad-10th-gen",
+    name: "Apple iPad 10.9-inch (10th Gen)",
+    brand: "Apple",
+    category: "iPad",
+    condition: "Brand New",
+    price: 590000,
+    originalPrice: 640000,
+    badge: "Top Seller",
+    availability: "In Stock",
+    batteryHealth: "100%",
+    batteryHealthValue: "100%",
+    image: "https://images.unsplash.com/photo-1585790050230-5dd28404ccb9?q=80&w=800&auto=format&fit=crop",
+    gallery: [
+      "https://images.unsplash.com/photo-1585790050230-5dd28404ccb9?q=80&w=800&auto=format&fit=crop"
+    ],
+    storageOptions: ["64GB", "256GB"],
+    colorOptions: [
+      { name: "Silver", hex: "#E3E4E5" },
+      { name: "Blue", hex: "#6F94B8" },
+      { name: "Pink", hex: "#E8899E" },
+      { name: "Yellow", hex: "#F3DC75" }
+    ],
+    description: "Colourfully reimagined with an edge-to-edge 10.9-inch Liquid Retina display, A14 Bionic chip, landscape 12MP front camera with Center Stage, and USB-C connectivity.",
+    specs: {
+      screen: "10.9-inch Liquid Retina display (sRGB, True Tone)",
+      camera: "12MP Wide back, 12MP Landscape Ultra Wide front",
+      chipset: "Apple A14 Bionic",
+      ram: "4GB RAM",
+      batterySize: "28.6 watt-hour lithium-polymer",
+      os: "iPadOS 16, upgradable to iPadOS 18",
+      warranty: "1 Year Official Apple Warranty",
+      simType: "Wi-Fi Model"
+    },
+    networkCapability: "Wi-Fi 6",
+    network: "Wi-Fi Only",
+    fingerprint: "Working",
+    rating: 4.7,
+    reviewsCount: 56
+  },
+  {
+    id: "ipad-pro-12-9-m2-used",
+    name: "Apple iPad Pro 12.9-inch (M2 Chip)",
+    brand: "Apple",
+    category: "iPad",
+    condition: "Premium UK Used",
+    price: 1180000,
+    originalPrice: 1350000,
+    badge: "Grade A++ Liquid XDR",
+    availability: "In Stock",
+    batteryHealth: "94% (Certified)",
+    batteryHealthValue: "90%+",
+    image: "https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?q=80&w=800&auto=format&fit=crop",
+    gallery: [
+      "https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?q=80&w=800&auto=format&fit=crop"
+    ],
+    storageOptions: ["128GB", "256GB", "512GB"],
+    colorOptions: [
+      { name: "Space Gray", hex: "#4B4E54" },
+      { name: "Silver", hex: "#E3E4E5" }
+    ],
+    description: "Grade A++ UK Used 12.9-inch iPad Pro with mini-LED Liquid Retina XDR screen. Tested, verified zero screen bleed or scratches, 94% authentic battery health.",
+    specs: {
+      screen: "12.9-inch Liquid Retina XDR mini-LED (1000 nits, 1600 nits peak HDR)",
+      camera: "12MP Wide + 10MP Ultra Wide + LiDAR",
+      chipset: "Apple M2 Chip",
+      ram: "8GB RAM",
+      batterySize: "40.88 watt-hour battery (94% healthy)",
+      os: "iPadOS 16, upgradable to iPadOS 18",
+      warranty: "6-Month MILITO Store Warranty",
+      simType: "Wi-Fi + Cellular (Unlocked)"
+    },
+    networkCapability: "5G",
+    network: "Factory Unlocked 5G Cellular",
+    faceId: "Working",
+    rating: 4.8,
+    reviewsCount: 29
+  },
+  {
+    id: "apple-watch-ultra-2",
+    name: "Apple Watch Ultra 2 (49mm Titanium)",
+    brand: "Apple",
+    category: "Wrist",
+    condition: "Brand New",
+    price: 1250000,
+    originalPrice: 1350000,
+    badge: "Rugged Flagship",
+    availability: "In Stock",
+    batteryHealth: "100%",
+    batteryHealthValue: "100%",
+    image: "https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?q=80&w=800&auto=format&fit=crop",
+    gallery: [
+      "https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?q=80&w=800&auto=format&fit=crop"
+    ],
+    storageOptions: ["64GB"],
+    colorOptions: [
+      { name: "Natural Titanium (Orange Ocean Band)", hex: "#C8A27A" },
+      { name: "Titanium (Midnight Ocean Band)", hex: "#22252A" }
+    ],
+    description: "The most capable and rugged Apple Watch. Built with corrosion-resistant aerospace titanium, brightest 3000-nit display, precision dual-frequency GPS, and up to 36 hours of battery life.",
+    specs: {
+      screen: "49mm Always-On Retina LTPO OLED (3000 nits)",
+      sensors: "ECG, Blood Oxygen, Temperature, Depth gauge to 40m, Compass",
+      chipset: "Apple S9 SiP with 4-core Neural Engine",
+      batterySize: "542 mAh (Up to 36 hrs normal / 72 hrs Low Power)",
+      os: "watchOS 10, upgradable to watchOS 11",
+      warranty: "1 Year Official Apple Warranty"
+    },
+    networkCapability: "GPS + Cellular",
+    network: "GPS + Cellular",
+    rating: 4.9,
+    reviewsCount: 31
+  },
+  {
+    id: "apple-watch-series-9",
+    name: "Apple Watch Series 9 (45mm GPS)",
+    brand: "Apple",
+    category: "Wrist",
+    condition: "Brand New",
+    price: 640000,
+    originalPrice: 690000,
+    badge: "Double Tap Gesture",
+    availability: "In Stock",
+    batteryHealth: "100%",
+    batteryHealthValue: "100%",
+    image: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=800&auto=format&fit=crop",
+    gallery: [
+      "https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=800&auto=format&fit=crop"
+    ],
+    storageOptions: ["64GB"],
+    colorOptions: [
+      { name: "Midnight", hex: "#1C1D21" },
+      { name: "Starlight", hex: "#E9E3D8" },
+      { name: "Silver", hex: "#E3E4E5" },
+      { name: "Product RED", hex: "#E23838" }
+    ],
+    description: "Smarter, brighter, and mightier. Powered by the S9 SiP with Double Tap gesture control, on-device Siri, and a 2000-nit edge-to-edge Retina display.",
+    specs: {
+      screen: "45mm Always-On Retina OLED (2000 nits)",
+      sensors: "Electrical heart sensor, Optical heart sensor, Temperature sensing",
+      chipset: "Apple S9 SiP",
+      batterySize: "Up to 18 hours (36 hours in Low Power Mode)",
+      os: "watchOS 10, upgradable to watchOS 11",
+      warranty: "1 Year Apple Warranty"
+    },
+    networkCapability: "GPS",
+    network: "GPS Only",
+    rating: 4.8,
+    reviewsCount: 52
+  },
+  {
+    id: "apple-watch-series-8-used",
+    name: "Apple Watch Series 8 (45mm)",
+    brand: "Apple",
+    category: "Wrist",
+    condition: "Premium UK Used",
+    price: 395000,
+    originalPrice: 460000,
+    badge: "Grade A Pristine",
+    availability: "In Stock",
+    batteryHealth: "93% (Tested)",
+    batteryHealthValue: "90%+",
+    image: "https://images.unsplash.com/photo-1510017803434-a899398421b3?q=80&w=800&auto=format&fit=crop",
+    gallery: [
+      "https://images.unsplash.com/photo-1510017803434-a899398421b3?q=80&w=800&auto=format&fit=crop"
+    ],
+    storageOptions: ["32GB"],
+    colorOptions: [
+      { name: "Midnight Aluminum", hex: "#1C1D21" },
+      { name: "Starlight", hex: "#E9E3D8" }
+    ],
+    description: "Grade A++ UK Used Apple Watch Series 8. Pristine glass, no scuffs on sensor crystal, fully functional ECG and temperature monitoring with original magnetic fast charger.",
+    specs: {
+      screen: "45mm Always-On Retina OLED (1000 nits)",
+      sensors: "ECG app, High/low heart rate notifications, Blood Oxygen, Crash Detection",
+      chipset: "Apple S8 SiP 64-bit dual-core",
+      batterySize: "Tested 93% battery capacity",
+      os: "watchOS 9, upgradable to watchOS 11",
+      warranty: "3-Month MILITO Store Warranty"
+    },
+    networkCapability: "GPS",
+    network: "GPS Only",
+    rating: 4.7,
+    reviewsCount: 24
+  },
+  {
+    id: "galaxy-watch-6-classic",
+    name: "Samsung Galaxy Watch 6 Classic (47mm)",
+    brand: "Samsung",
+    category: "Wrist",
+    condition: "Brand New",
+    price: 480000,
+    originalPrice: 530000,
+    badge: "Rotating Bezel",
+    availability: "In Stock",
+    batteryHealth: "100%",
+    batteryHealthValue: "100%",
+    image: "https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?q=80&w=800&auto=format&fit=crop",
+    gallery: [
+      "https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?q=80&w=800&auto=format&fit=crop"
+    ],
+    storageOptions: ["16GB"],
+    colorOptions: [
+      { name: "Black", hex: "#1F2022" },
+      { name: "Silver", hex: "#E3E4E5" }
+    ],
+    description: "The iconic rotating bezel returns. Featuring a timeless stainless steel body, Sapphire Crystal display, advanced sleep coaching, and Samsung BioActive health sensor.",
+    specs: {
+      screen: "1.5-inch Super AMOLED (480x480, Sapphire Crystal)",
+      sensors: "Samsung BioActive Sensor (Optical Heart + Electrical Heart + Bioelectrical Impedance)",
+      chipset: "Exynos W930 dual-core 1.4GHz",
+      ram: "2GB RAM + 16GB Storage",
+      batterySize: "425 mAh (WPC-based wireless fast charging)",
+      os: "Wear OS Powered by Samsung (One UI 5 Watch)",
+      warranty: "1 Year Official Samsung Warranty"
+    },
+    networkCapability: "Bluetooth / Wi-Fi",
+    network: "Bluetooth / Wi-Fi",
+    rating: 4.7,
+    reviewsCount: 29
   }
 ];
 

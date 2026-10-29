@@ -41,6 +41,7 @@ import {
   Copy,
   ExternalLink,
   PackageCheck,
+  Package,
   Smartphone,
   HardDrive,
   Share2
@@ -60,6 +61,9 @@ import AdminSwapManager from "./AdminSwapManager";
 import AdminTradeInValuationManager from "./AdminTradeInValuationManager";
 import AdminTestimonialManager from "./testimonials/AdminTestimonialManager";
 import AdminAlertsManager from "./AdminAlertsManager";
+import HomepageDiscoveryCardsManager from "./HomepageDiscoveryCardsManager";
+import AdminAccessoriesManager from "./AdminAccessoriesManager";
+import AdminOrdersManager from "./AdminOrdersManager";
 import { useBranding } from "../context/BrandingContext";
 import {
   saveAdminActiveTab,
@@ -167,10 +171,10 @@ export default function AdminDashboard({
 
   // Primary Tabs Navigation
   const [activeTab, setActiveTab] = useState<
-    "dashboard" | "products" | "inventory" | "media" | "orders" | "tradeins" | "tradein-valuations" | "testimonials" | "messages" | "profile" | "branding" | "showcase"
+    "dashboard" | "products" | "accessories" | "inventory" | "media" | "orders" | "tradeins" | "tradein-valuations" | "testimonials" | "messages" | "profile" | "branding" | "showcase" | "discovery"
   >(() => {
     const saved = getStoredAdminActiveTab();
-    const validTabs = ["dashboard", "products", "inventory", "media", "orders", "tradeins", "tradein-valuations", "testimonials", "messages", "profile", "branding", "showcase"];
+    const validTabs = ["dashboard", "products", "accessories", "inventory", "media", "orders", "tradeins", "tradein-valuations", "testimonials", "messages", "profile", "branding", "showcase", "discovery"];
     if (saved && validTabs.includes(saved)) {
       return saved as any;
     }
@@ -1001,12 +1005,14 @@ export default function AdminDashboard({
           {[
             { id: "dashboard", label: "Overview", icon: LayoutDashboard },
             { id: "products", label: "Products Catalog", icon: ShoppingBag, badge: metrics.total },
+            { id: "accessories", label: "Accessories Manager", icon: Package },
+            { id: "orders", label: "Orders & Verification", icon: Clock },
+            { id: "discovery", label: "Homepage Discovery Cards", icon: Sparkles },
             { id: "alerts", label: "Notification Alerts", icon: Bell },
             { id: "showcase", label: "Homepage Showcase", icon: Car },
             { id: "branding", label: "Website Branding", icon: Sparkles },
             { id: "inventory", label: "Inventory & Stock", icon: TrendingUp, badge: metrics.lowStock > 0 ? metrics.lowStock : undefined },
             { id: "media", label: "Media Library", icon: ImageIcon },
-            { id: "orders", label: "Orders & Sales", icon: Clock, badge: orders.length },
             { id: "tradein-valuations", label: "Trade-In Valuation", icon: HardDrive },
             { id: "tradeins", label: "Swap Requests", icon: RefreshCw },
             { id: "testimonials", label: "Testimonials & Proof", icon: ShieldCheck },
@@ -1090,11 +1096,13 @@ export default function AdminDashboard({
               <h2 className="text-sm sm:text-base font-black text-white capitalize truncate">
                 {activeTab === "dashboard" && "Dashboard Overview"}
                 {activeTab === "products" && "Smartphone Catalog Storefront"}
+                {activeTab === "accessories" && "Recommended Accessories Manager"}
+                {activeTab === "discovery" && "Homepage Discovery Cards"}
                 {activeTab === "alerts" && "Product Notification Demands"}
                 {activeTab === "branding" && "Website Branding & Asset Management"}
                 {activeTab === "inventory" && "Stock & Inventory Control"}
                 {activeTab === "media" && "Cloudinary Media Library"}
-                {activeTab === "orders" && "Naira Live Orders"}
+                {activeTab === "orders" && "Customer Orders & Payment Verification"}
                 {activeTab === "tradein-valuations" && "Trade-In Valuation"}
                 {activeTab === "tradeins" && "Device Swap Appraisals"}
                 {activeTab === "testimonials" && "Customer Testimonials & Proofs"}
@@ -1911,22 +1919,14 @@ export default function AdminDashboard({
             </div>
           )}
 
-          {/* TAB 5: ORDERS */}
+          {/* TAB: ACCESSORIES MANAGER */}
+          {activeTab === "accessories" && (
+            <AdminAccessoriesManager />
+          )}
+
+          {/* TAB 5: ORDERS & PAYMENT VERIFICATION */}
           {activeTab === "orders" && (
-            <div className="p-6 bg-[#111827] border border-gray-800 rounded-2xl space-y-4">
-              <h3 className="text-sm font-extrabold text-white">Live Orders Management</h3>
-              <div className="divide-y divide-gray-800 text-xs">
-                {orders.map(o => (
-                  <div key={o.orderId} className="py-3 flex items-center justify-between">
-                    <div>
-                      <span className="font-bold text-white">{o.orderId}</span> - {o.customerName} ({o.customerState})
-                      <p className="text-gray-400">{o.productName} • ₦{o.productPrice.toLocaleString()}</p>
-                    </div>
-                    <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold">{o.paymentStatus}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <AdminOrdersManager />
           )}
 
           {/* TAB: NOTIFICATION ALERTS & CUSTOMER REACTIVATION */}
@@ -2105,6 +2105,13 @@ export default function AdminDashboard({
           {activeTab === "testimonials" && (
             <div className="space-y-6">
               <AdminTestimonialManager />
+            </div>
+          )}
+
+          {/* TAB 11: HOMEPAGE DISCOVERY CARDS MANAGER */}
+          {activeTab === "discovery" && (
+            <div className="space-y-6">
+              <HomepageDiscoveryCardsManager />
             </div>
           )}
 

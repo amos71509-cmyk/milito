@@ -1,14 +1,17 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { X, ChevronLeft, ChevronRight, ImageOff, ArrowLeft, Zap, Info, ShieldCheck, ArrowLeftRight, Share2, Bell, AlertCircle } from "lucide-react";
-import { Product, ProductAlertType, resolveImageUrl, extractProductOriginalImages, getFallbackImage } from "../types";
+import { X, ChevronLeft, ChevronRight, ImageOff, ArrowLeft, Zap, Info, ShieldCheck, ArrowLeftRight, Share2, Bell, AlertCircle, ShoppingCart, Truck, Check } from "lucide-react";
+import { Product, ProductAccessory, ProductAlertType, resolveImageUrl, extractProductOriginalImages, getFallbackImage } from "../types";
 import { getStockStatus } from "../utils/stockUtils";
 import { lockBodyScroll, unlockBodyScroll } from "../utils/scrollRetention";
 import WhatsAppOrderButton from "./WhatsAppOrderButton";
+import CompletePackageSection from "./CompletePackageSection";
+import { getDynamicDeliveryDate, createAccessoryCartProduct } from "../utils/deliveryDate";
 
 interface ProductDetailsModalProps {
   product: Product;
   onClose: () => void;
   onAddToCart: (product: Product, selectedStorage?: string, selectedColor?: { name: string; hex: string }) => void;
+  onOpenCart?: () => void;
   onBuyNow?: (product: Product, selectedStorage: string, selectedColor: { name: string; hex: string }, price: number) => void;
   onSwapForThis?: (product: Product) => void;
   onShare?: (product: Product) => void;
@@ -28,6 +31,7 @@ export default function ProductDetailsModal({
   product,
   onClose,
   onAddToCart,
+  onOpenCart,
   onBuyNow,
   onSwapForThis,
   onShare,
@@ -85,6 +89,62 @@ export default function ProductDetailsModal({
 
   // Price calculation
   const currentPrice = product.price;
+
+  const [selectedAccessoryIds, setSelectedAccessoryIds] = useState<string[]>([]);
+  const [cartSuccessNotice, setCartSuccessNotice] = useState<{
+    show: boolean;
+    productName: string;
+    accessoriesCount: number;
+    totalAmount: number;
+  } | null>(null);
+
+  const deliveryInfo = useMemo(() => getDynamicDeliveryDate(), []);
+
+  const assignedAccessories = product?.assignedAccessories || [];
+  const selectedAccessories = useMemo(() => {
+    return assignedAccessories.filter((acc) => selectedAccessoryIds.includes(acc.id));
+  }, [assignedAccessories, selectedAccessoryIds]);
+
+  const accessoriesTotal = useMemo(() => {
+    return selectedAccessories.reduce((sum, acc) => sum + (Number(acc.price) || 0), 0);
+  }, [selectedAccessories]);
+
+  const totalPackagePrice = currentPrice + accessoriesTotal;
+
+  const handleToggleAccessory = (acc: ProductAccessory) => {
+    setSelectedAccessoryIds((prev) =>
+      prev.includes(acc.id) ? prev.filter((id) => id !== acc.id) : [...prev, acc.id]
+    );
+  };
+
+  const handleAddToCartClick = () => {
+    if (!product) return;
+
+    if (onAddToCart) {
+      onAddToCart(
+        product,
+        selectedStorage || product.storageOptions?.[0] || "",
+        selectedColor || (product.colorOptions?.[0] ?? { name: "Default", hex: "#000" })
+      );
+
+      selectedAccessories.forEach((acc) => {
+        const accProduct = createAccessoryCartProduct(acc, product);
+        onAddToCart(accProduct, "Standard", { name: "Default", hex: "#000" });
+      });
+    }
+
+    if (onOpenCart) {
+      onClose();
+      onOpenCart();
+    } else {
+      setCartSuccessNotice({
+        show: true,
+        productName: product.name,
+        accessoriesCount: selectedAccessories.length,
+        totalAmount: totalPackagePrice,
+      });
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-[#1A2025]/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 md:p-6 animate-fadeIn">
@@ -269,6 +329,16 @@ export default function ProductDetailsModal({
                 <div className="mt-2">
                   <p className="text-milito-green text-2xl sm:text-3xl font-black font-mono">{formatPrice(currentPrice)}</p>
                 </div>
+
+                {/* Dynamic Estimated Delivery Date Badge (Next Day) */}
+                <div className="mt-2.5 flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/10 border border-[#00B14F]/30 text-emerald-950 text-xs">
+                  <Truck className="w-4 h-4 text-[#00B14F] shrink-0" />
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="font-extrabold text-[#00873c]">{deliveryInfo.label}</span>
+                    <span className="text-[10px] text-gray-400 hidden sm:inline">•</span>
+                    <span className="text-[11px] text-gray-650">Insured express delivery with tracking</span>
+                  </div>
+                </div>
               </div>
 
               <p className="text-xs text-gray-650 leading-relaxed bg-gray-50 p-4 rounded-xl border border-gray-200">
@@ -356,6 +426,45 @@ export default function ProductDetailsModal({
                 </div>
               </div>
 
+              {/* Complete Your Package (Accessories) */}
+              {product.assignedAccessories && product.assignedAccessories.length > 0 && (
+                <CompletePackageSection
+                  product={product}
+                  assignedAccessories={product.assignedAccessories}
+                  selectedAccessoryIds={selectedAccessoryIds}
+                  onToggleAccessory={handleToggleAccessory}
+                />
+              )}
+
+              {/* Cart Success Notice */}
+              {cartSuccessNotice?.show && (
+                <div className="p-4 rounded-2xl bg-[#1A2025] text-white border border-[#00B14F]/50 shadow-xl space-y-2.5 animate-fadeIn">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full bg-[#00B14F] text-black flex items-center justify-center font-bold">
+                        <Check className="w-4 h-4 stroke-[3]" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-black text-white">Added to Cart!</h4>
+                        <p className="text-[10px] text-gray-300">
+                          {cartSuccessNotice.productName}
+                          {cartSuccessNotice.accessoriesCount > 0 ? ` + ${cartSuccessNotice.accessoriesCount} accessory add-ons` : ""}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setCartSuccessNotice(null)}
+                      className="text-gray-400 hover:text-white p-1"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-[#00B14F] font-bold font-mono">
+                    Total: {formatPrice(cartSuccessNotice.totalAmount)}
+                  </p>
+                </div>
+              )}
+
               {/* Order Trigger Action Area */}
               <div className="pt-4 border-t border-gray-250 space-y-3">
                 {isProductSoldOut ? (
@@ -392,21 +501,26 @@ export default function ProductDetailsModal({
                     </p>
                   </div>
                 ) : (
-                  /* IN STOCK: DEDICATED ORDER NOW BUTTON + SECONDARY PRICE ALERT CARD */
+                  /* IN STOCK: PRIMARY ADD TO CART + WHATSAPP BUTTON + PRICE ALERT CARD */
                   <div className="space-y-3">
-                    <WhatsAppOrderButton
-                      product={product}
-                      options={{
-                        quantity: 1,
-                        selectedStorage,
-                        selectedColor,
-                        customPrice: currentPrice,
-                        sellerName: "MILITO Direct",
-                      }}
-                      label="Order Now"
-                      disabled={false}
-                      id="modal-order-now-btn"
-                    />
+                    <button
+                      type="button"
+                      onClick={handleAddToCartClick}
+                      className="w-full py-4 px-6 rounded-2xl bg-[#00B14F] hover:bg-[#009944] active:scale-98 text-black font-black text-sm uppercase tracking-wider shadow-lg shadow-[#00B14F]/25 flex items-center justify-center gap-2.5 cursor-pointer transition min-h-[52px]"
+                      id="modal-add-to-cart-btn"
+                    >
+                      <ShoppingCart className="w-5 h-5 text-black stroke-[2.5]" />
+                      <span>
+                        {selectedAccessories.length > 0
+                          ? `Add Package to Cart • ${formatPrice(totalPackagePrice)}`
+                          : `Add to Cart • ${formatPrice(currentPrice)}`}
+                      </span>
+                    </button>
+
+                    <p className="text-[11px] text-center text-gray-500 flex items-center justify-center gap-1.5 font-medium">
+                      <Truck className="w-3.5 h-3.5 text-[#00B14F] shrink-0" />
+                      <span>{deliveryInfo.label} • Insured nationwide delivery with instant tracking</span>
+                    </p>
 
                     {/* Secondary Price Notification Card */}
                     {onNotifyMe && (

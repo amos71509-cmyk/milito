@@ -7,7 +7,6 @@ import {
   ArrowLeftRight, 
   ChevronLeft, 
   ChevronRight, 
-  ImageOff, 
   CheckCircle2, 
   Truck, 
   Sparkles, 
@@ -20,20 +19,32 @@ import {
   MessageCircle,
   Copy,
   Check,
-  Bell
+  Bell,
+  Heart,
+  Smartphone,
+  Car,
+  Tag,
+  Battery,
+  Wifi,
+  HardDrive,
+  Cpu,
+  Layers,
+  ShoppingCart,
+  X
 } from "lucide-react";
-import { Product, ProductAlertType, resolveImageUrl, extractProductOriginalImages, getFallbackImage } from "../types";
+import { Product, ProductAccessory, ProductAlertType, resolveImageUrl, extractProductOriginalImages } from "../types";
 import { getStockStatus } from "../utils/stockUtils";
 import { formatNaira, MILITO_WHATSAPP_CLEAN_NUMBER } from "../utils/whatsapp";
 import { 
   getProductPublicUrl, 
   trackFunnelEvent, 
-  copyTextToClipboard, 
-  isNativeShareSupported, 
-  triggerNativeProductShare 
+  copyTextToClipboard 
 } from "../utils/productUrl";
-import WhatsAppOrderButton from "./WhatsAppOrderButton";
 import ShareProductModal from "./ShareProductModal";
+import CompletePackageSection from "./CompletePackageSection";
+import { getDynamicDeliveryDate, createAccessoryCartProduct } from "../utils/deliveryDate";
+import { useCustomerAuth } from "../context/CustomerAuthContext";
+import CustomerAuthPromptModal from "./CustomerAuthPromptModal";
 
 interface PublicProductPageProps {
   product: Product | null;
@@ -42,7 +53,9 @@ interface PublicProductPageProps {
   onNavigateHome: () => void;
   onNavigateStore: () => void;
   onSelectProduct: (product: Product) => void;
-  onOrderNow: (product: Product, selectedStorage: string, selectedColor: { name: string; hex: string }, price: number, source?: string) => void;
+  onAddToCart?: (product: Product, selectedStorage?: string, selectedColor?: { name: string; hex: string }) => void;
+  onOpenCart?: () => void;
+  onOrderNow?: (product: Product, selectedStorage: string, selectedColor: { name: string; hex: string }, price: number, source?: string) => void;
   onSwapForThis: (product: Product) => void;
   onShare?: (product: Product) => void;
   onNotifyMe?: (product: Product, alertType?: ProductAlertType) => void;
@@ -55,22 +68,34 @@ export default function PublicProductPage({
   onNavigateHome,
   onNavigateStore,
   onSelectProduct,
+  onAddToCart,
+  onOpenCart,
   onOrderNow,
   onSwapForThis,
   onShare,
   onNotifyMe,
 }: PublicProductPageProps) {
+  const { isLoggedIn, isProductLiked, toggleLikeProduct, isAuthPromptOpen, closeAuthPrompt } = useCustomerAuth();
+
   const [selectedStorage, setSelectedStorage] = useState<string>("");
-  const [selectedColor, setSelectedColor] = useState<{ name: string; hex: string }>({
-    name: "Default",
-    hex: "#000000",
-  });
+  const [selectedColor, setSelectedColor] = useState<{ name: string; hex: string } | null>(null);
   const [activeImageTab, setActiveImageTab] = useState(0);
   const [failedImages, setFailedImages] = useState<{ [index: number]: boolean }>({});
   const [copiedLink, setCopiedLink] = useState(false);
   const [isLocalShareModalOpen, setIsLocalShareModalOpen] = useState(false);
+  const [likeToast, setLikeToast] = useState<string | null>(null);
+  const [selectedAccessoryIds, setSelectedAccessoryIds] = useState<string[]>([]);
+  const [cartSuccessNotice, setCartSuccessNotice] = useState<{
+    show: boolean;
+    productName: string;
+    accessoriesCount: number;
+    totalAmount: number;
+  } | null>(null);
 
-  // Sync initial product options
+  // Dynamic estimated delivery date (Next Day calculated automatically from current date)
+  const deliveryInfo = useMemo(() => getDynamicDeliveryDate(), []);
+
+  // Sync initial product options without inventing missing fields
   useEffect(() => {
     if (product) {
       if (product.storageOptions && product.storageOptions.length > 0) {
@@ -78,15 +103,18 @@ export default function PublicProductPage({
       } else {
         setSelectedStorage("");
       }
+
+      // ONLY set color if saved in product data
       if (product.colorOptions && product.colorOptions.length > 0) {
         setSelectedColor(product.colorOptions[0]);
       } else {
-        setSelectedColor({ name: "Default", hex: "#000000" });
+        setSelectedColor(null);
       }
+
       setActiveImageTab(0);
       setFailedImages({});
 
-      // Track product view funnel event
+      // Track view
       trackFunnelEvent("product_viewed", {
         productId: product.id,
         productName: product.name,
@@ -96,23 +124,10 @@ export default function PublicProductPage({
     }
   }, [product, trafficSource]);
 
-  // Gallery List with fallback protection
+  // Extract ONLY images that were actually uploaded/saved by admin for this exact product
   const galleryList = useMemo(() => {
     if (!product) return [];
-    const list: string[] = [];
-    const originals = extractProductOriginalImages(product);
-    originals.forEach(img => {
-      if (img && !list.includes(img)) list.push(img);
-    });
-    const primaryFallback = resolveImageUrl(product.thumbnail || product.image || product.galleryImages?.[0]?.secure_url || product.gallery?.[0]);
-    if (primaryFallback && !list.includes(primaryFallback)) {
-      list.push(primaryFallback);
-    }
-    const brandFallback = getFallbackImage(product.brand, product.productType);
-    if (brandFallback && !list.includes(brandFallback)) {
-      list.push(brandFallback);
-    }
-    return list.filter(Boolean);
+    return extractProductOriginalImages(product);
   }, [product]);
 
   const stockInfo = useMemo(() => {
@@ -120,7 +135,66 @@ export default function PublicProductPage({
     return getStockStatus(product);
   }, [product]);
 
-  // Find similar products for recommendations / fallback
+  // Optional accessories assigned by admin to this product
+  const assignedAccessories = product?.assignedAccessories || [];
+  const selectedAccessories = useMemo(() => {
+    return assignedAccessories.filter((acc) => selectedAccessoryIds.includes(acc.id));
+  }, [assignedAccessories, selectedAccessoryIds]);
+
+  const accessoriesTotal = useMemo(() => {
+    return selectedAccessories.reduce((sum, acc) => sum + (Number(acc.price) || 0), 0);
+  }, [selectedAccessories]);
+
+  const totalPackagePrice = (product?.price || 0) + accessoriesTotal;
+
+  const handleToggleAccessory = (acc: ProductAccessory) => {
+    setSelectedAccessoryIds((prev) =>
+      prev.includes(acc.id) ? prev.filter((id) => id !== acc.id) : [...prev, acc.id]
+    );
+  };
+
+  const handleAddToCartClick = () => {
+    if (!product) return;
+
+    trackFunnelEvent("add_to_cart", {
+      productId: product.id,
+      productName: product.name,
+      source: trafficSource || "direct",
+      metadata: {
+        accessoriesCount: selectedAccessories.length,
+        totalPrice: totalPackagePrice,
+      }
+    });
+
+    if (onAddToCart) {
+      // 1. Add phone to cart
+      onAddToCart(
+        product,
+        selectedStorage || product.storageOptions?.[0] || "",
+        selectedColor || (product.colorOptions?.[0] ?? { name: "Default", hex: "#000" })
+      );
+
+      // 2. Add each selected accessory as a verified CartItem
+      selectedAccessories.forEach((acc) => {
+        const accProduct = createAccessoryCartProduct(acc, product);
+        onAddToCart(accProduct, "Standard", { name: "Default", hex: "#000" });
+      });
+    }
+
+    // Immediately take user to the cart section
+    if (onOpenCart) {
+      onOpenCart();
+    } else {
+      setCartSuccessNotice({
+        show: true,
+        productName: product.name,
+        accessoriesCount: selectedAccessories.length,
+        totalAmount: totalPackagePrice,
+      });
+    }
+  };
+
+  // Find similar products for recommendations
   const similarProducts = useMemo(() => {
     if (!allProducts || allProducts.length === 0) return [];
     if (product) {
@@ -128,21 +202,19 @@ export default function PublicProductPage({
         .filter(p => p.id !== product.id && (p.brand === product.brand || p.productType === product.productType))
         .slice(0, 4);
     }
-    // Fallback: Return top 4 available products
     return allProducts.slice(0, 4);
   }, [allProducts, product]);
 
   const handlePrevImage = () => {
-    if (galleryList.length === 0) return;
+    if (galleryList.length <= 1) return;
     setActiveImageTab((prev) => (prev > 0 ? prev - 1 : galleryList.length - 1));
   };
 
   const handleNextImage = () => {
-    if (galleryList.length === 0) return;
+    if (galleryList.length <= 1) return;
     setActiveImageTab((prev) => (prev < galleryList.length - 1 ? prev + 1 : 0));
   };
 
-  // Robust product sharing handler: opens share modal with direct WhatsApp, copy link, and native sharing actions
   const handleShareProduct = () => {
     if (!product) return;
     if (onShare) {
@@ -152,311 +224,307 @@ export default function PublicProductPage({
     }
   };
 
-  // Direct quick copy link
-  const handleQuickCopyLink = async () => {
+  const handleBackNavigation = () => {
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      onNavigateStore();
+    }
+  };
+
+  const isLiked = product ? isProductLiked(product.id) : false;
+
+  const handleToggleLike = async () => {
     if (!product) return;
-    const url = getProductPublicUrl(product, trafficSource || undefined);
-    const success = await copyTextToClipboard(url);
-    if (success) {
-      setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 2500);
+    const res = await toggleLikeProduct(product.id);
+    if (res.success) {
+      const msg = res.action === "added" ? "Saved to your Liked Products ❤️" : "Removed from Liked Products";
+      setLikeToast(msg);
+      setTimeout(() => setLikeToast(null), 2500);
     }
   };
 
   // =========================================================================
-  // SCENARIO A: PRODUCT NOT FOUND OR SOLD/REMOVED (Requirement 11)
+  // SCENARIO A: PRODUCT NOT FOUND
   // =========================================================================
   if (!product) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] py-12 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-gray-50 text-gray-900 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto space-y-8 animate-fadeIn">
-          
-          {/* Breadcrumb / Top Bar */}
           <div className="flex items-center justify-between">
             <button
-              onClick={onNavigateStore}
+              onClick={handleBackNavigation}
               className="flex items-center gap-2 text-xs font-bold text-gray-700 hover:text-black transition"
             >
               <ArrowLeft className="w-4 h-4 text-[#00B14F]" />
-              <span>Back to Store Catalogue</span>
+              <span>Back to Store</span>
             </button>
             <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest">
-              MILITO Verified Direct
+              MILITO TECH HOME
             </span>
           </div>
 
-          {/* Unavailable Hero Card */}
           <div className="bg-white rounded-3xl p-8 sm:p-12 border border-gray-200 shadow-xl text-center space-y-4">
             <div className="w-16 h-16 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center mx-auto text-amber-600">
               <Package className="w-8 h-8" />
             </div>
-            
-            <div className="space-y-2 max-w-md mx-auto">
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-950 font-sans">
-                This device is no longer available
-              </h2>
-              <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
-                The product link you accessed has either been purchased or updated in our inventory. Explore our verified live catalogue below for current stock with nationwide delivery.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-              <button
-                onClick={onNavigateStore}
-                className="px-6 py-3 rounded-2xl bg-[#00B14F] hover:brightness-105 active:scale-98 text-black font-extrabold text-xs uppercase tracking-wider shadow-lg shadow-[#00B14F]/20 transition cursor-pointer"
-              >
-                Explore Store
-              </button>
-              <button
-                onClick={onNavigateHome}
-                className="px-6 py-3 rounded-2xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs transition cursor-pointer"
-              >
-                Back to Homepage
-              </button>
-            </div>
+            <h2 className="text-2xl sm:text-3xl font-black text-gray-950">Device not found or sold</h2>
+            <p className="text-xs sm:text-sm text-gray-600 max-w-md mx-auto leading-relaxed">
+              This device is currently unavailable or has been purchased. Browse our verified inventory for current live devices.
+            </p>
+            <button
+              onClick={onNavigateStore}
+              className="px-6 py-3 rounded-2xl bg-[#00B14F] text-black font-extrabold text-xs uppercase tracking-wider shadow-md hover:brightness-105 active:scale-98 transition"
+            >
+              Explore Live Store
+            </button>
           </div>
-
-          {/* Similar Active Devices */}
-          {similarProducts.length > 0 && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-extrabold text-gray-950">Browse Available Alternative Devices</h3>
-                  <p className="text-xs text-gray-500">Verified Grade A & Brand New devices currently in stock</p>
-                </div>
-                <button
-                  onClick={onNavigateStore}
-                  className="text-xs font-bold text-[#00B14F] hover:underline"
-                >
-                  View All →
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                {similarProducts.map((p) => (
-                  <div
-                    key={p.id}
-                    onClick={() => onSelectProduct(p)}
-                    className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
-                  >
-                    <div className="w-full aspect-square bg-gray-50 rounded-xl p-2 flex items-center justify-center mb-3">
-                      <img
-                        src={resolveImageUrl(p.image || p.thumbnail?.secure_url || p.gallery?.[0], { width: 250, brand: p.brand })}
-                        alt={p.name}
-                        className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform"
-                      />
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-extrabold text-[#00B14F] uppercase block">{p.brand}</span>
-                      <h4 className="text-xs font-bold text-gray-900 truncate mt-0.5">{p.name}</h4>
-                      <p className="text-sm font-black text-gray-950 font-mono mt-1">{formatNaira(p.price)}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
         </div>
       </div>
     );
   }
 
   // =========================================================================
-  // SCENARIO B: ACTIVE PRODUCT SALES FUNNEL PAGE
+  // SCENARIO B: STANDALONE PRODUCT SPEC PAGE
   // =========================================================================
   const isSoldOut = stockInfo.isSoldOut;
+  const currentImageUrl = galleryList[activeImageTab] || "";
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-gray-900 pb-16">
-      
+    <div className="min-h-screen bg-[#F8FAFC] text-gray-900 pb-28 md:pb-16 w-full">
+      {/* Toast Notification */}
+      {likeToast && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[100] bg-black/95 text-white text-xs font-bold px-4 py-2.5 rounded-full border border-milito-green/50 shadow-2xl flex items-center gap-2 animate-bounce">
+          <Heart className="w-4 h-4 fill-rose-500 text-rose-500" />
+          <span>{likeToast}</span>
+        </div>
+      )}
+
       {/* TOP NAVIGATION & CONTEXT BAR */}
-      <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-200 px-4 sm:px-6 py-3 shadow-xs">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <button
-            onClick={onNavigateStore}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-700 hover:text-black hover:bg-gray-100 transition text-xs font-bold font-sans cursor-pointer"
-          >
-            <ArrowLeft className="w-4 h-4 text-[#00B14F]" />
-            <span>Store Catalogue</span>
-          </button>
-
+      <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-gray-200 px-3 sm:px-6 py-3 shadow-2xs">
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 sm:gap-3">
-            {trafficSource && (
-              <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-[#00B14F] border border-emerald-200 text-[10px] font-extrabold uppercase">
-                <Sparkles className="w-3 h-3" />
-                <span>Source: {trafficSource}</span>
-              </span>
-            )}
-
             <button
+              type="button"
+              onClick={handleBackNavigation}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-250 bg-gray-50 hover:bg-gray-100 text-gray-800 transition text-xs font-bold font-sans cursor-pointer shadow-2xs"
+              title="Go back"
+            >
+              <ArrowLeft className="w-4 h-4 text-[#00B14F]" />
+              <span>Back</span>
+            </button>
+            <span className="text-[11px] font-bold text-gray-500 truncate max-w-[150px] sm:max-w-xs hidden sm:inline">
+              {product.brand} &bull; {product.name}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* Love / Like Button */}
+            <button
+              type="button"
+              onClick={handleToggleLike}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all text-xs font-bold cursor-pointer ${
+                isLiked
+                  ? "bg-rose-50 text-rose-600 border-rose-200 shadow-2xs"
+                  : "bg-white text-gray-700 border-gray-200 hover:border-rose-300 hover:text-rose-600"
+              }`}
+              title={isLiked ? "Saved to your Wishlist" : "Save this device"}
+              aria-label={isLiked ? "Remove from wishlist" : "Save product"}
+            >
+              <Heart className={`w-4 h-4 ${isLiked ? "fill-rose-500 text-rose-500" : "text-gray-500"}`} />
+              <span className="hidden xs:inline">{isLiked ? "Saved" : "Love"}</span>
+            </button>
+
+            {/* Share button */}
+            <button
+              type="button"
               onClick={handleShareProduct}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 text-xs font-extrabold transition cursor-pointer"
               title="Share this device"
             >
               <Share2 className="w-3.5 h-3.5 text-[#00B14F]" />
-              <span>Share</span>
+              <span className="hidden sm:inline">Share</span>
             </button>
           </div>
         </div>
       </div>
 
       {/* MAIN CONTAINER */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8">
+      <div className="max-w-6xl mx-auto px-3 sm:px-6 pt-4 sm:pt-8">
         
-        {/* HERO TWO-COLUMN PRODUCT SALES LAYOUT */}
-        <div className="bg-white rounded-3xl border border-gray-200 shadow-xl overflow-hidden p-4 sm:p-8 md:p-10 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-12 items-start">
+        {/* TWO-COLUMN PRODUCT SALES LAYOUT */}
+        <div className="bg-white rounded-2xl sm:rounded-3xl border border-gray-200 shadow-xl overflow-hidden p-3.5 sm:p-8 md:p-10 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 lg:gap-12 items-start">
             
-            {/* LEFT COLUMN: HIGH-RES GALLERY */}
-            <div className="md:col-span-6 flex flex-col items-center">
-              {/* Main Photo */}
-              <div className="w-full aspect-square max-h-[420px] bg-gray-50 rounded-3xl border border-gray-200 overflow-hidden relative flex items-center justify-center p-4 group select-none shadow-inner">
-                {galleryList.length > 0 && !failedImages[activeImageTab] ? (
+            {/* LEFT COLUMN: HIGH-RES GALLERY (ONLY ACTUAL SAVED IMAGES) */}
+            <div className="md:col-span-6 flex flex-col items-center w-full">
+              {/* Main Photo View */}
+              <div className="w-full aspect-square max-h-[380px] sm:max-h-[440px] bg-gradient-to-b from-gray-50 to-gray-100/70 rounded-2xl sm:rounded-3xl border border-gray-200 overflow-hidden relative flex items-center justify-center p-3 sm:p-5 select-none shadow-inner">
+                {galleryList.length > 0 && currentImageUrl && !failedImages[activeImageTab] ? (
                   <img
-                    src={resolveImageUrl(galleryList[activeImageTab] || galleryList[0], { width: 900, brand: product.brand })}
-                    alt={`${product.name} view ${activeImageTab + 1}`}
+                    key={currentImageUrl}
+                    src={resolveImageUrl(currentImageUrl, { width: 900, brand: product.brand })}
+                    alt={`${product.name} image ${activeImageTab + 1}`}
                     loading="eager"
                     referrerPolicy="no-referrer"
                     onError={() => setFailedImages((prev) => ({ ...prev, [activeImageTab]: true }))}
-                    className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105"
+                    className="max-h-full max-w-full object-contain transition-transform duration-300 hover:scale-105"
                   />
                 ) : (
-                  <div className="flex flex-col items-center justify-center text-gray-400 p-6 text-center">
-                    <ImageOff className="w-12 h-12 stroke-[1.5] mb-2" />
-                    <span className="text-xs font-bold text-gray-500">Product Photo Offline</span>
+                  /* Strictly NO random or stock fallback photo when none uploaded */
+                  <div className="flex flex-col items-center justify-center text-gray-400 p-6 text-center select-none">
+                    <div className="w-14 h-14 rounded-2xl bg-gray-200/80 flex items-center justify-center mb-2 text-gray-400">
+                      {product.productType === "vehicle" ? (
+                        <Car className="w-7 h-7 stroke-[1.5]" />
+                      ) : (
+                        <Smartphone className="w-7 h-7 stroke-[1.5]" />
+                      )}
+                    </div>
+                    <span className="text-xs font-bold text-gray-650">No photo uploaded by admin</span>
+                    <span className="text-[10px] text-gray-400 mt-0.5">Specifications verified by MILITO</span>
                   </div>
                 )}
 
-                {/* Left / Right arrows for multi-image gallery */}
+                {/* Left / Right arrows ONLY if multiple actual images uploaded */}
                 {galleryList.length > 1 && (
                   <>
                     <button
                       type="button"
                       onClick={handlePrevImage}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-white/90 hover:bg-white text-gray-900 shadow-md transition-transform hover:scale-110 cursor-pointer"
+                      className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/90 hover:bg-white text-gray-900 shadow-md transition-transform hover:scale-110 cursor-pointer"
                       title="Previous Image"
+                      aria-label="Previous image"
                     >
                       <ChevronLeft className="w-4 h-4" />
                     </button>
                     <button
                       type="button"
                       onClick={handleNextImage}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-white/90 hover:bg-white text-gray-900 shadow-md transition-transform hover:scale-110 cursor-pointer"
+                      className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/90 hover:bg-white text-gray-900 shadow-md transition-transform hover:scale-110 cursor-pointer"
                       title="Next Image"
+                      aria-label="Next image"
                     >
                       <ChevronRight className="w-4 h-4" />
                     </button>
+
+                    {/* Image counter indicator */}
+                    <div className="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded-full bg-black/60 text-white text-[10px] font-bold">
+                      {activeImageTab + 1} / {galleryList.length}
+                    </div>
                   </>
                 )}
               </div>
 
-              {/* Gallery Thumbnails */}
+              {/* Gallery Thumbnails (ONLY for actual uploaded images, no empty slots) */}
               {galleryList.length > 1 && (
-                <div className="flex justify-center gap-2 sm:gap-3 flex-wrap w-full mt-4 max-h-32 overflow-y-auto p-1">
+                <div className="flex justify-center gap-2 sm:gap-2.5 flex-wrap w-full mt-3 sm:mt-4 max-h-24 overflow-y-auto p-1">
                   {galleryList.map((img, idx) => (
                     <button
                       key={idx}
+                      type="button"
                       onClick={() => setActiveImageTab(idx)}
-                      className={`w-14 h-14 rounded-xl overflow-hidden p-1 bg-white flex items-center justify-center border transition-all cursor-pointer ${
+                      className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl overflow-hidden p-1 bg-white flex items-center justify-center border transition-all cursor-pointer ${
                         activeImageTab === idx
-                          ? "border-[#00B14F] ring-3 ring-[#00B14F]/30 scale-105 shadow-sm"
+                          ? "border-[#00B14F] ring-2 ring-[#00B14F]/40 scale-105 shadow-xs"
                           : "border-gray-200 opacity-70 hover:opacity-100"
                       }`}
+                      aria-label={`View photo ${idx + 1}`}
                     >
                       <img
-                        src={resolveImageUrl(img, { width: 150, brand: product.brand })}
-                        alt={`Thumb ${idx + 1}`}
-                        className="w-full h-full object-contain"
+                        src={resolveImageUrl(img, { width: 120, brand: product.brand })}
+                        alt={`Thumbnail ${idx + 1}`}
+                        className="max-h-full max-w-full object-contain"
                       />
                     </button>
                   ))}
                 </div>
               )}
 
-              {/* Quality & Trust Assurance Card */}
-              {product.productType === "vehicle" ? (
-                <div className="mt-6 p-4 rounded-2xl bg-blue-50/80 border border-blue-200 flex items-start gap-3 w-full shadow-xs">
-                  <ShieldCheck className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
-                  <div>
-                    <h5 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
-                      Verified Vehicle Papers & Inspection
-                    </h5>
-                    <p className="text-[11px] text-gray-650 mt-1 leading-relaxed">
-                      {product.documentation || "Complete original customs clearance and verification papers guaranteed."}
-                      {product.location ? ` Inspected and physically verified in ${product.location}.` : ""}
-                    </p>
-                  </div>
+              {/* Verified Trust Assurance Banner */}
+              <div className="mt-4 sm:mt-6 p-3.5 sm:p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200 flex items-start gap-3 w-full shadow-2xs">
+                <Zap className="w-5 h-5 text-[#00B14F] shrink-0 mt-0.5" />
+                <div>
+                  <h5 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
+                    MILITO 35-Point QC Verified
+                  </h5>
+                  <p className="text-[11px] text-gray-650 mt-0.5 leading-relaxed">
+                    {product.condition === "Brand New"
+                      ? "Factory sealed authentic hardware with verified manufacturer warranty."
+                      : `Tested authentic internal hardware. Screen, cameras, and battery certified.`}
+                  </p>
                 </div>
-              ) : (
-                <div className="mt-6 p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200 flex items-start gap-3 w-full shadow-xs">
-                  <Zap className="w-5 h-5 text-[#00B14F] shrink-0 mt-0.5" />
-                  <div>
-                    <h5 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
-                      MILITO 35-Point QC & Battery Guard
-                    </h5>
-                    <p className="text-[11px] text-gray-650 mt-1 leading-relaxed">
-                      {product.condition === "Brand New"
-                        ? "100% Factory sealed condition with official manufacturer warranty and original accessories."
-                        : `Guaranteed authentic internal hardware with tested battery health (${product.batteryHealth || "88%–100%"}) and zero lock issues.`}
-                    </p>
-                  </div>
-                </div>
-              )}
+              </div>
             </div>
 
-            {/* RIGHT COLUMN: PRODUCT SALES FUNNEL ACTIONS */}
-            <div className="md:col-span-6 space-y-6">
+            {/* RIGHT COLUMN: SPECS & BUY ACTIONS */}
+            <div className="md:col-span-6 space-y-4 sm:space-y-6">
               
               {/* Product Header */}
               <div>
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs font-extrabold text-[#00B14F] tracking-wider uppercase">
-                    {product.brand} {product.productType === "vehicle" ? (product.year || "Automotive") : "Flagship"}
+                    {product.brand} {product.series ? `• ${product.series}` : ""}
                   </span>
                   <div className="flex items-center gap-1.5">
-                    <span className={`w-2.5 h-2.5 rounded-full ${stockInfo.dotColor} animate-pulse`} />
+                    <span className={`w-2 h-2 rounded-full ${stockInfo.dotColor} animate-pulse`} />
                     <span className={`text-xs font-black ${stockInfo.colorClass}`}>
                       {stockInfo.label}
                     </span>
                   </div>
                 </div>
 
-                <h1 className="text-2xl sm:text-3xl font-black text-gray-950 mt-2 font-sans tracking-tight">
+                <h1 className="text-xl sm:text-3xl font-black text-gray-950 mt-1 font-sans tracking-tight leading-tight">
                   {product.name}
                 </h1>
 
                 {/* Price Display */}
-                <div className="mt-3 flex items-baseline gap-3">
-                  <span className="text-3xl sm:text-4xl font-black text-[#00B14F] font-mono">
+                <div className="mt-2.5 sm:mt-3 flex items-baseline gap-3">
+                  <span className="text-2xl sm:text-4xl font-black text-[#00B14F] font-mono">
                     {formatNaira(product.price)}
                   </span>
                   {product.originalPrice && product.originalPrice > product.price && (
-                    <span className="text-sm font-bold text-gray-400 line-through font-mono">
+                    <span className="text-xs sm:text-sm font-bold text-gray-400 line-through font-mono">
                       {formatNaira(product.originalPrice)}
                     </span>
                   )}
                 </div>
 
-                <div className="mt-2 flex items-center gap-2">
-                  <span className="px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-800 text-xs font-bold border border-gray-200">
+                <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-800 text-[11px] font-bold border border-gray-250">
                     Condition: {product.condition}
                   </span>
-                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-900 text-xs font-bold border border-emerald-200">
+                  {product.badge && (
+                    <span className="px-2.5 py-0.5 rounded-full bg-milito-green text-black text-[11px] font-black uppercase">
+                      {product.badge}
+                    </span>
+                  )}
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-900 text-[11px] font-bold border border-emerald-200">
                     Seller: MILITO Direct
                   </span>
                 </div>
+
+                {/* Dynamic Estimated Delivery Date Badge (Calculated Next Day) */}
+                <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/10 border border-[#00B14F]/30 text-emerald-950 text-xs">
+                  <Truck className="w-4 h-4 text-[#00B14F] shrink-0" />
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="font-extrabold text-[#00873c]">{deliveryInfo.label}</span>
+                    <span className="text-[10px] text-gray-400 hidden sm:inline">•</span>
+                    <span className="text-[11px] text-gray-650">Insured express delivery with tracking</span>
+                  </div>
+                </div>
               </div>
 
-              {/* Description */}
-              <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 text-xs text-gray-700 leading-relaxed">
-                {product.description || "Authentic device directly sourced, inspected, and protected under MILITO verified checkout guarantee."}
-              </div>
+              {/* Description (from existing product data) */}
+              {product.description && (
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-gray-50 border border-gray-200 text-xs text-gray-700 leading-relaxed">
+                  {product.description}
+                </div>
+              )}
 
-              {/* Storage Capacity Selector (For Phones) */}
-              {product.productType !== "vehicle" && product.storageOptions && product.storageOptions.length > 0 && (
+              {/* Storage Capacity Selector (ONLY if stored in product data) */}
+              {product.storageOptions && product.storageOptions.length > 0 && (
                 <div>
-                  <label className="block text-xs font-bold text-gray-800 uppercase tracking-wider mb-2">
+                  <label className="block text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-1.5">
                     Storage Capacity
                   </label>
                   <div className="flex flex-wrap gap-2">
@@ -465,10 +533,10 @@ export default function PublicProductPage({
                         key={st}
                         type="button"
                         onClick={() => setSelectedStorage(st)}
-                        className={`px-4 py-2 rounded-xl text-xs font-bold transition border cursor-pointer ${
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition border cursor-pointer ${
                           selectedStorage === st
-                            ? "bg-[#00B14F] text-black border-[#00B14F] shadow-sm font-black"
-                            : "bg-white text-gray-700 border-gray-200 hover:border-gray-400"
+                            ? "bg-[#00B14F] text-black border-[#00B14F] shadow-xs font-black"
+                            : "bg-white text-gray-700 border-gray-250 hover:border-gray-400"
                         }`}
                       >
                         {st}
@@ -478,110 +546,246 @@ export default function PublicProductPage({
                 </div>
               )}
 
-              {/* Technical Specifications Matrix */}
+              {/* Color Options (ONLY if actually part of stored product data) */}
+              {product.colorOptions && product.colorOptions.length > 0 && selectedColor && (
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                    Color: <span className="text-gray-900 font-extrabold">{selectedColor.name}</span>
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {product.colorOptions.map((c) => (
+                      <button
+                        key={c.name}
+                        type="button"
+                        onClick={() => setSelectedColor(c)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition border cursor-pointer ${
+                          selectedColor.name === c.name
+                            ? "bg-gray-900 text-white border-gray-900 shadow-xs"
+                            : "bg-white text-gray-700 border-gray-250 hover:border-gray-400"
+                        }`}
+                      >
+                        <span 
+                          className="w-3 h-3 rounded-full border border-black/20" 
+                          style={{ backgroundColor: c.hex || "#999" }}
+                        />
+                        <span>{c.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Technical Specifications Matrix (Strictly from existing stored data) */}
               <div className="space-y-2">
                 <span className="text-xs font-extrabold text-gray-950 uppercase tracking-wider flex items-center gap-1.5">
                   <Info className="w-4 h-4 text-[#00B14F]" />
-                  <span>{product.productType === "vehicle" ? "Vehicle Specifications" : "Technical Specifications"}</span>
+                  <span>Device Specifications</span>
                 </span>
 
-                <div className="grid grid-cols-2 gap-2 text-xs bg-gray-50 p-4 rounded-2xl border border-gray-200">
-                  {product.productType === "vehicle" ? (
-                    [
-                      ...(product.year ? [{ label: "Model Year", val: product.year }] : []),
-                      ...(product.condition ? [{ label: "Condition", val: product.condition }] : []),
-                      ...(product.mileage ? [{ label: "Mileage", val: product.mileage }] : []),
-                      ...(product.transmission ? [{ label: "Transmission", val: product.transmission }] : []),
-                      ...(product.fuelType ? [{ label: "Fuel Type", val: product.fuelType }] : []),
-                      ...(product.location ? [{ label: "Location", val: product.location }] : []),
-                    ].map((s) => (
-                      <div key={s.label} className="border-b border-gray-200/80 pb-1 last:border-b-0">
-                        <span className="text-[10px] font-bold text-gray-500 uppercase block">{s.label}</span>
-                        <span className="font-semibold text-gray-900">{s.val}</span>
-                      </div>
-                    ))
-                  ) : (
-                    [
-                      ...(product.batteryHealth ? [{ label: "Battery Health", val: product.batteryHealth }] : []),
-                      ...(product.specs?.ram ? [{ label: "RAM / Memory", val: product.specs.ram }] : []),
-                      ...(product.networkCapability ? [{ label: "Network Band", val: product.networkCapability }] : []),
-                      ...(product.specs?.screen ? [{ label: "Display", val: product.specs.screen }] : []),
-                      ...(product.specs?.camera ? [{ label: "Camera", val: product.specs.camera }] : []),
-                      ...(product.specs?.warranty ? [{ label: "Warranty", val: product.specs.warranty }] : []),
-                    ].map((s) => (
-                      <div key={s.label} className="border-b border-gray-200/80 pb-1 last:border-b-0">
-                        <span className="text-[10px] font-bold text-gray-500 uppercase block">{s.label}</span>
-                        <span className="font-semibold text-gray-900">{s.val}</span>
-                      </div>
-                    ))
+                <div className="grid grid-cols-2 gap-2 text-xs bg-gray-50 p-3 sm:p-4 rounded-2xl border border-gray-200">
+                  {/* Brand & Model */}
+                  <div className="border-b border-gray-200/80 pb-1.5">
+                    <span className="text-[10px] font-bold text-gray-500 uppercase block">Brand</span>
+                    <span className="font-semibold text-gray-900">{product.brand}</span>
+                  </div>
+
+                  {product.series && (
+                    <div className="border-b border-gray-200/80 pb-1.5">
+                      <span className="text-[10px] font-bold text-gray-500 uppercase block">Series</span>
+                      <span className="font-semibold text-gray-900">{product.series}</span>
+                    </div>
                   )}
+
+                  {/* Condition */}
+                  <div className="border-b border-gray-200/80 pb-1.5">
+                    <span className="text-[10px] font-bold text-gray-500 uppercase block">Condition</span>
+                    <span className="font-semibold text-gray-900">{product.condition}</span>
+                  </div>
+
+                  {/* Storage */}
+                  {(selectedStorage || (product.storageOptions && product.storageOptions[0])) && (
+                    <div className="border-b border-gray-200/80 pb-1.5">
+                      <span className="text-[10px] font-bold text-gray-500 uppercase block">Storage</span>
+                      <span className="font-semibold text-gray-900">{selectedStorage || product.storageOptions?.[0]}</span>
+                    </div>
+                  )}
+
+                  {/* Battery Info */}
+                  {(product.batteryCondition || product.batteryHealth) && (
+                    <div className="border-b border-gray-200/80 pb-1.5">
+                      <span className="text-[10px] font-bold text-gray-500 uppercase block">Battery Health</span>
+                      <span className="font-semibold text-gray-900">{product.batteryCondition || product.batteryHealth}</span>
+                    </div>
+                  )}
+
+                  {/* Network / Carrier lock status */}
+                  {(product.networkCapability || product.network) && (
+                    <div className="border-b border-gray-200/80 pb-1.5">
+                      <span className="text-[10px] font-bold text-gray-500 uppercase block">Network / SIM</span>
+                      <span className="font-semibold text-gray-900">{product.networkCapability || product.network}</span>
+                    </div>
+                  )}
+
+                  {/* SIM Card type */}
+                  {product.specs?.simType && (
+                    <div className="border-b border-gray-200/80 pb-1.5">
+                      <span className="text-[10px] font-bold text-gray-500 uppercase block">SIM Type</span>
+                      <span className="font-semibold text-gray-900">{product.specs.simType}</span>
+                    </div>
+                  )}
+
+                  {/* RAM */}
+                  {product.specs?.ram && (
+                    <div className="border-b border-gray-200/80 pb-1.5">
+                      <span className="text-[10px] font-bold text-gray-500 uppercase block">RAM</span>
+                      <span className="font-semibold text-gray-900">{product.specs.ram}</span>
+                    </div>
+                  )}
+
+                  {/* Display */}
+                  {product.specs?.screen && (
+                    <div className="border-b border-gray-200/80 pb-1.5">
+                      <span className="text-[10px] font-bold text-gray-500 uppercase block">Display</span>
+                      <span className="font-semibold text-gray-900">{product.specs.screen}</span>
+                    </div>
+                  )}
+
+                  {/* Camera */}
+                  {product.specs?.camera && (
+                    <div className="border-b border-gray-200/80 pb-1.5">
+                      <span className="text-[10px] font-bold text-gray-500 uppercase block">Camera</span>
+                      <span className="font-semibold text-gray-900">{product.specs.camera}</span>
+                    </div>
+                  )}
+
+                  {/* Chipset */}
+                  {product.specs?.chipset && (
+                    <div className="border-b border-gray-200/80 pb-1.5">
+                      <span className="text-[10px] font-bold text-gray-500 uppercase block">Chipset</span>
+                      <span className="font-semibold text-gray-900">{product.specs.chipset}</span>
+                    </div>
+                  )}
+
+                  {/* Face ID / Fingerprint */}
+                  {(product.faceId || product.fingerprint) && (
+                    <div className="border-b border-gray-200/80 pb-1.5">
+                      <span className="text-[10px] font-bold text-gray-500 uppercase block">Biometrics</span>
+                      <span className="font-semibold text-gray-900">
+                        {product.faceId ? `Face ID: ${product.faceId}` : `Fingerprint: ${product.fingerprint}`}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Warranty */}
+                  {product.specs?.warranty && (
+                    <div className="border-b border-gray-200/80 pb-1.5">
+                      <span className="text-[10px] font-bold text-gray-500 uppercase block">Warranty</span>
+                      <span className="font-semibold text-gray-900">{product.specs.warranty}</span>
+                    </div>
+                  )}
+
+                  {/* Stock Status */}
+                  <div className="border-b border-gray-200/80 pb-1.5">
+                    <span className="text-[10px] font-bold text-gray-500 uppercase block">Stock Status</span>
+                    <span className={`font-bold ${stockInfo.colorClass}`}>{stockInfo.label}</span>
+                  </div>
                 </div>
               </div>
 
-              {/* ======================================================= */}
-              {/* PRIMARY & SECONDARY CONVERSION ACTIONS                  */}
-              {/* ======================================================= */}
-              <div className="pt-4 border-t border-gray-200 space-y-3">
+              {/* 2. OPTIONAL ACCESSORIES / COMPLETE YOUR PACKAGE */}
+              {product.assignedAccessories && product.assignedAccessories.length > 0 && (
+                <CompletePackageSection
+                  product={product}
+                  assignedAccessories={product.assignedAccessories}
+                  selectedAccessoryIds={selectedAccessoryIds}
+                  onToggleAccessory={handleToggleAccessory}
+                />
+              )}
+
+              {/* CART SUCCESS CONFIRMATION FEEDBACK */}
+              {cartSuccessNotice?.show && (
+                <div className="p-4 rounded-2xl bg-[#1A2025] text-white border border-[#00B14F]/50 shadow-2xl space-y-3 animate-fadeIn">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full bg-[#00B14F] text-black flex items-center justify-center shrink-0">
+                        <Check className="w-5 h-5 stroke-[3]" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs sm:text-sm font-black text-white">
+                          Added to Cart!
+                        </h4>
+                        <p className="text-[11px] text-gray-300 mt-0.5">
+                          {cartSuccessNotice.productName}
+                          {cartSuccessNotice.accessoriesCount > 0
+                            ? ` + ${cartSuccessNotice.accessoriesCount} verified accessory ${cartSuccessNotice.accessoriesCount === 1 ? "add-on" : "add-ons"}`
+                            : ""}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setCartSuccessNotice(null)}
+                      className="text-gray-400 hover:text-white p-1 cursor-pointer"
+                      title="Dismiss notice"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCartSuccessNotice(null);
+                        if (onOpenCart) {
+                          onOpenCart();
+                        }
+                      }}
+                      className="w-full sm:flex-1 py-3 px-4 rounded-xl bg-[#00B14F] hover:bg-[#009241] active:scale-98 text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-md transition"
+                      id="spec-view-cart-checkout-btn"
+                    >
+                      <ShoppingCart className="w-4 h-4 text-black stroke-[2.5]" />
+                      <span>View Cart & Checkout ({formatNaira(cartSuccessNotice.totalAmount)})</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setCartSuccessNotice(null)}
+                      className="w-full sm:w-auto py-2.5 px-4 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs cursor-pointer transition text-center"
+                    >
+                      Continue Shopping
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ACTION BUTTONS (ADD TO CART) */}
+              <div className="pt-3 border-t border-gray-200 space-y-3">
                 
-                {/* Primary CTA: ORDER NOW (for in-stock products) */}
+                {/* Primary: ADD TO CART */}
                 {!isSoldOut ? (
                   <div className="space-y-3">
                     <button
                       type="button"
-                      onClick={() => {
-                        trackFunnelEvent("order_started", {
-                          productId: product.id,
-                          productName: product.name,
-                          source: trafficSource || "direct"
-                        });
-                        onOrderNow(product, selectedStorage, selectedColor, product.price, trafficSource || undefined);
-                      }}
-                      className="w-full py-4 px-6 rounded-2xl bg-[#00B14F] hover:brightness-105 active:scale-98 text-black font-black text-sm uppercase tracking-wider shadow-xl shadow-[#00B14F]/25 flex items-center justify-center gap-2 cursor-pointer transition min-h-[50px] focus:outline-none focus:ring-2 focus:ring-[#00B14F] focus:ring-offset-2"
-                      id="public-page-order-now-btn"
+                      onClick={handleAddToCartClick}
+                      className="w-full py-4 px-6 rounded-2xl bg-[#00B14F] hover:bg-[#009944] active:scale-98 text-black font-black text-sm uppercase tracking-wider shadow-lg shadow-[#00B14F]/25 flex items-center justify-center gap-2.5 cursor-pointer transition min-h-[52px]"
+                      id="spec-page-add-to-cart-btn"
                     >
-                      <ShoppingBag className="w-5 h-5 text-black" />
-                      <span>Order Now ({formatNaira(product.price)})</span>
+                      <ShoppingCart className="w-5 h-5 text-black stroke-[2.5]" />
+                      <span>
+                        {selectedAccessories.length > 0
+                          ? `Add Package to Cart • ${formatNaira(totalPackagePrice)}`
+                          : `Add to Cart • ${formatNaira(product.price)}`}
+                      </span>
                     </button>
-                    
-                    {/* Secondary Price Notification Card */}
-                    {onNotifyMe && (
-                      <div className="p-3.5 sm:p-4 rounded-2xl bg-gray-50 hover:bg-gray-100/70 border border-gray-200 transition-all duration-200 space-y-2.5">
-                        <div className="flex items-start gap-3">
-                          <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#00B14F] border border-emerald-200/70 flex items-center justify-center flex-shrink-0 mt-0.5">
-                            <Bell className="w-4 h-4 text-[#00B14F] stroke-[2.2]" />
-                          </div>
-                          <div className="min-w-0">
-                            <h4 className="text-xs sm:text-sm font-extrabold text-gray-900 leading-snug">
-                              Can&apos;t buy today?
-                            </h4>
-                            <p className="text-[11px] sm:text-xs text-gray-500 mt-0.5 leading-relaxed">
-                              Get notified when the price changes
-                            </p>
-                          </div>
-                        </div>
 
-                        <button
-                          type="button"
-                          onClick={() => onNotifyMe(product, "PRICE_CHANGE")}
-                          aria-label={`Get notified when price changes for ${product.name}`}
-                          className="group w-full py-2.5 px-4 rounded-xl bg-white hover:bg-emerald-50/80 text-gray-900 hover:text-emerald-950 font-extrabold text-xs border border-gray-250 hover:border-emerald-300 flex items-center justify-center gap-2 cursor-pointer shadow-2xs hover:shadow-xs active:scale-[0.99] transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#00B14F] focus:ring-offset-1"
-                          id="public-notify-price-change-btn"
-                        >
-                          <Bell className="w-3.5 h-3.5 text-[#00B14F] stroke-[2] transition-transform duration-200 group-hover:scale-110" />
-                          <span>Notify Me</span>
-                        </button>
-                      </div>
-                    )}
-
-                    <p className="text-[11px] text-center text-gray-500 flex items-center justify-center gap-1">
-                      <Truck className="w-3.5 h-3.5 text-[#00B14F]" />
-                      <span>Fast nationwide dispatch • Direct manual bank transfer verification</span>
+                    <p className="text-[11px] text-center text-gray-500 flex items-center justify-center gap-1.5 font-medium">
+                      <Truck className="w-3.5 h-3.5 text-[#00B14F] shrink-0" />
+                      <span>{deliveryInfo.label} • Insured nationwide delivery with instant tracking</span>
                     </p>
                   </div>
                 ) : (
-                  /* OUT OF STOCK: PROMINENT PRIMARY NOTIFY ME CALL TO ACTION */
+                  /* OUT OF STOCK NOTIFICATION */
                   <div className="space-y-2.5">
-                    {/* Out of Stock Status Pill */}
                     <div className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-950">
                       <div className="flex items-center gap-2">
                         <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse flex-shrink-0" />
@@ -594,46 +798,53 @@ export default function PublicProductPage({
                       </span>
                     </div>
 
-                    {/* Prominent Notify Me CTA Button */}
-                    <button
-                      type="button"
-                      onClick={() => onNotifyMe?.(product, "RESTOCK")}
-                      aria-label={`Notify me when ${product.name} is back in stock`}
-                      className="group relative w-full min-h-[50px] sm:min-h-[54px] py-4 px-6 rounded-2xl bg-[#00B14F] hover:bg-[#009944] text-black font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2.5 cursor-pointer shadow-lg shadow-[#00B14F]/20 hover:shadow-xl hover:shadow-[#00B14F]/30 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#00B14F] focus:ring-offset-2"
-                      id="public-notify-restock-btn"
-                    >
-                      <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-black stroke-[2.2] transition-transform duration-200 group-hover:rotate-12 flex-shrink-0" />
-                      <span>Notify Me When Available</span>
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => onNotifyMe?.(product, "RESTOCK")}
+                        className="flex-1 py-3.5 sm:py-4 px-6 rounded-2xl bg-[#00B14F] hover:bg-[#009944] text-black font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-md transition"
+                        id="spec-notify-restock-btn"
+                      >
+                        <Bell className="w-4 h-4 text-black" />
+                        <span>Notify Me When Restocked</span>
+                      </button>
 
-                    {/* Supporting Micro-copy */}
-                    <p className="text-xs text-center text-gray-500 font-medium leading-relaxed">
-                      Get notified when this device is back in stock.
-                    </p>
+                      <button
+                        type="button"
+                        onClick={handleToggleLike}
+                        className={`p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-center min-h-[48px] ${
+                          isLiked
+                            ? "bg-rose-50 border-rose-200 text-rose-600 shadow-xs"
+                            : "bg-gray-100 hover:bg-rose-50 border-gray-250 text-gray-600 hover:text-rose-600"
+                        }`}
+                        title={isLiked ? "Saved to your Wishlist" : "Save this device"}
+                      >
+                        <Heart className={`w-5 h-5 ${isLiked ? "fill-rose-500 text-rose-500" : ""}`} />
+                      </button>
+                    </div>
                   </div>
                 )}
 
-                {/* Secondary Actions Row */}
-                <div className={`grid ${product.productType !== "vehicle" ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"} gap-2.5`}>
+                {/* Secondary Actions: SWAP & SHARE */}
+                <div className="grid grid-cols-2 gap-2 pt-1">
                   {product.productType !== "vehicle" && (
                     <button
                       type="button"
                       onClick={() => onSwapForThis(product)}
-                      className="w-full py-3 px-4 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 font-extrabold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-xs transition active:scale-98"
+                      className="py-2.5 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-300 font-extrabold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs transition active:scale-98"
                     >
-                      <ArrowLeftRight className="w-4 h-4 text-[#00B14F] shrink-0" />
-                      <span>Swap for This</span>
+                      <ArrowLeftRight className="w-3.5 h-3.5 text-[#00B14F] shrink-0" />
+                      <span>Swap For This</span>
                     </button>
                   )}
 
                   <button
                     type="button"
                     onClick={handleShareProduct}
-                    className="w-full py-3 px-4 rounded-2xl bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-300 font-extrabold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-xs transition active:scale-98"
-                    id="public-page-share-btn"
+                    className="py-2.5 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-300 font-extrabold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs transition active:scale-98"
                   >
-                    <Share2 className="w-4 h-4 text-[#00B14F] shrink-0" />
-                    <span>Share Product</span>
+                    <Share2 className="w-3.5 h-3.5 text-[#00B14F] shrink-0" />
+                    <span>Share Device</span>
                   </button>
                 </div>
 
@@ -644,50 +855,70 @@ export default function PublicProductPage({
           </div>
         </div>
 
-        {/* RELATED / SIMILAR PRODUCTS CAROUSEL */}
+        {/* RELATED / SIMILAR DEVICES CAROUSEL */}
         {similarProducts.length > 0 && (
-          <div className="space-y-4 pt-4">
+          <div className="space-y-4 pt-2">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-extrabold text-gray-950">Similar Verified Devices</h3>
-                <p className="text-xs text-gray-500">More genuine {product.brand} inventory available for direct order</p>
+                <h3 className="text-base sm:text-lg font-black text-gray-950">Similar Verified Devices</h3>
+                <p className="text-xs text-gray-500">More genuine {product.brand} inventory available</p>
               </div>
               <button
+                type="button"
                 onClick={onNavigateStore}
                 className="text-xs font-bold text-[#00B14F] hover:underline"
               >
-                Explore Store →
+                View All &rarr;
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-              {similarProducts.map((p) => (
-                <div
-                  key={p.id}
-                  onClick={() => onSelectProduct(p)}
-                  className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
-                >
-                  <div className="w-full aspect-square bg-gray-50 rounded-xl p-2 flex items-center justify-center mb-3">
-                    <img
-                      src={resolveImageUrl(p.image || p.thumbnail?.secure_url || p.gallery?.[0], { width: 250, brand: p.brand })}
-                      alt={p.name}
-                      className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform"
-                    />
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
+              {similarProducts.map((p) => {
+                const pImgs = extractProductOriginalImages(p);
+                const pImg = pImgs.length > 0 ? pImgs[0] : "";
+
+                return (
+                  <div
+                    key={p.id}
+                    onClick={() => onSelectProduct(p)}
+                    className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 overflow-hidden shadow-2xs hover:shadow-md transition-all cursor-pointer group flex flex-col"
+                  >
+                    <div className="w-full aspect-square bg-gray-100 overflow-hidden relative flex items-center justify-center">
+                      {pImg ? (
+                        <img
+                          src={resolveImageUrl(pImg, { width: 300, brand: p.brand })}
+                          alt={p.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center text-gray-400 p-2">
+                          <Smartphone className="w-6 h-6 stroke-[1.5]" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-2.5 sm:p-3 flex flex-col flex-1 justify-between">
+                      <div>
+                        <span className="text-[8.5px] sm:text-[10px] font-extrabold text-[#00B14F] uppercase block">{p.brand}</span>
+                        <h4 className="text-[11px] sm:text-xs font-bold text-gray-900 truncate mt-0.5">{p.name}</h4>
+                      </div>
+                      <p className="text-xs sm:text-sm font-black text-gray-950 font-mono mt-1">{formatNaira(p.price)}</p>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-[10px] font-extrabold text-[#00B14F] uppercase block">{p.brand}</span>
-                    <h4 className="text-xs font-bold text-gray-900 truncate mt-0.5">{p.name}</h4>
-                    <p className="text-sm font-black text-gray-950 font-mono mt-1">{formatNaira(p.price)}</p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
 
       </div>
 
-      {/* Standalone Share Modal fallback if parent handler not attached */}
+      {/* Auth Prompt Modal (For Guests who click Love/Like) */}
+      <CustomerAuthPromptModal
+        isOpen={isAuthPromptOpen}
+        onClose={closeAuthPrompt}
+      />
+
+      {/* Share Modal */}
       {isLocalShareModalOpen && product && (
         <ShareProductModal
           isOpen={isLocalShareModalOpen}
@@ -695,8 +926,6 @@ export default function PublicProductPage({
           product={product}
         />
       )}
-
     </div>
   );
 }
-

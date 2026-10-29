@@ -82,7 +82,9 @@ export interface SwapDraftState {
   maxReachedStep: SwapStepNumber;
   selectedBrand: string;
   selectedModel: string;
+  customModelName?: string;
   selectedStorage: string;
+  selectedRam?: string;
   conditionAnswers: SwapDeviceConditionAnswers;
   selectedTargetProductId: string | null;
   selectedTargetProductSnapshot?: {

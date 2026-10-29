@@ -63,7 +63,7 @@ export default function WhatsAppOrderButton({
           type="button"
           disabled
           id={id}
-          className={`w-full inline-flex items-center justify-center px-3 py-2 rounded-xl bg-gray-100 text-gray-400 font-bold text-[10px] sm:text-xs uppercase tracking-wider cursor-not-allowed border border-gray-200 ${className}`}
+          className={`w-full inline-flex items-center justify-center px-2 py-1.5 sm:px-3 sm:py-2 rounded-lg sm:rounded-xl bg-gray-100 text-gray-400 font-bold text-[9px] sm:text-xs uppercase tracking-wider cursor-not-allowed border border-gray-200 ${className}`}
         >
           <span>Out of Stock</span>
         </button>
@@ -89,7 +89,7 @@ export default function WhatsAppOrderButton({
         type="button"
         id={id}
         onClick={handleClick}
-        className={`w-full inline-flex items-center justify-center px-3 py-2 rounded-xl bg-milito-green hover:brightness-105 active:scale-98 text-black font-extrabold text-[10px] sm:text-xs uppercase tracking-wider transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer font-sans ${className}`}
+        className={`w-full inline-flex items-center justify-center px-2 py-1.5 sm:px-3 sm:py-2 rounded-lg sm:rounded-xl bg-milito-green hover:brightness-105 active:scale-98 text-black font-extrabold text-[9px] sm:text-xs uppercase tracking-wider transition-all duration-200 shadow-xs hover:shadow-md cursor-pointer font-sans ${className}`}
       >
         <span>{label}</span>
       </button>

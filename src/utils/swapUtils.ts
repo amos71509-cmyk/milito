@@ -18,11 +18,14 @@ import {
 } from "./tradeInValuationDb";
 
 export const SWAP_STATUSES: SwapStatus[] = [
-  "Submitted",
+  "Pending",
   "Under Review",
+  "Offer Ready",
+  "Approved",
+  "Rejected",
+  "Submitted",
   "Awaiting Inspection",
   "Value Adjusted",
-  "Approved",
   "Swap Confirmed",
   "Completed",
   "Cancelled",
@@ -382,6 +385,146 @@ export function getStoredSwapRequests(): SwapRequest[] {
   return [];
 }
 
+export function cleanPhoneDigits(val: string): string {
+  return (val || "").replace(/\D/g, "");
+}
+
+export function phoneNumbersMatch(phoneA: string, phoneB: string): boolean {
+  const d1 = cleanPhoneDigits(phoneA);
+  const d2 = cleanPhoneDigits(phoneB);
+  if (!d1 || !d2) return false;
+  if (d1 === d2) return true;
+  const norm1 = d1.startsWith("234") && d1.length >= 12 ? "0" + d1.substring(3) : d1;
+  const norm2 = d2.startsWith("234") && d2.length >= 12 ? "0" + d2.substring(3) : d2;
+  if (norm1 === norm2) return true;
+  if (d1.length >= 7 && d2.length >= 7) {
+    const minL = Math.min(d1.length, d2.length, 9);
+    if (d1.slice(-minL) === d2.slice(-minL)) return true;
+  }
+  return false;
+}
+
+export interface SwapVerificationResult {
+  verified: boolean;
+  swap?: SwapRequest;
+  code?: "SUCCESS" | "NOT_FOUND" | "PHONE_REQUIRED" | "PHONE_MISMATCH" | "ERROR";
+  error?: string;
+}
+
+/**
+ * Securely verifies and looks up a Swap Request.
+ * Enforces customer phone number verification before returning private swap details.
+ */
+export async function verifyAndLookupSwapRequest(rawId: string, inputPhone: string): Promise<SwapVerificationResult> {
+  if (!rawId || typeof rawId !== "string" || !rawId.trim()) {
+    return {
+      verified: false,
+      code: "NOT_FOUND",
+      error: "Please enter your Swap Reference ID."
+    };
+  }
+
+  const cleanId = rawId.trim().toUpperCase();
+  const cleanPhone = (inputPhone || "").trim();
+
+  if (!cleanPhone) {
+    return {
+      verified: false,
+      code: "PHONE_REQUIRED",
+      error: "Please enter the phone number you used when submitting this swap request to verify your identity."
+    };
+  }
+
+  // 1. First attempt verification against server endpoint
+  try {
+    const res = await fetch("/api/swaps/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ swapId: cleanId, phone: cleanPhone })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && data.swap) {
+        return {
+          verified: true,
+          code: "SUCCESS",
+          swap: sanitizeSwapRequestForCustomer(data.swap)
+        };
+      }
+    } else {
+      const errData = await res.json().catch(() => ({}));
+      if (errData.code === "PHONE_MISMATCH") {
+        return {
+          verified: false,
+          code: "PHONE_MISMATCH",
+          error: "The phone number does not match the record for this Swap ID. For security, please enter the exact phone number submitted."
+        };
+      } else if (errData.code === "NOT_FOUND") {
+        return {
+          verified: false,
+          code: "NOT_FOUND",
+          error: `No swap request was found for reference ID '${cleanId}'. Please verify the ID on your confirmation.`
+        };
+      }
+    }
+  } catch (netErr) {
+    // server API offline, proceed to Firestore / local check
+  }
+
+  // 2. Query Firestore directly if available
+  let candidateRecord: SwapRequest | null = null;
+  if (!isFirebasePlaceholder && db) {
+    try {
+      const primaryDocRef = doc(db, "swap_requests", cleanId);
+      const primarySnap = await getDoc(primaryDocRef);
+      if (primarySnap.exists()) {
+        candidateRecord = primarySnap.data() as SwapRequest;
+      } else {
+        const q = query(collection(db, "swap_requests"), where("id", "==", cleanId));
+        const qSnap = await getDocs(q);
+        if (!qSnap.empty) {
+          candidateRecord = qSnap.docs[0].data() as SwapRequest;
+        }
+      }
+    } catch (fsErr) {
+      console.warn("[Swap Tracker] Firestore verify fallback error:", fsErr);
+    }
+  }
+
+  // 3. Query local storage cache if not found in Firestore
+  if (!candidateRecord) {
+    const local = getStoredSwapRequests();
+    const found = local.find(r => r && r.id && r.id.toUpperCase() === cleanId);
+    if (found) {
+      candidateRecord = found;
+    }
+  }
+
+  if (!candidateRecord) {
+    return {
+      verified: false,
+      code: "NOT_FOUND",
+      error: `No swap request was found for reference ID '${cleanId}'. Please verify the ID on your confirmation.`
+    };
+  }
+
+  // 4. Verify Phone Number
+  const recordPhone = candidateRecord.customerPhone || "";
+  if (!phoneNumbersMatch(cleanPhone, recordPhone)) {
+    return {
+      verified: false,
+      code: "PHONE_MISMATCH",
+      error: "The phone number does not match the record for this Swap ID. For security, please enter the exact phone number submitted."
+    };
+  }
+
+  return {
+    verified: true,
+    code: "SUCCESS",
+    swap: sanitizeSwapRequestForCustomer(candidateRecord)
+  };
+}
+
 /**
  * Queries Firestore strictly for an exact Swap Request matching the tracking ID.
  * Returns null if no matching record exists in Firestore.
@@ -393,6 +536,18 @@ export async function lookupSwapRequestByTrackingId(rawId: string): Promise<Swap
   if (!trimmed) return null;
 
   const normalizedId = trimmed.toUpperCase();
+
+  // Try server first
+  try {
+    const res = await fetch(`/api/swaps`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && Array.isArray(data.swaps)) {
+        const found = data.swaps.find((s: any) => s.id && s.id.toUpperCase() === normalizedId);
+        if (found) return sanitizeSwapRequestForCustomer(found);
+      }
+    }
+  } catch (_) {}
 
   // 1. Direct Firestore queries
   if (!isFirebasePlaceholder && db) {
@@ -430,35 +585,12 @@ export async function lookupSwapRequestByTrackingId(rawId: string): Promise<Swap
           }
         }
       }
-
-      // Check secondary collection 'swapAppraisalRequests' by Document ID
-      const secondaryDocRef = doc(db, "swapAppraisalRequests", normalizedId);
-      const secondarySnap = await getDoc(secondaryDocRef);
-      if (secondarySnap.exists()) {
-        const data = secondarySnap.data() as SwapRequest;
-        if (data && data.id && (data.id.toUpperCase() === normalizedId || data.id === trimmed)) {
-          return sanitizeSwapRequestForCustomer(data);
-        }
-      }
-
-      // Query by 'id' field in swapAppraisalRequests
-      const qSecondary = query(collection(db, "swapAppraisalRequests"), where("id", "==", normalizedId));
-      const querySnapSecondary = await getDocs(qSecondary);
-      if (!querySnapSecondary.empty) {
-        for (const docSnap of querySnapSecondary.docs) {
-          const data = docSnap.data() as SwapRequest;
-          if (data && data.id && data.id.toUpperCase() === normalizedId) {
-            return sanitizeSwapRequestForCustomer(data);
-          }
-        }
-      }
     } catch (err) {
       console.warn("[Swap Tracker] Firestore direct query error:", err);
     }
   }
 
   // 2. Check local storage cache for recently submitted real requests if offline,
-  // but strictly match exact ID and never return sample requests
   try {
     const local = getStoredSwapRequests();
     const match = local.find(
@@ -469,51 +601,61 @@ export async function lookupSwapRequestByTrackingId(rawId: string): Promise<Swap
     }
   } catch (_) {}
 
-  // ID does not exist in the database -> strictly return null
   return null;
 }
 
 /**
- * Fetches all swap requests from Firestore and updates local cache
+ * Fetches all swap requests from Server API and Firestore, and updates local cache
  */
 export async function fetchSwapRequestsFromFirestore(): Promise<SwapRequest[]> {
+  const mergedMap = new Map<string, SwapRequest>();
+
+  // 1. Load local cache
+  getStoredSwapRequests().forEach((r) => mergedMap.set(r.id.toUpperCase(), r));
+
+  // 2. Fetch from Express Server API
+  try {
+    const res = await fetch("/api/swaps");
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && Array.isArray(data.swaps)) {
+        data.swaps.forEach((r: SwapRequest) => {
+          if (r && r.id) mergedMap.set(r.id.toUpperCase(), r);
+        });
+      }
+    }
+  } catch (_) {}
+
+  // 3. Fetch from Firestore if available
   try {
     if (!isFirebasePlaceholder && db) {
       const q = query(collection(db, "swap_requests"));
       const snap = await getDocs(q);
-      const fsRequests: SwapRequest[] = [];
       snap.forEach((docSnap) => {
         const data = docSnap.data();
         if (data && data.id) {
-          fsRequests.push(data as SwapRequest);
+          mergedMap.set(data.id.toUpperCase(), data as SwapRequest);
         }
       });
-
-      if (fsRequests.length > 0) {
-        // Merge with local storage (prefer newer updatedAt)
-        const local = getStoredSwapRequests();
-        const map = new Map<string, SwapRequest>();
-        
-        local.forEach((r) => map.set(r.id, r));
-        fsRequests.forEach((r) => map.set(r.id, r));
-
-        const merged = Array.from(map.values()).sort(
-          (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
-        );
-
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-        window.dispatchEvent(new CustomEvent("milito_swap_requests_updated", { detail: merged }));
-        return merged;
-      }
     }
   } catch (err) {
     console.warn("Could not fetch swap requests from Firestore, using local cache:", err);
   }
-  return getStoredSwapRequests();
+
+  const merged = Array.from(mergedMap.values()).sort(
+    (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+  );
+
+  if (merged.length > 0) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+    window.dispatchEvent(new CustomEvent("milito_swap_requests_updated", { detail: merged }));
+  }
+
+  return merged;
 }
 
 /**
- * Saves a new swap request to local persistence and Firestore
+ * Saves a new swap request to local persistence, server backend, and Firestore
  */
 export async function saveSwapRequest(request: SwapRequest): Promise<void> {
   try {
@@ -523,12 +665,21 @@ export async function saveSwapRequest(request: SwapRequest): Promise<void> {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     window.dispatchEvent(new CustomEvent("milito_swap_requests_updated", { detail: updated }));
 
-    // 2. Persist to Firestore if available
+    // 2. Send to Express Server API
+    try {
+      await fetch("/api/swaps", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(request)
+      });
+    } catch (srvErr) {
+      console.warn("Could not persist to /api/swaps:", srvErr);
+    }
+
+    // 3. Persist to Firestore if available
     if (!isFirebasePlaceholder && db) {
       const sanitized = sanitizeForFirestore(request);
-      // Save to primary swap_requests collection
       await setDoc(doc(db, "swap_requests", request.id), sanitized, { merge: true });
-      // Also save to swapAppraisalRequests collection for schema redundancy
       try {
         await setDoc(doc(db, "swapAppraisalRequests", request.id), sanitized, { merge: true });
       } catch (innerErr) {
@@ -541,12 +692,13 @@ export async function saveSwapRequest(request: SwapRequest): Promise<void> {
 }
 
 /**
- * Updates status or admin notes on an existing swap request in local storage and Firestore
+ * Updates status, official offer value, or admin notes on an existing swap request
  */
 export async function updateSwapRequestStatus(
   id: string,
   newStatus: SwapStatus,
-  adminNotes?: string
+  adminNotes?: string,
+  officialOfferValue?: number
 ): Promise<SwapRequest | null> {
   try {
     const existing = getStoredSwapRequests();
@@ -558,6 +710,7 @@ export async function updateSwapRequestStatus(
           ...r,
           status: newStatus,
           adminNotes: adminNotes !== undefined ? adminNotes : r.adminNotes,
+          officialOfferValue: officialOfferValue !== undefined ? officialOfferValue : r.officialOfferValue,
           updatedAt: now
         };
         return updatedRequest;
@@ -567,15 +720,28 @@ export async function updateSwapRequestStatus(
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     window.dispatchEvent(new CustomEvent("milito_swap_requests_updated", { detail: updated }));
 
+    // Send update to Server API
+    try {
+      await fetch(`/api/swaps/${id}/update-status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: newStatus,
+          adminNotes,
+          officialOfferValue
+        })
+      });
+    } catch (_) {}
+
     // Update in Firestore
     if (!isFirebasePlaceholder && db && updatedRequest) {
       const updatePayload: Record<string, any> = {
         status: newStatus,
         updatedAt: now
       };
-      if (adminNotes !== undefined) {
-        updatePayload.adminNotes = adminNotes;
-      }
+      if (adminNotes !== undefined) updatePayload.adminNotes = adminNotes;
+      if (officialOfferValue !== undefined) updatePayload.officialOfferValue = officialOfferValue;
+
       await setDoc(doc(db, "swap_requests", id), updatePayload, { merge: true });
       try {
         await setDoc(doc(db, "swapAppraisalRequests", id), updatePayload, { merge: true });

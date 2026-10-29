@@ -287,7 +287,7 @@ export function parseCurrentProductUrl(): { slugOrId: string | null; source: str
  * Lightweight Analytics Tracking Foundation
  */
 export interface FunnelEvent {
-  eventName: "product_viewed" | "order_started" | "order_submitted" | "payment_notified" | "order_completed";
+  eventName: "product_viewed" | "add_to_cart" | "order_started" | "order_submitted" | "payment_notified" | "order_completed";
   productId?: string;
   productName?: string;
   orderId?: string;

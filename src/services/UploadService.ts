@@ -985,6 +985,8 @@ export class UploadService {
         featured: !!productForm.featured,
         faceId: productForm.faceId || undefined,
         network: productForm.network || undefined,
+        assignedAccessories: productForm.assignedAccessories || editingProduct?.assignedAccessories || [],
+        assignedAccessoryIds: productForm.assignedAccessoryIds || editingProduct?.assignedAccessoryIds || [],
         createdAt: editingProduct?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -1042,6 +1044,8 @@ export class UploadService {
         featured: completeProduct.featured,
         faceId: completeProduct.faceId,
         network: completeProduct.network,
+        assignedAccessories: completeProduct.assignedAccessories || [],
+        assignedAccessoryIds: completeProduct.assignedAccessoryIds || [],
         createdAt: completeProduct.createdAt,
         updatedAt: completeProduct.updatedAt,
       };

@@ -98,6 +98,20 @@ export default function StorePage({
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
   const itemsPerPage = 9;
 
+  useEffect(() => {
+    if (initialBrand) {
+      setSelectedCategory(initialBrand);
+      setCurrentPage(1);
+    }
+  }, [initialBrand]);
+
+  useEffect(() => {
+    if (initialSearch !== undefined) {
+      setSearchQuery(initialSearch);
+      setCurrentPage(1);
+    }
+  }, [initialSearch]);
+
   // Persist state to session storage
   useEffect(() => {
     try {
@@ -153,6 +167,9 @@ export default function StorePage({
 
         if (cat === "apple" || cat === "iphone") {
           return pBrand.includes("apple") || pBrand.includes("iphone") || pName.includes("iphone");
+        }
+        if (cat === "android") {
+          return !pBrand.includes("apple") && !pName.includes("iphone") && !pName.includes("ipad");
         }
         if (cat === "samsung") {
           return pBrand.includes("samsung") || pName.includes("galaxy");
@@ -266,54 +283,8 @@ export default function StorePage({
 
   return (
     <div className="min-h-screen bg-gray-50/60 text-[#0F172A]">
-      
-      {/* 1. STORE HERO */}
-      <section className="bg-[#1A2025] text-white py-12 sm:py-16 relative overflow-hidden border-b border-white/10" id="store-hero">
-        {/* Ambient glow accent */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-[#00B14F]/[0.08] blur-[120px] rounded-full pointer-events-none" />
-        
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
-          <motion.div
-            initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: -8 }}
-            animate={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#00B14F]/15 border border-[#00B14F]/30 text-[#00B14F] text-xs font-extrabold uppercase tracking-widest mb-3"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Verified Nigerian Inventory</span>
-          </motion.div>
-
-          <motion.h1
-            initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 10 }}
-            animate={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.05 }}
-            className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight"
-          >
-            MILITO STORE
-          </motion.h1>
-
-          <motion.h2
-            initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 10 }}
-            animate={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.1 }}
-            className="text-base sm:text-lg md:text-xl font-bold text-[#00B14F] mt-2"
-          >
-            Find the device you're looking for.
-          </motion.h2>
-
-          <motion.p
-            initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 10 }}
-            animate={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.15 }}
-            className="text-gray-300 mt-2 text-xs sm:text-sm md:text-base max-w-xl mx-auto leading-relaxed"
-          >
-            Browse phones and gadgets by brand, model, condition, storage and price.
-          </motion.p>
-        </div>
-      </section>
-
-      {/* 2. STICKY SHOPPING NAVIGATION TOOLBAR */}
-      <div className="sticky top-20 sm:top-24 z-30 bg-white/95 backdrop-blur-md border-b border-gray-200/90 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.06)] transition-all duration-200 w-full">
+      {/* STICKY SHOPPING NAVIGATION TOOLBAR */}
+      <div className="sticky top-16 sm:top-20 z-30 bg-white/95 backdrop-blur-md border-b border-gray-200/90 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.06)] transition-all duration-200 w-full">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3 space-y-2 sm:space-y-2.5">
           
           {/* Top Row: Search Input + Desktop Quick Filters */}
@@ -572,7 +543,7 @@ export default function StorePage({
       </div>
 
       {/* 3. MAIN STORE CATALOGUE LAYOUT */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+      <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8 py-6 sm:py-10">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
           
           {/* LEFT SIDEBAR: DESKTOP FILTERS */}
@@ -788,7 +759,7 @@ export default function StorePage({
               </div>
             ) : (
               /* REAL PRODUCT CATALOGUE GRID */
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 md:gap-5 items-start">
+              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-4 md:gap-5 items-start">
                 {paginatedProducts.map((prod) => (
                   <ProductCard
                     key={prod.id}

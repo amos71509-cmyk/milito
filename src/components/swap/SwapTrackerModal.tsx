@@ -11,12 +11,16 @@ import {
   ArrowLeftRight,
   AlertCircle,
   Loader2,
-  HelpCircle,
+  Lock,
+  Phone,
   Sparkles,
-  Check
+  Check,
+  HardDrive,
+  Cpu,
+  BadgeAlert
 } from "lucide-react";
 import { SwapRequest, SwapStatus } from "../../types";
-import { lookupSwapRequestByTrackingId, formatNaira } from "../../utils/swapUtils";
+import { verifyAndLookupSwapRequest, formatNaira } from "../../utils/swapUtils";
 
 interface SwapTrackerModalProps {
   initialSwapId?: string;
@@ -24,46 +28,59 @@ interface SwapTrackerModalProps {
   onClose: () => void;
 }
 
-type SearchState = "idle" | "loading" | "found" | "not_found";
+type SearchState = "idle" | "loading" | "found" | "not_found" | "phone_mismatch";
 
 export default function SwapTrackerModal({
   initialSwapId = "",
   isOpen,
   onClose,
 }: SwapTrackerModalProps) {
-  const [searchQuery, setSearchQuery] = useState("");
+  const [swapIdQuery, setSwapIdQuery] = useState("");
+  const [phoneQuery, setPhoneQuery] = useState("");
   const [searchState, setSearchState] = useState<SearchState>("idle");
   const [selectedRequest, setSelectedRequest] = useState<SwapRequest | null>(null);
   const [searchedId, setSearchedId] = useState("");
   const [inputError, setInputError] = useState<string | null>(null);
 
-  // Execute lookup strictly against Firestore / backend records
-  const executeLookup = useCallback(async (targetId: string) => {
+  // Execute lookup and verification
+  const executeLookup = useCallback(async (targetId: string, targetPhone: string) => {
     const cleanId = targetId.trim();
+    const cleanPhone = targetPhone.trim();
+
     if (!cleanId) {
-      setInputError("Enter your Swap ID to track your request.");
+      setInputError("Enter your Swap Reference ID to track your request.");
+      return;
+    }
+
+    if (!cleanPhone) {
+      setInputError("Enter the phone number submitted with your request to verify your identity.");
       return;
     }
 
     setInputError(null);
     setSearchedId(cleanId.toUpperCase());
     setSearchState("loading");
-    // Clear previous results immediately
     setSelectedRequest(null);
 
     try {
-      const result = await lookupSwapRequestByTrackingId(cleanId);
-      if (result && result.id) {
-        setSelectedRequest(result);
+      const result = await verifyAndLookupSwapRequest(cleanId, cleanPhone);
+      if (result.verified && result.swap) {
+        setSelectedRequest(result.swap);
         setSearchState("found");
+      } else if (result.code === "PHONE_MISMATCH") {
+        setSelectedRequest(null);
+        setSearchState("phone_mismatch");
+        setInputError(result.error || "Phone number does not match this Swap reference.");
       } else {
         setSelectedRequest(null);
         setSearchState("not_found");
+        setInputError(result.error || `No swap request found for ID '${cleanId}'.`);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("[SwapTracker] Error checking Swap ID:", err);
       setSelectedRequest(null);
       setSearchState("not_found");
+      setInputError("Failed to verify request. Please try again.");
     }
   }, []);
 
@@ -72,95 +89,98 @@ export default function SwapTrackerModal({
     if (isOpen) {
       if (initialSwapId && initialSwapId.trim()) {
         const cleanInitial = initialSwapId.trim();
-        setSearchQuery(cleanInitial);
-        executeLookup(cleanInitial);
+        setSwapIdQuery(cleanInitial);
+        // Do not auto-execute without phone; user must provide phone to verify!
+        setSearchState("idle");
+        setInputError("Please enter your registered phone number to verify and view request details.");
       } else {
-        // Initial state: empty result area, only search input
-        setSearchQuery("");
+        setSwapIdQuery("");
+        setPhoneQuery("");
         setSelectedRequest(null);
         setSearchState("idle");
         setInputError(null);
         setSearchedId("");
       }
     } else {
-      // Clear state on close
       setSelectedRequest(null);
       setSearchState("idle");
       setInputError(null);
     }
-  }, [isOpen, initialSwapId, executeLookup]);
+  }, [isOpen, initialSwapId]);
 
   if (!isOpen) return null;
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    executeLookup(searchQuery);
+    executeLookup(swapIdQuery, phoneQuery);
   };
 
   const getStatusBadge = (status: SwapStatus) => {
     switch (status) {
+      case "Pending":
       case "Submitted":
         return {
-          label: "Submitted",
+          label: status,
           className: "bg-blue-50 text-blue-700 border-blue-200",
+          desc: "Your swap request is in the appraisal queue. Our technicians will begin reviewing specifications shortly."
         };
       case "Under Review":
         return {
           label: "Under Review",
-          className: "bg-amber-50 text-amber-700 border-amber-200",
+          className: "bg-amber-50 text-amber-800 border-amber-200 font-extrabold",
+          desc: "Our valuation team is currently examining your device condition, specifications, and uploaded photos."
+        };
+      case "Offer Ready":
+        return {
+          label: "Offer Ready",
+          className: "bg-indigo-50 text-indigo-700 border-indigo-200 font-extrabold",
+          desc: "Good news! Your official trade-in valuation is ready. See offer details below or contact us on WhatsApp to proceed."
+        };
+      case "Approved":
+        return {
+          label: "Approved",
+          className: "bg-emerald-50 text-emerald-800 border-emerald-300 font-black",
+          desc: "Appraisal approved! You can now visit our store or arrange courier handover for physical inspection & exchange."
+        };
+      case "Rejected":
+      case "Declined":
+        return {
+          label: "Rejected",
+          className: "bg-rose-50 text-rose-700 border-rose-200",
+          desc: "This request could not be approved at this time based on device condition or policy guidelines."
         };
       case "Awaiting Inspection":
         return {
           label: "Awaiting Inspection",
           className: "bg-purple-50 text-purple-700 border-purple-200",
+          desc: "Awaiting physical handover and inspection at our store before completing the swap."
         };
       case "Value Adjusted":
         return {
           label: "Value Adjusted",
           className: "bg-indigo-50 text-indigo-700 border-indigo-200",
-        };
-      case "Approved":
-        return {
-          label: "Approved",
-          className: "bg-emerald-50 text-emerald-700 border-emerald-200",
+          desc: "The valuation was adjusted following physical verification. Please review the updated offer."
         };
       case "Swap Confirmed":
-        return {
-          label: "Swap Confirmed",
-          className: "bg-teal-50 text-teal-700 border-teal-200",
-        };
       case "Completed":
         return {
-          label: "Completed",
-          className: "bg-emerald-100 text-emerald-800 border-emerald-300 font-black",
+          label: status,
+          className: "bg-emerald-100 text-emerald-900 border-emerald-300 font-black",
+          desc: "Swap deal successfully concluded! Enjoy your upgraded device."
         };
       case "Cancelled":
-      case "Declined":
         return {
-          label: status,
-          className: "bg-rose-50 text-rose-700 border-rose-200",
+          label: "Cancelled",
+          className: "bg-gray-100 text-gray-700 border-gray-300",
+          desc: "This swap appraisal was cancelled."
         };
       default:
         return {
-          label: status || "Submitted",
+          label: status || "Pending",
           className: "bg-gray-100 text-gray-800 border-gray-200",
+          desc: "Request status is active."
         };
     }
-  };
-
-  // Status progression index for timeline calculations
-  const getStatusIndex = (status: SwapStatus): number => {
-    const sequence: SwapStatus[] = [
-      "Submitted",
-      "Under Review",
-      "Awaiting Inspection",
-      "Approved",
-      "Swap Confirmed",
-      "Completed"
-    ];
-    if (status === "Value Adjusted") return 2; // alongside inspection
-    const idx = sequence.indexOf(status);
-    return idx >= 0 ? idx : 0;
   };
 
   const formatDate = (isoStr?: string) => {
@@ -193,11 +213,15 @@ export default function SwapTrackerModal({
               <ArrowLeftRight className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-extrabold text-gray-950 text-base sm:text-lg font-sans tracking-tight">
-                Track Swap Request
+              <h3 className="font-extrabold text-gray-950 text-base sm:text-lg font-sans tracking-tight flex items-center gap-2">
+                <span>Track Swap Request</span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                  <Lock className="w-2.5 h-2.5" />
+                  Protected
+                </span>
               </h3>
               <p className="text-xs text-gray-500 font-medium">
-                Check real-time appraisal & inspection status
+                Verify phone number & reference to view real-time appraisal review
               </p>
             </div>
           </div>
@@ -213,47 +237,75 @@ export default function SwapTrackerModal({
           </button>
         </div>
 
-        {/* Search Bar Form */}
-        <div className="p-4 sm:p-5 bg-white border-b border-gray-150">
-          <form onSubmit={handleSearchSubmit} className="space-y-2">
-            <div className="flex gap-2">
-              <div className="relative flex-1">
+        {/* Search & Phone Verification Form */}
+        <div className="p-4 sm:p-6 bg-white border-b border-gray-150 space-y-3">
+          <form onSubmit={handleSearchSubmit} className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {/* Swap Reference ID Input */}
+              <div className="relative">
                 <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   id="swap-tracking-id-input"
                   type="text"
-                  placeholder="Enter Swap ID (e.g. MIL-SWAP-73060)..."
-                  value={searchQuery}
+                  placeholder="Swap Reference (e.g. MIL-SWAP-73060)"
+                  value={swapIdQuery}
                   onChange={(e) => {
-                    setSearchQuery(e.target.value);
+                    setSwapIdQuery(e.target.value);
                     if (inputError) setInputError(null);
                   }}
                   disabled={searchState === "loading"}
-                  className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm font-semibold text-gray-900 focus:outline-none focus:border-milito-green focus:bg-white transition uppercase placeholder:normal-case"
+                  className="w-full pl-10 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm font-semibold text-gray-900 focus:outline-none focus:border-milito-green focus:bg-white transition uppercase placeholder:normal-case"
                 />
               </div>
+
+              {/* Customer Phone Input for Verification */}
+              <div className="relative">
+                <Phone className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  id="swap-tracking-phone-input"
+                  type="tel"
+                  placeholder="Your Phone Number (e.g. 08012345678)"
+                  value={phoneQuery}
+                  onChange={(e) => {
+                    setPhoneQuery(e.target.value);
+                    if (inputError) setInputError(null);
+                  }}
+                  disabled={searchState === "loading"}
+                  className="w-full pl-10 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm font-semibold text-gray-900 focus:outline-none focus:border-milito-green focus:bg-white transition"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-3 pt-1">
+              <span className="text-[11px] text-gray-400 hidden sm:inline flex items-center gap-1">
+                <Lock className="w-3 h-3 text-gray-400" />
+                Phone number is required to protect private customer details.
+              </span>
               <button
                 id="submit-swap-tracking-btn"
                 type="submit"
                 disabled={searchState === "loading"}
-                className="px-5 sm:px-6 py-2.5 bg-milito-green text-black font-extrabold text-xs uppercase tracking-wider rounded-xl hover:brightness-105 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                className="w-full sm:w-auto px-6 py-2.5 bg-milito-green text-black font-extrabold text-xs uppercase tracking-wider rounded-xl hover:brightness-105 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer shadow-sm"
               >
                 {searchState === "loading" ? (
                   <>
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>Tracking...</span>
+                    <span>Verifying...</span>
                   </>
                 ) : (
-                  <span>Track</span>
+                  <>
+                    <span>Verify & Track</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </>
                 )}
               </button>
             </div>
 
             {inputError && (
-              <p className="text-xs text-rose-600 font-semibold flex items-center gap-1.5 pl-1 animate-fadeIn">
-                <AlertCircle className="w-3.5 h-3.5" />
+              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold flex items-center gap-2 animate-fadeIn">
+                <AlertCircle className="w-4 h-4 text-amber-700 flex-shrink-0" />
                 <span>{inputError}</span>
-              </p>
+              </div>
             )}
           </form>
         </div>
@@ -261,18 +313,18 @@ export default function SwapTrackerModal({
         {/* Body Content Area */}
         <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-6">
           
-          {/* 1. INITIAL IDLE STATE: Result area is completely clean and empty */}
+          {/* 1. INITIAL IDLE STATE */}
           {searchState === "idle" && (
-            <div className="py-12 px-4 text-center space-y-3">
+            <div className="py-10 px-4 text-center space-y-3">
               <div className="w-14 h-14 rounded-2xl bg-gray-100 border border-gray-200 flex items-center justify-center mx-auto text-gray-400">
                 <Search className="w-6 h-6" />
               </div>
               <div className="space-y-1 max-w-sm mx-auto">
                 <h4 className="text-sm font-bold text-gray-900">
-                  Enter your Swap ID to track your request
+                  Track Your Swap Appraisal Status
                 </h4>
                 <p className="text-xs text-gray-500 leading-relaxed">
-                  Input the unique Swap ID (e.g. <span className="font-mono font-bold text-gray-700">MIL-SWAP-73060</span>) provided upon submitting your swap appraisal.
+                  Enter your unique Swap ID and the phone number provided at submission to view your review status (Pending, Under Review, Offer Ready, Approved, or Rejected).
                 </p>
               </div>
             </div>
@@ -286,16 +338,36 @@ export default function SwapTrackerModal({
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-extrabold text-gray-950">
-                  Checking Swap Request...
+                  Verifying Swap Request Ownership...
                 </p>
                 <p className="text-xs text-gray-500 font-mono">
-                  Verifying ID: {searchedId}
+                  Checking ID: {searchedId}
                 </p>
               </div>
             </div>
           )}
 
-          {/* 3. INVALID / NOT FOUND STATE */}
+          {/* 3. PHONE MISMATCH (SECURITY ERROR) */}
+          {searchState === "phone_mismatch" && (
+            <div id="swap-phone-mismatch-state" className="py-8 px-4 text-center space-y-3 bg-rose-50/60 rounded-3xl border border-rose-200 animate-fadeIn">
+              <div className="w-12 h-12 rounded-2xl bg-rose-100 border border-rose-200 flex items-center justify-center mx-auto text-rose-600">
+                <Lock className="w-6 h-6" />
+              </div>
+              <div className="space-y-1.5 max-w-md mx-auto">
+                <h3 className="text-base font-extrabold text-gray-950">
+                  Phone Verification Required
+                </h3>
+                <p className="text-xs text-gray-600 leading-relaxed">
+                  The phone number entered does not match the record for Swap ID <span className="font-mono font-bold text-gray-900">{searchedId}</span>. For your privacy and security, swap request details are protected.
+                </p>
+                <p className="text-[11px] text-gray-500 pt-1">
+                  Please verify that you are entering the same WhatsApp/phone number provided during submission.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* 4. NOT FOUND STATE */}
           {searchState === "not_found" && (
             <div id="swap-not-found-state" className="py-10 px-4 text-center space-y-3 animate-fadeIn">
               <div className="w-14 h-14 rounded-2xl bg-rose-50 border border-rose-150 flex items-center justify-center mx-auto text-rose-500">
@@ -306,211 +378,165 @@ export default function SwapTrackerModal({
                   Swap Request Not Found
                 </h3>
                 <p className="text-xs text-gray-600 leading-relaxed">
-                  We couldn't find a Swap Request with that tracking ID. Please check the ID and try again.
+                  We couldn't find a Swap Request with reference ID <span className="font-mono font-bold text-gray-900">{searchedId}</span>. Please verify the ID on your confirmation note.
                 </p>
-                {searchedId && (
-                  <p className="text-[11px] text-gray-400 font-mono pt-1">
-                    Searched ID: <span className="text-gray-700 font-semibold">{searchedId}</span>
-                  </p>
-                )}
               </div>
             </div>
           )}
 
-          {/* 4. VALID FOUND STATE: Real Firestore Request Details */}
+          {/* 5. VERIFIED FOUND STATE */}
           {searchState === "found" && selectedRequest && (
             <div id="swap-request-details-card" className="space-y-6 animate-fadeIn">
               
-              {/* Swap ID & Firestore Status Card */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-gray-50/90 rounded-2xl border border-gray-200">
+              {/* Swap ID & Status Card */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-200">
                 <div>
                   <span className="text-[10px] uppercase font-extrabold text-gray-400 tracking-wider block">
-                    Swap ID
+                    Swap Reference
                   </span>
                   <span className="font-mono text-base sm:text-lg font-black text-gray-950 tracking-tight">
                     {selectedRequest.id}
                   </span>
                   {selectedRequest.createdAt && (
-                    <span className="text-[11px] text-gray-500 block pt-0.5">
+                    <span className="text-[11px] text-gray-500 block">
                       Submitted on {formatDate(selectedRequest.createdAt)}
                     </span>
                   )}
                 </div>
 
-                <div className="flex items-center gap-2 self-start sm:self-center">
-                  <span className="text-xs font-bold text-gray-500">Status:</span>
-                  <span className={`px-3 py-1.5 font-extrabold text-xs rounded-full border shadow-2xs ${getStatusBadge(selectedRequest.status).className}`}>
-                    {selectedRequest.status}
+                <div className="flex flex-col sm:items-end">
+                  <span className="text-[10px] uppercase font-extrabold text-gray-400 tracking-wider block mb-1">
+                    Current Review Status
+                  </span>
+                  <span
+                    id="swap-tracking-status-badge"
+                    className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border ${
+                      getStatusBadge(selectedRequest.status).className
+                    }`}
+                  >
+                    {getStatusBadge(selectedRequest.status).label}
                   </span>
                 </div>
               </div>
 
-              {/* Status Notice if Cancelled or Declined */}
-              {(selectedRequest.status === "Cancelled" || selectedRequest.status === "Declined") && (
-                <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl space-y-1">
-                  <div className="flex items-center gap-2 text-rose-800 font-extrabold text-xs">
-                    <AlertCircle className="w-4 h-4 text-rose-600" />
-                    <span>Swap Request {selectedRequest.status}</span>
+              {/* Status Explanation Card */}
+              <div className="p-4 bg-emerald-50/70 border border-emerald-200/80 rounded-2xl text-xs space-y-1">
+                <span className="font-extrabold text-emerald-950 uppercase tracking-wider block">
+                  Status Update:
+                </span>
+                <p className="text-emerald-900 leading-relaxed font-medium">
+                  {getStatusBadge(selectedRequest.status).desc}
+                </p>
+                {selectedRequest.adminNotes && (
+                  <div className="mt-2 pt-2 border-t border-emerald-200 text-emerald-950 font-semibold">
+                    <span className="font-bold">Appraisal Team Note:</span> {selectedRequest.adminNotes}
                   </div>
-                  <p className="text-xs text-rose-700">
-                    This swap appraisal has been closed. Please contact MILITO customer care if you require any assistance.
-                  </p>
-                </div>
-              )}
+                )}
+              </div>
 
-              {/* Appraisal Timeline */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-black uppercase tracking-wider text-gray-900">
-                    Appraisal Timeline
+              {/* Devices Breakdown Card */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Your Current Phone */}
+                <div className="p-4 rounded-2xl border border-gray-200 bg-white space-y-2.5">
+                  <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider block flex items-center gap-1">
+                    <Smartphone className="w-3.5 h-3.5 text-milito-green" />
+                    Your Trade-In Device
+                  </span>
+                  <h4 className="text-sm font-extrabold text-gray-950 font-sans">
+                    {selectedRequest.currentDevice?.brand} {selectedRequest.currentDevice?.model}
                   </h4>
-                  {selectedRequest.updatedAt && (
-                    <span className="text-[11px] text-gray-400">
-                      Last updated: {formatDate(selectedRequest.updatedAt)}
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
+                    <span className="px-2 py-0.5 rounded-md bg-gray-100 font-semibold flex items-center gap-1">
+                      <HardDrive className="w-3 h-3 text-gray-500" />
+                      {selectedRequest.currentDevice?.storage || "128GB"} Storage
                     </span>
-                  )}
-                </div>
-                
-                <div className="space-y-3.5 relative before:absolute before:left-3.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-gray-200">
-                  {[
-                    {
-                      label: "Request Submitted",
-                      statusKey: "Submitted" as SwapStatus,
-                      desc: "Appraisal request logged in MILITO database",
-                      date: formatDate(selectedRequest.createdAt),
-                      minIdx: 0,
-                    },
-                    {
-                      label: "Under Review",
-                      statusKey: "Under Review" as SwapStatus,
-                      desc: "Appraisal team reviewing device condition & specifications",
-                      date: selectedRequest.status !== "Submitted" ? formatDate(selectedRequest.updatedAt) : null,
-                      minIdx: 1,
-                    },
-                    {
-                      label: "Physical Inspection",
-                      statusKey: "Awaiting Inspection" as SwapStatus,
-                      desc: "Hardware diagnostic & condition verification at branch",
-                      date: null,
-                      minIdx: 2,
-                    },
-                    {
-                      label: "Appraisal & Valuation Approved",
-                      statusKey: "Approved" as SwapStatus,
-                      desc: "Trade-in value verified & upgrade agreement ready",
-                      date: null,
-                      minIdx: 3,
-                    },
-                    {
-                      label: "Swap Completed",
-                      statusKey: "Completed" as SwapStatus,
-                      desc: "Device exchange finalized & warranty activated",
-                      date: selectedRequest.status === "Completed" ? formatDate(selectedRequest.updatedAt) : null,
-                      minIdx: 5,
-                    },
-                  ].map((milestone, idx) => {
-                    const currentIdx = getStatusIndex(selectedRequest.status);
-                    const isDone = currentIdx >= milestone.minIdx;
-                    const isCurrent = currentIdx === milestone.minIdx;
+                    {selectedRequest.currentDevice?.ram && (
+                      <span className="px-2 py-0.5 rounded-md bg-gray-100 font-semibold flex items-center gap-1">
+                        <Cpu className="w-3 h-3 text-gray-500" />
+                        {selectedRequest.currentDevice.ram} RAM
+                      </span>
+                    )}
+                    <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 font-bold border border-emerald-100">
+                      {selectedRequest.currentDevice?.estimatedGrade || "Grade B"}
+                    </span>
+                  </div>
 
-                    return (
-                      <div key={milestone.label} className="flex items-start gap-3 relative z-10">
-                        <div
-                          className={`w-7 h-7 rounded-full flex items-center justify-center text-xs flex-shrink-0 font-bold transition-colors ${
-                            isDone
-                              ? "bg-milito-green text-black shadow-xs"
-                              : "bg-gray-100 text-gray-400 border border-gray-300"
-                          }`}
-                        >
-                          {isDone ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : idx + 1}
-                        </div>
-                        <div className="flex-1 pt-0.5">
-                          <div className="flex items-center justify-between gap-2">
-                            <h5
-                              className={`text-xs font-extrabold ${
-                                isCurrent 
-                                  ? "text-milito-green" 
-                                  : isDone 
-                                  ? "text-gray-900" 
-                                  : "text-gray-400"
-                              }`}
-                            >
-                              {milestone.label}
-                            </h5>
-                            {milestone.date && (
-                              <span className="text-[10px] font-medium text-gray-400">
-                                {milestone.date}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[11px] text-gray-500 leading-normal">
-                            {milestone.desc}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Devices & Valuation Breakdown */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-200 space-y-1">
-                  <span className="text-[10px] font-bold uppercase text-gray-500 tracking-wider">
-                    Current Phone
-                  </span>
-                  <h5 className="text-xs font-black text-gray-950 truncate">
-                    {selectedRequest.currentDevice.brand} {selectedRequest.currentDevice.model}
-                  </h5>
-                  <p className="text-[10px] text-gray-500 font-medium">
-                    {selectedRequest.currentDevice.storage} • {selectedRequest.currentDevice.estimatedGrade}
-                  </p>
-                  <div className="pt-1 text-xs font-bold text-gray-900">
-                    Est. Value: <span className="font-extrabold text-gray-950">{formatNaira(selectedRequest.currentDevice.estimatedValue)}</span>
+                  <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
+                    <span className="text-xs text-gray-500 font-medium">
+                      {selectedRequest.officialOfferValue ? "Official Offer:" : "Estimated Credit:"}
+                    </span>
+                    <span className="text-sm font-black text-milito-green font-mono">
+                      {formatNaira(
+                        selectedRequest.officialOfferValue ||
+                        selectedRequest.currentDevice?.estimatedValue ||
+                        selectedRequest.calculation?.currentDeviceValue ||
+                        0
+                      )}
+                    </span>
                   </div>
                 </div>
 
-                <div className="p-3.5 bg-emerald-50/60 rounded-2xl border border-emerald-200 space-y-1">
-                  <span className="text-[10px] font-bold uppercase text-emerald-800 tracking-wider">
-                    Target Upgrade
+                {/* Target Upgrade Device */}
+                <div className="p-4 rounded-2xl border border-gray-200 bg-white space-y-2.5">
+                  <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider block flex items-center gap-1">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                    Target Upgrade Device
                   </span>
-                  <h5 className="text-xs font-black text-gray-950 truncate">
-                    {selectedRequest.targetProduct.name}
-                  </h5>
-                  <p className="text-[10px] text-emerald-700 font-medium">
-                    {selectedRequest.targetProduct.condition} • {selectedRequest.targetProduct.brand}
-                  </p>
-                  <div className="pt-1 text-xs font-black text-milito-green">
-                    Top-Up: {selectedRequest.calculation.isTopUp ? formatNaira(selectedRequest.calculation.difference) : "₦0 (Direct Swap)"}
+                  <h4 className="text-sm font-extrabold text-gray-950 font-sans">
+                    {selectedRequest.targetProduct?.name}
+                  </h4>
+                  <div className="flex items-center gap-2 text-xs text-gray-600">
+                    <span className="px-2 py-0.5 rounded-md bg-gray-100 font-semibold">
+                      {selectedRequest.targetProduct?.condition || "Pristine"}
+                    </span>
+                    <span className="text-gray-400">•</span>
+                    <span className="font-semibold text-gray-900">
+                      {formatNaira(selectedRequest.targetProduct?.price || 0)}
+                    </span>
+                  </div>
+
+                  <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
+                    <span className="text-xs text-gray-500 font-medium">
+                      {selectedRequest.calculation?.isTopUp ? "Top-Up Required:" : "Balance / Surplus:"}
+                    </span>
+                    <span className="text-sm font-black text-gray-950 font-mono">
+                      {formatNaira(selectedRequest.calculation?.difference || 0)}
+                    </span>
                   </div>
                 </div>
               </div>
 
-              {/* Appraisal Note from MILITO if available */}
-              {selectedRequest.adminNotes && (
-                <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl text-xs space-y-1">
-                  <span className="font-extrabold text-amber-900 uppercase text-[10px] tracking-wider block">
-                    Appraisal Note from MILITO:
+              {/* Customer Contact Verification Notice */}
+              <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 flex items-center justify-between text-xs text-gray-600">
+                <span className="flex items-center gap-1.5 font-medium">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-milito-green" />
+                  Verified for: <strong className="text-gray-900">{selectedRequest.customerName}</strong>
+                </span>
+                <span className="text-gray-500 font-mono">
+                  {selectedRequest.customerPhone}
+                </span>
+              </div>
+
+              {/* WhatsApp Live Agent CTA */}
+              <div className="p-4 bg-gray-900 text-white rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md">
+                <div className="space-y-0.5 text-center sm:text-left">
+                  <span className="text-xs font-bold text-milito-green block">
+                    Have questions about this swap?
                   </span>
-                  <p className="text-amber-800 leading-relaxed font-medium">
-                    {selectedRequest.adminNotes}
+                  <p className="text-xs text-gray-300">
+                    Chat directly with our appraisal team regarding Reference #{selectedRequest.id}.
                   </p>
                 </div>
-              )}
-
-              {/* WhatsApp Support Contact */}
-              <div className="pt-2">
                 <a
-                  id="whatsapp-swap-support-btn"
-                  href={`https://wa.me/2349000000000?text=${encodeURIComponent(
-                    `Hello MILITO TECH HOME, I am inquiring about my Swap Request ${selectedRequest.id} for ${selectedRequest.currentDevice.model} to ${selectedRequest.targetProduct.name}.`
+                  href={`https://wa.me/2348000000000?text=${encodeURIComponent(
+                    `Hello MILITO TECH, I am checking my Swap Request reference ${selectedRequest.id} for my ${selectedRequest.currentDevice?.brand} ${selectedRequest.currentDevice?.model}. Please provide me with an update.`
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full py-3 px-4 bg-[#25D366] hover:bg-[#20bd5a] text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                  className="w-full sm:w-auto px-5 py-2.5 bg-milito-green text-black font-extrabold text-xs uppercase tracking-wider rounded-xl hover:brightness-105 transition flex items-center justify-center gap-2 cursor-pointer flex-shrink-0"
                 >
-                  <MessageCircle className="w-4 h-4 fill-white" />
-                  <span>Contact WhatsApp Support for this Swap</span>
+                  <MessageCircle className="w-4 h-4" />
+                  <span>Chat on WhatsApp</span>
                 </a>
               </div>
 
@@ -518,7 +544,6 @@ export default function SwapTrackerModal({
           )}
 
         </div>
-
       </div>
     </div>
   );
