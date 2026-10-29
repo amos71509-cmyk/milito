@@ -1,6 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { db, isFirebasePlaceholder } from "../lib/firebase";
-import { doc, setDoc, onSnapshot } from "firebase/firestore";
 
 export type DiscoveryCardId = "iphone" | "android" | "ipad" | "wrist";
 
@@ -22,30 +20,37 @@ export interface DiscoveryCardsConfig {
   updatedAt?: string;
 }
 
+export const STATIC_DISCOVERY_CARD_IMAGES: Record<DiscoveryCardId, string> = {
+  iphone: "/discovery-cards/iphone.webp",
+  android: "/discovery-cards/android.jpg",
+  ipad: "/discovery-cards/ipad.jpg",
+  wrist: "/discovery-cards/wrist.jpg",
+};
+
 export const DEFAULT_DISCOVERY_CARDS_CONFIG: DiscoveryCardsConfig = {
   cards: {
     iphone: {
       id: "iphone",
       title: "Find my iPhone",
-      imageUrl: "",
+      imageUrl: STATIC_DISCOVERY_CARD_IMAGES.iphone,
       imagePublicId: "",
     },
     android: {
       id: "android",
       title: "Look for my Android",
-      imageUrl: "",
+      imageUrl: STATIC_DISCOVERY_CARD_IMAGES.android,
       imagePublicId: "",
     },
     ipad: {
       id: "ipad",
       title: "Discover my next iPad",
-      imageUrl: "",
+      imageUrl: STATIC_DISCOVERY_CARD_IMAGES.ipad,
       imagePublicId: "",
     },
     wrist: {
       id: "wrist",
       title: "Search for my Wrist",
-      imageUrl: "",
+      imageUrl: STATIC_DISCOVERY_CARD_IMAGES.wrist,
       imagePublicId: "",
     },
   },
@@ -61,12 +66,27 @@ interface DiscoveryCardsContextType {
 
 const DiscoveryCardsContext = createContext<DiscoveryCardsContextType>({
   config: DEFAULT_DISCOVERY_CARDS_CONFIG,
-  loading: true,
+  loading: false,
   updateCardImage: async () => {},
   removeCardImage: async () => {},
 });
 
 const STORAGE_KEY = "milito_discovery_cards_config";
+
+function repairAndResolveCardUrl(rawUrl: unknown, cardId: DiscoveryCardId): string {
+  if (typeof rawUrl === "string" && rawUrl.trim().length > 0) {
+    const trimmed = rawUrl.trim();
+    // Fix WebP binary payload mislabeled with image/jpeg header (prevents iOS Safari decode failure)
+    if (trimmed.startsWith("data:image/jpeg;base64,UklGR")) {
+      return trimmed.replace("data:image/jpeg;base64,", "data:image/webp;base64,");
+    }
+    if (trimmed.startsWith("http://res.cloudinary.com/")) {
+      return trimmed.replace("http://", "https://");
+    }
+    return trimmed;
+  }
+  return STATIC_DISCOVERY_CARD_IMAGES[cardId];
+}
 
 function normalizeConfig(data: any): DiscoveryCardsConfig {
   if (!data || typeof data !== "object") {
@@ -80,34 +100,87 @@ function normalizeConfig(data: any): DiscoveryCardsConfig {
       iphone: {
         id: "iphone",
         title: "Find my iPhone",
-        imageUrl: typeof rawCards.iphone?.imageUrl === "string" ? rawCards.iphone.imageUrl : "",
+        imageUrl: repairAndResolveCardUrl(rawCards.iphone?.imageUrl, "iphone"),
         imagePublicId: typeof rawCards.iphone?.imagePublicId === "string" ? rawCards.iphone.imagePublicId : "",
         updatedAt: rawCards.iphone?.updatedAt || "",
       },
       android: {
         id: "android",
         title: "Look for my Android",
-        imageUrl: typeof rawCards.android?.imageUrl === "string" ? rawCards.android.imageUrl : "",
+        imageUrl: repairAndResolveCardUrl(rawCards.android?.imageUrl, "android"),
         imagePublicId: typeof rawCards.android?.imagePublicId === "string" ? rawCards.android.imagePublicId : "",
         updatedAt: rawCards.android?.updatedAt || "",
       },
       ipad: {
         id: "ipad",
         title: "Discover my next iPad",
-        imageUrl: typeof rawCards.ipad?.imageUrl === "string" ? rawCards.ipad.imageUrl : "",
+        imageUrl: repairAndResolveCardUrl(rawCards.ipad?.imageUrl, "ipad"),
         imagePublicId: typeof rawCards.ipad?.imagePublicId === "string" ? rawCards.ipad.imagePublicId : "",
         updatedAt: rawCards.ipad?.updatedAt || "",
       },
       wrist: {
         id: "wrist",
         title: "Search for my Wrist",
-        imageUrl: typeof rawCards.wrist?.imageUrl === "string" ? rawCards.wrist.imageUrl : "",
+        imageUrl: repairAndResolveCardUrl(rawCards.wrist?.imageUrl, "wrist"),
         imagePublicId: typeof rawCards.wrist?.imagePublicId === "string" ? rawCards.wrist.imagePublicId : "",
         updatedAt: rawCards.wrist?.updatedAt || "",
       },
     },
     updatedAt: data.updatedAt || new Date().toISOString(),
   };
+}
+
+/**
+ * Compresses large data:image URIs so all 4 discovery cards fit well within Firestore's 1MB document limit
+ * and decode rapidly on mobile devices.
+ */
+async function compressDataUriIfNeeded(imageUrl: string): Promise<string> {
+  if (!imageUrl || !imageUrl.startsWith("data:image/")) {
+    return imageUrl;
+  }
+  // Fix WebP header if needed
+  const fixedUrl = imageUrl.startsWith("data:image/jpeg;base64,UklGR")
+    ? imageUrl.replace("data:image/jpeg;base64,", "data:image/webp;base64,")
+    : imageUrl;
+
+  if (fixedUrl.length <= 160000) {
+    return fixedUrl;
+  }
+
+  return new Promise((resolve) => {
+    try {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const MAX_DIM = 720;
+          let { width, height } = img;
+          if (width > MAX_DIM || height > MAX_DIM) {
+            if (width > height) {
+              height = Math.round((height * MAX_DIM) / width);
+              width = MAX_DIM;
+            } else {
+              width = Math.round((width * MAX_DIM) / height);
+              height = MAX_DIM;
+            }
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) return resolve(fixedUrl);
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressed = canvas.toDataURL("image/jpeg", 0.82);
+          resolve(compressed.length < fixedUrl.length ? compressed : fixedUrl);
+        } catch {
+          resolve(fixedUrl);
+        }
+      };
+      img.onerror = () => resolve(fixedUrl);
+      img.src = fixedUrl;
+    } catch {
+      resolve(fixedUrl);
+    }
+  });
 }
 
 export const DiscoveryCardsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -124,78 +197,99 @@ export const DiscoveryCardsProvider: React.FC<{ children: React.ReactNode }> = (
     return DEFAULT_DISCOVERY_CARDS_CONFIG;
   });
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  // Firestore synchronization
+  // Firestore synchronization deferred after initial paint
   useEffect(() => {
-    let unsubscribe: (() => void) | undefined;
+    let unsubscribeNamed: (() => void) | undefined;
+    let unsubscribeDefault: (() => void) | undefined;
+    let isCancelled = false;
 
-    const setupListener = async () => {
+    const timer = setTimeout(async () => {
+      if (isCancelled) return;
       try {
-        if (isFirebasePlaceholder || !db) {
+        const [{ db, defaultDb, isFirebasePlaceholder }, { doc, onSnapshot }] = await Promise.all([
+          import("../lib/firebase"),
+          import("firebase/firestore")
+        ]);
+        if (isCancelled || isFirebasePlaceholder || (!db && !defaultDb)) {
           setLoading(false);
           return;
         }
 
-        const docRef = doc(db, "config", "discovery_cards");
+        const handleSnapshotData = (rawData: any) => {
+          const remote = normalizeConfig(rawData);
+          setConfig((prev) => {
+            const merged: DiscoveryCardsConfig = {
+              cards: {
+                iphone: {
+                  ...remote.cards.iphone,
+                  imageUrl: remote.cards.iphone.imageUrl || prev.cards.iphone.imageUrl || STATIC_DISCOVERY_CARD_IMAGES.iphone,
+                  imagePublicId: remote.cards.iphone.imagePublicId || prev.cards.iphone.imagePublicId,
+                },
+                android: {
+                  ...remote.cards.android,
+                  imageUrl: remote.cards.android.imageUrl || prev.cards.android.imageUrl || STATIC_DISCOVERY_CARD_IMAGES.android,
+                  imagePublicId: remote.cards.android.imagePublicId || prev.cards.android.imagePublicId,
+                },
+                ipad: {
+                  ...remote.cards.ipad,
+                  imageUrl: remote.cards.ipad.imageUrl || prev.cards.ipad.imageUrl || STATIC_DISCOVERY_CARD_IMAGES.ipad,
+                  imagePublicId: remote.cards.ipad.imagePublicId || prev.cards.ipad.imagePublicId,
+                },
+                wrist: {
+                  ...remote.cards.wrist,
+                  imageUrl: remote.cards.wrist.imageUrl || prev.cards.wrist.imageUrl || STATIC_DISCOVERY_CARD_IMAGES.wrist,
+                  imagePublicId: remote.cards.wrist.imagePublicId || prev.cards.wrist.imagePublicId,
+                },
+              },
+              updatedAt: remote.updatedAt || new Date().toISOString(),
+            };
 
-        unsubscribe = onSnapshot(
-          docRef,
-          (snapshot) => {
-            if (snapshot.exists()) {
-              const remote = normalizeConfig(snapshot.data());
-              setConfig((prev) => {
-                // Ensure we never overwrite uploaded images with empty strings
-                const merged: DiscoveryCardsConfig = {
-                  cards: {
-                    iphone: {
-                      ...remote.cards.iphone,
-                      imageUrl: remote.cards.iphone.imageUrl || prev.cards.iphone.imageUrl,
-                      imagePublicId: remote.cards.iphone.imagePublicId || prev.cards.iphone.imagePublicId,
-                    },
-                    android: {
-                      ...remote.cards.android,
-                      imageUrl: remote.cards.android.imageUrl || prev.cards.android.imageUrl,
-                      imagePublicId: remote.cards.android.imagePublicId || prev.cards.android.imagePublicId,
-                    },
-                    ipad: {
-                      ...remote.cards.ipad,
-                      imageUrl: remote.cards.ipad.imageUrl || prev.cards.ipad.imageUrl,
-                      imagePublicId: remote.cards.ipad.imagePublicId || prev.cards.ipad.imagePublicId,
-                    },
-                    wrist: {
-                      ...remote.cards.wrist,
-                      imageUrl: remote.cards.wrist.imageUrl || prev.cards.wrist.imageUrl,
-                      imagePublicId: remote.cards.wrist.imagePublicId || prev.cards.wrist.imagePublicId,
-                    },
-                  },
-                  updatedAt: remote.updatedAt || new Date().toISOString(),
-                };
+            try {
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+            } catch (e) {}
 
-                try {
-                  localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-                } catch (e) {}
+            return merged;
+          });
+        };
 
-                return merged;
-              });
-            }
-            setLoading(false);
-          },
-          (err) => {
-            console.warn("[DiscoveryCardsContext] Firestore listener notice:", err);
-            setLoading(false);
-          }
-        );
+        if (db) {
+          unsubscribeNamed = onSnapshot(
+            doc(db, "config", "discovery_cards"),
+            (snapshot) => {
+              if (snapshot.exists()) {
+                handleSnapshotData(snapshot.data());
+              }
+              setLoading(false);
+            },
+            () => setLoading(false)
+          );
+        }
+
+        if (defaultDb && defaultDb !== db) {
+          unsubscribeDefault = onSnapshot(
+            doc(defaultDb, "config", "discovery_cards"),
+            (snapshot) => {
+              if (snapshot.exists()) {
+                handleSnapshotData(snapshot.data());
+              }
+              setLoading(false);
+            },
+            () => setLoading(false)
+          );
+        }
       } catch (err) {
         console.warn("[DiscoveryCardsContext] Listener setup failed:", err);
         setLoading(false);
       }
-    };
-
-    setupListener();
+    }, 150);
 
     return () => {
-      if (unsubscribe) unsubscribe();
+      isCancelled = true;
+      clearTimeout(timer);
+      if (unsubscribeNamed) unsubscribeNamed();
+      if (unsubscribeDefault) unsubscribeDefault();
     };
   }, []);
 
@@ -213,11 +307,18 @@ export const DiscoveryCardsProvider: React.FC<{ children: React.ReactNode }> = (
       console.warn("[DiscoveryCardsContext] localStorage write error:", e);
     }
 
-    // 2. Persist to Firestore
+    // 2. Persist to both default and named Firestore databases
     try {
+      const [{ db, defaultDb, isFirebasePlaceholder }, { doc, setDoc }] = await Promise.all([
+        import("../lib/firebase"),
+        import("firebase/firestore")
+      ]);
+      const payload = sanitizeForFirestore(newConfig);
       if (!isFirebasePlaceholder && db) {
-        const docRef = doc(db, "config", "discovery_cards");
-        await setDoc(docRef, sanitizeForFirestore(newConfig), { merge: true });
+        await setDoc(doc(db, "config", "discovery_cards"), payload, { merge: true });
+      }
+      if (!isFirebasePlaceholder && defaultDb && defaultDb !== db) {
+        await setDoc(doc(defaultDb, "config", "discovery_cards"), payload, { merge: true });
       }
     } catch (err) {
       console.warn("[DiscoveryCardsContext] Firestore save error:", err);
@@ -225,13 +326,14 @@ export const DiscoveryCardsProvider: React.FC<{ children: React.ReactNode }> = (
   };
 
   const updateCardImage = async (cardId: DiscoveryCardId, imageUrl: string, imagePublicId?: string) => {
+    const optimizedUrl = await compressDataUriIfNeeded(imageUrl);
     const newConfig: DiscoveryCardsConfig = {
       ...config,
       cards: {
         ...config.cards,
         [cardId]: {
           ...config.cards[cardId],
-          imageUrl,
+          imageUrl: optimizedUrl,
           imagePublicId: imagePublicId || "",
           updatedAt: new Date().toISOString(),
         },

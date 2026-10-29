@@ -1,8 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { WebsiteBranding, CloudinaryImageMeta, BrandItem } from "../types";
-import { db, isFirebasePlaceholder } from "../lib/firebase";
-import { doc, setDoc, onSnapshot } from "firebase/firestore";
-import { UploadService } from "../services/UploadService";
 import { getApiUrl } from "../lib/api";
 
 export const DEFAULT_BRAND_LOGOS: BrandItem[] = [
@@ -116,7 +113,7 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return DEFAULT_BRANDING;
   });
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   // Sync favicon whenever logoUrl changes
   useEffect(() => {
@@ -131,24 +128,85 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, [branding.logoUrl]);
 
-  // Subscribe to Firestore & fetch Server API Branding
+  // Subscribe to Firestore & fetch Server API Branding after initial paint
   useEffect(() => {
     let unsubscribe1: (() => void) | undefined;
     let unsubscribe2: (() => void) | undefined;
+    let isCancelled = false;
 
-    const loadServerBranding = async () => {
+    const timer = setTimeout(async () => {
+      if (isCancelled) return;
+
+      // 1. Firestore listener (authoritative & fast)
+      try {
+        const [{ db, isFirebasePlaceholder }, { doc, onSnapshot }] = await Promise.all([
+          import("../lib/firebase"),
+          import("firebase/firestore")
+        ]);
+
+        if (!isCancelled && !isFirebasePlaceholder && db) {
+          const handleSnapshot = (snapshot: any) => {
+            if (snapshot.exists()) {
+              const normalized = normalizeBranding(snapshot.data());
+              if (normalized) {
+                setBranding(prev => {
+                  const fsBrandLogos = [...(normalized.brandLogos || [])];
+                  const prevBrandLogos = prev.brandLogos || [];
+
+                  const finalBrandLogos = fsBrandLogos.map(fBrand => {
+                    if (!fBrand.logoUrl) {
+                      const match = prevBrandLogos.find(p => p.id.toLowerCase() === fBrand.id.toLowerCase());
+                      if (match?.logoUrl) return match;
+                    }
+                    return fBrand;
+                  });
+
+                  prevBrandLogos.forEach(pBrand => {
+                    if (!finalBrandLogos.some(f => f.id.toLowerCase() === pBrand.id.toLowerCase())) {
+                      finalBrandLogos.push(pBrand);
+                    }
+                  });
+
+                  const merged = {
+                    ...normalized,
+                    logoUrl: normalized.logoUrl || prev.logoUrl,
+                    logoPublicId: normalized.logoPublicId || prev.logoPublicId,
+                    brandLogos: finalBrandLogos
+                  };
+
+                  try {
+                    localStorage.setItem("milito_website_branding", JSON.stringify(merged));
+                  } catch (e) {}
+
+                  return merged;
+                });
+              }
+            }
+          };
+
+          const docRef1 = doc(db, "branding", "website");
+          const docRef2 = doc(db, "config", "branding");
+
+          unsubscribe1 = onSnapshot(docRef1, handleSnapshot, () => {});
+          unsubscribe2 = onSnapshot(docRef2, handleSnapshot, () => {});
+        }
+      } catch (err) {
+        console.warn("[BrandingContext] Failed to setup Firestore listener:", err);
+      }
+
+      // 2. Non-blocking API branding check
       try {
         const res = await fetch(getApiUrl("/api/branding"));
-        if (res.ok) {
+        const contentType = res.headers.get("content-type") || "";
+        if (res.ok && contentType.includes("application/json")) {
           const data = await res.json();
           if (data.success && data.branding) {
             const normalized = normalizeBranding(data.branding);
-            if (normalized) {
+            if (normalized && !isCancelled) {
               setBranding(prev => {
                 const serverBrandLogos = [...(normalized.brandLogos || [])];
                 const prevBrandLogos = prev.brandLogos || [];
-                
-                // Merge brand logos so custom uploaded logos are preserved
+
                 const finalBrandLogos = serverBrandLogos.map(sBrand => {
                   if (!sBrand.logoUrl) {
                     const match = prevBrandLogos.find(p => p.id.toLowerCase() === sBrand.id.toLowerCase());
@@ -180,80 +238,13 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           }
         }
       } catch (err) {
-        console.warn("[BrandingContext] Server API fetch error:", err);
+        // Ignore on static hosts
       }
-    };
-
-    loadServerBranding();
-
-    const setupListener = async () => {
-      try {
-        if (isFirebasePlaceholder || !db) {
-          setLoading(false);
-          return;
-        }
-
-        const handleSnapshot = (snapshot: any) => {
-          if (snapshot.exists()) {
-            const normalized = normalizeBranding(snapshot.data());
-            if (normalized) {
-              setBranding(prev => {
-                const fsBrandLogos = [...(normalized.brandLogos || [])];
-                const prevBrandLogos = prev.brandLogos || [];
-
-                const finalBrandLogos = fsBrandLogos.map(fBrand => {
-                  if (!fBrand.logoUrl) {
-                    const match = prevBrandLogos.find(p => p.id.toLowerCase() === fBrand.id.toLowerCase());
-                    if (match?.logoUrl) return match;
-                  }
-                  return fBrand;
-                });
-
-                prevBrandLogos.forEach(pBrand => {
-                  if (!finalBrandLogos.some(f => f.id.toLowerCase() === pBrand.id.toLowerCase())) {
-                    finalBrandLogos.push(pBrand);
-                  }
-                });
-
-                const merged = {
-                  ...normalized,
-                  logoUrl: normalized.logoUrl || prev.logoUrl,
-                  logoPublicId: normalized.logoPublicId || prev.logoPublicId,
-                  brandLogos: finalBrandLogos
-                };
-
-                try {
-                  localStorage.setItem("milito_website_branding", JSON.stringify(merged));
-                } catch (e) {}
-
-                return merged;
-              });
-            }
-          }
-          setLoading(false);
-        };
-
-        const docRef1 = doc(db, "branding", "website");
-        const docRef2 = doc(db, "config", "branding");
-
-        unsubscribe1 = onSnapshot(docRef1, handleSnapshot, (err) => {
-          console.warn("[BrandingContext] Firestore branding/website snapshot error:", err);
-          setLoading(false);
-        });
-
-        unsubscribe2 = onSnapshot(docRef2, handleSnapshot, (err) => {
-          console.warn("[BrandingContext] Firestore config/branding snapshot error:", err);
-          setLoading(false);
-        });
-      } catch (err) {
-        console.warn("[BrandingContext] Failed to setup Firestore listener:", err);
-        setLoading(false);
-      }
-    };
-
-    setupListener();
+    }, 150);
 
     return () => {
+      isCancelled = true;
+      clearTimeout(timer);
       if (unsubscribe1) unsubscribe1();
       if (unsubscribe2) unsubscribe2();
     };
@@ -281,14 +272,18 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       console.warn("[BrandingContext] Failed to save to /api/branding:", err);
     }
 
-    if (!isFirebasePlaceholder && db) {
-      try {
+    try {
+      const [{ db, isFirebasePlaceholder }, { doc, setDoc }] = await Promise.all([
+        import("../lib/firebase"),
+        import("firebase/firestore")
+      ]);
+      if (!isFirebasePlaceholder && db) {
         const firestoreData = sanitizeForFirestore(newBranding);
         await setDoc(doc(db, "branding", "website"), firestoreData, { merge: true });
         await setDoc(doc(db, "config", "branding"), firestoreData, { merge: true });
-      } catch (err) {
-        console.error("[BrandingContext] Failed to save branding to Firestore:", err);
       }
+    } catch (err) {
+      console.error("[BrandingContext] Failed to save branding to Firestore:", err);
     }
   };
 
@@ -307,6 +302,7 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const previousPublicId = branding.logoPublicId;
     if (previousPublicId) {
       try {
+        const { UploadService } = await import("../services/UploadService");
         await UploadService.deleteCloudinaryImages([previousPublicId]);
       } catch (e) {
         console.warn("[BrandingContext] Error deleting image from Cloudinary:", e);
@@ -376,6 +372,7 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const target = currentList.find(b => b.id.toLowerCase() === brandId.toLowerCase());
     if (target?.logoPublicId) {
       try {
+        const { UploadService } = await import("../services/UploadService");
         await UploadService.deleteCloudinaryImages([target.logoPublicId]);
       } catch (e) {
         console.warn("Delete brand logo Cloudinary error:", e);
@@ -398,6 +395,7 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const target = currentList.find(b => b.id.toLowerCase() === brandId.toLowerCase());
     if (target?.logoPublicId) {
       try {
+        const { UploadService } = await import("../services/UploadService");
         await UploadService.deleteCloudinaryImages([target.logoPublicId]);
       } catch (e) {
         console.warn("Delete brand logo Cloudinary error:", e);

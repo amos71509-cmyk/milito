@@ -17,6 +17,7 @@ export const isFirebasePlaceholder =
 
 let app: any = null;
 let db: any = null;
+let defaultDb: any = null;
 let auth: any = null;
 
 const databaseId = (firebaseConfig as any)?.firestoreDatabaseId;
@@ -29,6 +30,10 @@ if (!isFirebasePlaceholder) {
     } catch (authErr) {
       console.warn("Firebase auth initialization skipped or failed:", authErr);
     }
+
+    try {
+      defaultDb = getFirestore(app);
+    } catch (_) {}
 
     // Initialize Firestore with specific databaseId (CRITICAL: Required for non-default database instances in AI Studio)
     try {
@@ -77,7 +82,7 @@ if (!isFirebasePlaceholder) {
   }
 }
 
-export { db, auth };
+export { db, defaultDb, auth };
 
 // ERROR HANDLERS COMPLIANCE
 export enum OperationType {

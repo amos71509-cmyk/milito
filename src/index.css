@@ -26,8 +26,31 @@
     -webkit-overflow-scrolling: touch;
   }
 
-  button, input, select, textarea, a {
+  button,
+  [role="button"],
+  a,
+  input,
+  select,
+  textarea,
+  label,
+  .cursor-pointer {
     touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button,
+  [role="button"],
+  a {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* Instant <16ms single-frame tactile response on tap/click */
+  button:active:not(:disabled),
+  [role="button"]:active,
+  a:active {
+    transform: scale(0.97);
+    transition-duration: 25ms !important;
   }
 
   img {

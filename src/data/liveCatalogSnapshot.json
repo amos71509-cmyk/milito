@@ -1,0 +1,2810 @@
+[
+  {
+    "customBrand": null,
+    "color": [
+      {
+        "hex": "#1C1C1E",
+        "name": "Space Black"
+      }
+    ],
+    "availability": "In Stock",
+    "createdAt": "2026-08-06T16:56:36.865Z",
+    "documentation": null,
+    "series": null,
+    "mileageNumber": null,
+    "imagePublicId": "milito_tech_products/milito_1790959091535_ont4s5_snaptik-app-768744118234705435_1790959086053_e2t7f",
+    "featured": false,
+    "thumbnail": {
+      "public_id": "milito_tech_products/milito_1790959091535_ont4s5_snaptik-app-768744118234705435_1790959086053_e2t7f",
+      "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1790959092/milito_tech_products/milito_1790959091535_ont4s5_snaptik-app-768744118234705435_1790959086053_e2t7f.jpg"
+    },
+    "bodyType": null,
+    "customModel": null,
+    "interiorColor": null,
+    "transmission": null,
+    "fuelType": null,
+    "brand": "Apple",
+    "specs": {
+      "screen": "6.7-inch Super Retina XDR OLED (120Hz ProMotion)",
+      "simType": "Physical Nano SIM + eSIM",
+      "chipset": "Apple A17 Pro / A18 Pro Bionic",
+      "camera": "48MP Pro Main + 12MP Telephoto 5x + UltraWide",
+      "warranty": "1-Year MILITO Escrow Warranty",
+      "os": "iOS 18 / iOS 17",
+      "batterySize": "100% Certified Battery Health"
+    },
+    "storage": [
+      "512GB"
+    ],
+    "updatedAt": "2026-10-02T16:39:04.058Z",
+    "mileage": null,
+    "originalPrice": 2550000,
+    "year": null,
+    "productType": "phone",
+    "stockQuantity": 4,
+    "quantity": 4,
+    "location": null,
+    "condition": "Brand New",
+    "reviewsCount": 12,
+    "engine": null,
+    "status": "In Stock",
+    "deviceLockStatus": null,
+    "imageUrl": "https://res.cloudinary.com/militotech/image/upload/v1789455893/milito_tech_products/sokfa2sydlfpfkri69qe.jpg",
+    "gallery": [
+      "https://res.cloudinary.com/militotech/image/upload/v1790959092/milito_tech_products/milito_1790959091535_ont4s5_snaptik-app-768744118234705435_1790959086053_e2t7f.jpg",
+      "https://res.cloudinary.com/militotech/image/upload/v1790959143/milito_tech_products/milito_1790959143028_md5uun_snaptik-app-768744118234705435_1790959140539_ie3n3.jpg"
+    ],
+    "galleryImages": [
+      {
+        "format": "jpg",
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1790959092/milito_tech_products/milito_1790959091535_ont4s5_snaptik-app-768744118234705435_1790959086053_e2t7f.jpg",
+        "width": 1556,
+        "bytes": 166764,
+        "height": 2072,
+        "created_at": "2026-10-02T16:38:12Z",
+        "original_filename": "snaptik-app-768744118234705435_1790959086053_e2t7f.jpg",
+        "public_id": "milito_tech_products/milito_1790959091535_ont4s5_snaptik-app-768744118234705435_1790959086053_e2t7f",
+        "posterUrl": null
+      },
+      {
+        "height": 2072,
+        "posterUrl": null,
+        "public_id": "milito_tech_products/milito_1790959143028_md5uun_snaptik-app-768744118234705435_1790959140539_ie3n3",
+        "created_at": "2026-10-02T16:39:03Z",
+        "original_filename": "snaptik-app-768744118234705435_1790959140539_ie3n3.jpg",
+        "format": "jpg",
+        "bytes": 200833,
+        "width": 1556,
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1790959143/milito_tech_products/milito_1790959143028_md5uun_snaptik-app-768744118234705435_1790959140539_ie3n3.jpg"
+      }
+    ],
+    "galleryPublicIds": [
+      "milito_tech_products/milito_1790959091535_ont4s5_snaptik-app-768744118234705435_1790959086053_e2t7f",
+      "milito_tech_products/milito_1790959143028_md5uun_snaptik-app-768744118234705435_1790959140539_ie3n3"
+    ],
+    "model": "iPhone 18 promax",
+    "price": 2300000,
+    "batteryCondition": null,
+    "image": "https://res.cloudinary.com/militotech/image/upload/v1790959092/milito_tech_products/milito_1790959091535_ont4s5_snaptik-app-768744118234705435_1790959086053_e2t7f.jpg",
+    "storageOptions": [
+      "512GB"
+    ],
+    "driveType": null,
+    "vehicleStatus": null,
+    "exteriorColor": null,
+    "faceId": "Working",
+    "network": "Factory Unlocked",
+    "batteryHealth": "100%",
+    "description": "iPhone 18 promax, Brand New with 512GB storage, 5G network and Factory Unlocked. Battery health is 100% and Face ID is working. Device is tested and ready for use.",
+    "name": "iPhone 18 promax",
+    "colorOptions": [
+      {
+        "hex": "#1C1C1E",
+        "name": "Space Black"
+      }
+    ],
+    "badge": "Grade A++",
+    "batteryHealthValue": "100%",
+    "rating": 4.9,
+    "id": "38KoJt6cZURjLBrkdWpH"
+  },
+  {
+    "updatedAt": "2026-08-28T09:10:16.296Z",
+    "storageOptions": [
+      "128GB"
+    ],
+    "gallery": [
+      "https://res.cloudinary.com/militotech/image/upload/v1786915539/milito_tech_products/file_ipovoe.jpg"
+    ],
+    "series": null,
+    "batteryCondition": "Excellent",
+    "productType": "phone",
+    "originalPrice": 800000,
+    "stockQuantity": 4,
+    "reviewsCount": 12,
+    "color": [
+      {
+        "name": "Space Black",
+        "hex": "#1C1C1E"
+      }
+    ],
+    "condition": "Premium UK Used",
+    "galleryPublicIds": [
+      "milito_tech_products/file_ipovoe"
+    ],
+    "batteryHealthValue": "100%",
+    "availability": "In Stock",
+    "createdAt": "2026-08-06T16:58:13.928Z",
+    "customModel": null,
+    "network": "Factory Unlocked",
+    "documentation": null,
+    "name": "iPhone 15",
+    "engine": null,
+    "mileageNumber": null,
+    "brand": "Apple",
+    "transmission": null,
+    "imagePublicId": "milito_tech_products/file_ipovoe",
+    "thumbnail": {
+      "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1786915539/milito_tech_products/file_ipovoe.jpg",
+      "public_id": "milito_tech_products/file_ipovoe"
+    },
+    "specs": {
+      "screen": "6.7-inch Super Retina XDR OLED (120Hz ProMotion)",
+      "batterySize": "100% Certified Battery Health",
+      "warranty": "1-Year MILITO Escrow Warranty",
+      "os": "iOS 18 / iOS 17",
+      "camera": "48MP Pro Main + 12MP Telephoto 5x + UltraWide",
+      "simType": "Physical Dual SIM",
+      "chipset": "Apple A17 Pro / A18 Pro Bionic"
+    },
+    "status": "In Stock",
+    "interiorColor": null,
+    "customBrand": null,
+    "price": 560000,
+    "colorOptions": [
+      {
+        "hex": "#1C1C1E",
+        "name": "Space Black"
+      }
+    ],
+    "bodyType": null,
+    "batteryHealth": "100%",
+    "model": "iPhone 15",
+    "image": "https://res.cloudinary.com/militotech/image/upload/v1786915539/milito_tech_products/file_ipovoe.jpg",
+    "featured": false,
+    "description": "iPhone 15, Premium UK Used with 128GB storage and Factory Unlocked. Battery health is 100% and Face ID is working. Device is tested and ready for use.",
+    "deviceLockStatus": "Unlocked",
+    "location": null,
+    "galleryImages": [
+      {
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1786915539/milito_tech_products/file_ipovoe.jpg",
+        "public_id": "milito_tech_products/file_ipovoe",
+        "height": 1080,
+        "format": "jpg",
+        "bytes": 103134,
+        "created_at": "2026-08-16T21:25:39Z",
+        "width": 810,
+        "original_filename": "file"
+      }
+    ],
+    "quantity": 4,
+    "mileage": null,
+    "faceId": "Working",
+    "storage": [
+      "128GB"
+    ],
+    "driveType": null,
+    "rating": 4.9,
+    "year": null,
+    "badge": "Grade A++",
+    "fuelType": null,
+    "exteriorColor": null,
+    "vehicleStatus": null,
+    "id": "G4JHT69toDfX3ILpD5al"
+  },
+  {
+    "rating": 4.9,
+    "status": "In Stock",
+    "network": "Factory Unlocked",
+    "condition": "Brand New",
+    "reviewsCount": 12,
+    "name": "Galaxy S24 Ultra",
+    "description": "Official Samsung Galaxy S24 Ultra (Brand New, 256GB). Equipped with 5000 mAh (45W Super Fast Charging) high-capacity battery. S-Pen feature: Integrated S-Pen Included. Comes with 1-Year MILITO Escrow Warranty.",
+    "color": [
+      {
+        "hex": "#1C1C1E",
+        "name": "Space Black"
+      }
+    ],
+    "batteryHealthValue": "100%",
+    "storageOptions": [
+      "256GB"
+    ],
+    "imageUrl": "https://res.cloudinary.com/militotech/image/upload/v1789455895/milito_tech_products/fizq8ietsapf1kplsvzj.jpg",
+    "storage": [
+      "256GB"
+    ],
+    "galleryImages": [
+      {
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1789455895/milito_tech_products/fizq8ietsapf1kplsvzj.jpg",
+        "public_id": "milito_tech_products/fizq8ietsapf1kplsvzj",
+        "bytes": 84368,
+        "height": 800,
+        "width": 1200,
+        "created_at": "2026-09-15T07:04:55.997Z",
+        "format": "jpg",
+        "original_filename": "Galaxy_S24_Ultra.jpg"
+      }
+    ],
+    "updatedAt": "2026-09-15T07:04:55.997Z",
+    "image": "https://res.cloudinary.com/militotech/image/upload/v1789455895/milito_tech_products/fizq8ietsapf1kplsvzj.jpg",
+    "colorOptions": [
+      {
+        "hex": "#1C1C1E",
+        "name": "Space Black"
+      }
+    ],
+    "price": 505000,
+    "faceId": "Working",
+    "model": "Galaxy S24 Ultra",
+    "featured": false,
+    "imagePublicId": "milito_tech_products/fizq8ietsapf1kplsvzj",
+    "galleryPublicIds": [
+      "milito_tech_products/fizq8ietsapf1kplsvzj"
+    ],
+    "badge": "Grade A++",
+    "thumbnail": {
+      "public_id": "milito_tech_products/fizq8ietsapf1kplsvzj",
+      "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1789455895/milito_tech_products/fizq8ietsapf1kplsvzj.jpg"
+    },
+    "originalPrice": 534000,
+    "gallery": [
+      "https://res.cloudinary.com/militotech/image/upload/v1789455895/milito_tech_products/fizq8ietsapf1kplsvzj.jpg"
+    ],
+    "batteryHealth": "100%",
+    "specs": {
+      "sPen": "Integrated S-Pen Included",
+      "os": "Android 14 / One UI 6.1",
+      "screen": "6.8-inch Dynamic AMOLED 2X 120Hz LTPO",
+      "warranty": "1-Year MILITO Escrow Warranty",
+      "simType": "Dual Physical SIM + eSIM",
+      "chipset": "Snapdragon 8 Gen 3 for Galaxy",
+      "batterySize": "5000 mAh (45W Super Fast Charging)",
+      "camera": "200MP Quad Camera + 100x Space Zoom"
+    },
+    "brand": "Samsung",
+    "createdAt": "2026-08-06T16:43:53.498Z",
+    "availability": "In Stock",
+    "quantity": 1,
+    "id": "UBBt5KfSbw6RqPB61IxM",
+    "productType": "phone"
+  },
+  {
+    "rating": 4.9,
+    "featured": false,
+    "status": "In Stock",
+    "batteryHealth": "98%+",
+    "color": [
+      {
+        "name": "Space Black",
+        "hex": "#1C1C1E"
+      }
+    ],
+    "condition": "Premium UK Used",
+    "originalPrice": 450000,
+    "availability": "In Stock",
+    "image": "https://res.cloudinary.com/militotech/image/upload/v1789455896/milito_tech_products/t61xiomn04fggmu19ksr.jpg",
+    "imageUrl": "https://res.cloudinary.com/militotech/image/upload/v1789455896/milito_tech_products/t61xiomn04fggmu19ksr.jpg",
+    "price": 425000,
+    "model": "iPhone 13",
+    "storageOptions": [
+      "128GB"
+    ],
+    "faceId": "Working",
+    "updatedAt": "2026-09-15T07:04:56.797Z",
+    "gallery": [
+      "https://res.cloudinary.com/militotech/image/upload/v1789455896/milito_tech_products/t61xiomn04fggmu19ksr.jpg"
+    ],
+    "badge": "Grade A++",
+    "reviewsCount": 12,
+    "batteryHealthValue": "98%+",
+    "quantity": 1,
+    "galleryPublicIds": [
+      "milito_tech_products/t61xiomn04fggmu19ksr"
+    ],
+    "galleryImages": [
+      {
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1789455896/milito_tech_products/t61xiomn04fggmu19ksr.jpg",
+        "public_id": "milito_tech_products/t61xiomn04fggmu19ksr",
+        "original_filename": "iPhone_13.jpg",
+        "height": 1600,
+        "width": 1200,
+        "created_at": "2026-09-15T07:04:56.797Z",
+        "format": "jpg",
+        "bytes": 146897
+      }
+    ],
+    "thumbnail": {
+      "public_id": "milito_tech_products/t61xiomn04fggmu19ksr",
+      "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1789455896/milito_tech_products/t61xiomn04fggmu19ksr.jpg"
+    },
+    "specs": {
+      "screen": "6.7-inch Super Retina XDR OLED (120Hz ProMotion)",
+      "simType": "Physical Nano SIM + eSIM",
+      "chipset": "Apple A17 Pro / A18 Pro Bionic",
+      "warranty": "1-Year MILITO Escrow Warranty",
+      "batterySize": "100% Certified Battery Health",
+      "os": "iOS 18 / iOS 17",
+      "camera": "48MP Pro Main + 12MP Telephoto 5x + UltraWide"
+    },
+    "brand": "Apple",
+    "name": "iPhone 13",
+    "colorOptions": [
+      {
+        "name": "Space Black",
+        "hex": "#1C1C1E"
+      }
+    ],
+    "imagePublicId": "milito_tech_products/t61xiomn04fggmu19ksr",
+    "storage": [
+      "128GB"
+    ],
+    "network": "Factory Unlocked",
+    "description": "Official Apple iPhone 13 (Premium UK Used, 128GB). Features certified 98%+ battery health, Face ID, and Factory Unlocked network compatibility. Fully tested, 100% original hardware, and backed by MILITO TECH swap warranty guarantee.",
+    "createdAt": "2026-08-06T16:32:34.162Z",
+    "id": "YdkXYHEZH7w2LCXzWd89",
+    "productType": "phone"
+  },
+  {
+    "description": "Official Google Pixel Pixel 8 Pro (Premium UK Used, 256GB). Powered by Google Tensor G4 Chip + Titan M2 and Titan M2 Hardware Security. Features 5050 mAh (Adaptive Battery Health 100%) with Adaptive Battery saver. Fully tested, 100% original hardware, and backed by MILITO TECH swap warranty guarantee.",
+    "specs": {
+      "camera": "50MP Dual / Triple Tensor AI Camera",
+      "chipset": "Google Tensor G4 Chip + Titan M2",
+      "simType": "Physical Nano SIM + eSIM",
+      "batterySize": "5050 mAh (Adaptive Battery Health 100%)",
+      "os": "Stock Android 15 (7-Year OS Updates)",
+      "warranty": "1-Year MILITO Escrow Warranty",
+      "screen": "6.7-inch Super Actua OLED 120Hz"
+    },
+    "brand": "Google Pixel",
+    "galleryPublicIds": [
+      "milito_tech_products/ebpaj1ictjyojbiuxxpt"
+    ],
+    "condition": "Premium UK Used",
+    "faceId": "Working",
+    "batteryHealthValue": "100%",
+    "gallery": [
+      "https://res.cloudinary.com/militotech/image/upload/v1786403040/milito_tech_products/ebpaj1ictjyojbiuxxpt.jpg"
+    ],
+    "badge": "Grade A++",
+    "imagePublicId": "milito_tech_products/ebpaj1ictjyojbiuxxpt",
+    "quantity": 1,
+    "status": "In Stock",
+    "availability": "In Stock",
+    "rating": 4.9,
+    "galleryImages": [
+      {
+        "bytes": 47055,
+        "format": "jpg",
+        "original_filename": "Google pixel 10 pro.jpg",
+        "width": 736,
+        "created_at": "2026-08-10T23:04:00Z",
+        "height": 981,
+        "public_id": "milito_tech_products/ebpaj1ictjyojbiuxxpt",
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1786403040/milito_tech_products/ebpaj1ictjyojbiuxxpt.jpg"
+      }
+    ],
+    "updatedAt": "2026-08-10T23:04:20.689Z",
+    "storageOptions": [
+      "256GB"
+    ],
+    "color": [
+      {
+        "hex": "#1C1C1E",
+        "name": "Space Black"
+      }
+    ],
+    "reviewsCount": 12,
+    "storage": [
+      "256GB"
+    ],
+    "thumbnail": {
+      "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1786403040/milito_tech_products/ebpaj1ictjyojbiuxxpt.jpg",
+      "public_id": "milito_tech_products/ebpaj1ictjyojbiuxxpt"
+    },
+    "name": "Pixel 8 Pro",
+    "network": "Factory Unlocked",
+    "model": "Pixel 8 Pro",
+    "featured": false,
+    "colorOptions": [
+      {
+        "name": "Space Black",
+        "hex": "#1C1C1E"
+      }
+    ],
+    "originalPrice": 436999.99999999994,
+    "price": 380000,
+    "image": "https://res.cloudinary.com/militotech/image/upload/v1786403040/milito_tech_products/ebpaj1ictjyojbiuxxpt.jpg",
+    "createdAt": "2026-08-10T23:04:20.689Z",
+    "batteryHealth": "100%",
+    "id": "prod_1786403060689",
+    "productType": "phone"
+  },
+  {
+    "color": [
+      {
+        "hex": "#1C1C1E",
+        "name": "Space Black"
+      }
+    ],
+    "galleryPublicIds": [
+      "milito_tech_products/gdfgl6xbdnpua5cn4zls",
+      "milito_tech_products/y8jfb2ewyxhxwsmyz1r3"
+    ],
+    "availability": "In Stock",
+    "createdAt": "2026-08-10T23:05:47.679Z",
+    "storageOptions": [
+      "128GB"
+    ],
+    "featured": false,
+    "thumbnail": {
+      "public_id": "milito_tech_products/gdfgl6xbdnpua5cn4zls",
+      "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1786403097/milito_tech_products/gdfgl6xbdnpua5cn4zls.jpg"
+    },
+    "originalPrice": 436999.99999999994,
+    "price": 380000,
+    "gallery": [
+      "https://res.cloudinary.com/militotech/image/upload/v1786403097/milito_tech_products/gdfgl6xbdnpua5cn4zls.jpg",
+      "https://res.cloudinary.com/militotech/image/upload/v1786403116/milito_tech_products/y8jfb2ewyxhxwsmyz1r3.jpg"
+    ],
+    "model": "POCO M6 Pro",
+    "name": "POCO M6 Pro",
+    "description": "Official Xiaomi POCO M6 Pro (Brand New). Runs on Xiaomi HyperOS 1.0 (Global ROM) with 5000 mAh (120W HyperCharge). Comes with 1-Year MILITO Escrow Warranty.",
+    "batteryHealth": "100%",
+    "image": "https://res.cloudinary.com/militotech/image/upload/v1786403097/milito_tech_products/gdfgl6xbdnpua5cn4zls.jpg",
+    "quantity": 1,
+    "colorOptions": [
+      {
+        "hex": "#1C1C1E",
+        "name": "Space Black"
+      }
+    ],
+    "updatedAt": "2026-08-10T23:05:47.679Z",
+    "rating": 4.9,
+    "specs": {
+      "batterySize": "5000 mAh (120W HyperCharge)",
+      "os": "Xiaomi HyperOS 1.0 (Global ROM)",
+      "screen": "6.67-inch 1.5K CrystalRes AMOLED 120Hz",
+      "warranty": "1-Year MILITO Escrow Warranty",
+      "chipset": "Snapdragon 8 Gen 3 / Dimensity 9300+",
+      "simType": "Dual Nano SIM",
+      "camera": "50MP Leica / Pro Camera System"
+    },
+    "status": "In Stock",
+    "brand": "Xiaomi",
+    "badge": "Grade A++",
+    "imagePublicId": "milito_tech_products/gdfgl6xbdnpua5cn4zls",
+    "reviewsCount": 12,
+    "condition": "Brand New",
+    "batteryHealthValue": "100%",
+    "network": "Factory Unlocked",
+    "faceId": "Working",
+    "galleryImages": [
+      {
+        "height": 1308,
+        "format": "jpg",
+        "created_at": "2026-08-10T23:04:57Z",
+        "public_id": "milito_tech_products/gdfgl6xbdnpua5cn4zls",
+        "width": 736,
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1786403097/milito_tech_products/gdfgl6xbdnpua5cn4zls.jpg",
+        "bytes": 122951,
+        "original_filename": "Samsung Galaxy S10 ð¥°â.jpg"
+      },
+      {
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1786403116/milito_tech_products/y8jfb2ewyxhxwsmyz1r3.jpg",
+        "original_filename": "Google pixel 10 pro.jpg",
+        "width": 736,
+        "height": 981,
+        "created_at": "2026-08-10T23:05:16Z",
+        "bytes": 47055,
+        "public_id": "milito_tech_products/y8jfb2ewyxhxwsmyz1r3",
+        "format": "jpg"
+      }
+    ],
+    "storage": [
+      "128GB"
+    ],
+    "id": "prod_1786403147679",
+    "productType": "phone"
+  },
+  {
+    "network": "eSIM",
+    "originalPrice": 200000,
+    "condition": "Brand New",
+    "image": "https://res.cloudinary.com/militotech/image/upload/v1786486541/milito_tech_products/cjhdsxpg0lfhxfmtokow.jpg",
+    "storage": [
+      "1TB"
+    ],
+    "rating": 4.9,
+    "status": "In Stock",
+    "price": 1800000,
+    "batteryHealth": "100%",
+    "model": "iPhone 17 Pro Max",
+    "updatedAt": "2026-08-11T22:16:09.101Z",
+    "faceId": "Working",
+    "name": "iPhone 17 Pro Max",
+    "color": [
+      {
+        "name": "Cosmic Titanium",
+        "hex": "#3A3845"
+      },
+      {
+        "name": "Natural Titanium",
+        "hex": "#8F8B82"
+      },
+      {
+        "name": "Desert Titanium",
+        "hex": "#C2A88F"
+      }
+    ],
+    "description": "Apple iPhone 17 Pro Max (256GB/512GB/1TB) in Cosmic Titanium, Natural Titanium, Desert Titanium. Condition: Premium UK Used with 100% battery health, Factory Unlocked network compatibility, and Face ID/Biometrics: Working. Fully functional and backed by warranty.",
+    "availability": "In Stock",
+    "featured": false,
+    "gallery": [
+      "https://res.cloudinary.com/militotech/image/upload/v1786486541/milito_tech_products/cjhdsxpg0lfhxfmtokow.jpg"
+    ],
+    "batteryHealthValue": "100%",
+    "thumbnail": {
+      "public_id": "milito_tech_products/cjhdsxpg0lfhxfmtokow",
+      "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1786486541/milito_tech_products/cjhdsxpg0lfhxfmtokow.jpg"
+    },
+    "galleryPublicIds": [
+      "milito_tech_products/cjhdsxpg0lfhxfmtokow"
+    ],
+    "reviewsCount": 12,
+    "galleryImages": [
+      {
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1786486541/milito_tech_products/cjhdsxpg0lfhxfmtokow.jpg",
+        "height": 2560,
+        "format": "jpg",
+        "public_id": "milito_tech_products/cjhdsxpg0lfhxfmtokow",
+        "bytes": 208618,
+        "width": 1440,
+        "created_at": "2026-08-11T22:15:41Z",
+        "original_filename": "snaptik_7631957416611040533_0_v2.jpeg"
+      }
+    ],
+    "createdAt": "2026-08-11T22:16:09.101Z",
+    "badge": "Grade A++",
+    "colorOptions": [
+      {
+        "name": "Cosmic Titanium",
+        "hex": "#3A3845"
+      },
+      {
+        "hex": "#8F8B82",
+        "name": "Natural Titanium"
+      },
+      {
+        "name": "Desert Titanium",
+        "hex": "#C2A88F"
+      }
+    ],
+    "storageOptions": [
+      "1TB"
+    ],
+    "quantity": 2,
+    "imagePublicId": "milito_tech_products/cjhdsxpg0lfhxfmtokow",
+    "specs": {
+      "batterySize": "4850 mAh",
+      "warranty": "1-Year Warranty",
+      "screen": "6.9-inch Super Retina XDR OLED (120Hz ProMotion)",
+      "os": "iOS 19",
+      "chipset": "Apple A19 Pro Bionic",
+      "simType": "Physical Nano SIM + eSIM",
+      "camera": "48MP Fusion + 48MP UltraWide + 48MP Telephoto",
+      "accessories": "Original Box & Accessories"
+    },
+    "brand": "Apple",
+    "id": "prod_1786486569101",
+    "productType": "phone"
+  },
+  {
+    "image": "https://res.cloudinary.com/militotech/image/upload/v1786548742/milito_tech_products/rnrepdeeuv5xlxt5hyuk.jpg",
+    "stockQuantity": 6,
+    "location": null,
+    "productType": "phone",
+    "updatedAt": "2026-08-22T21:30:11.013Z",
+    "quantity": 6,
+    "model": "iPhone 17 Pro Max",
+    "transmission": null,
+    "price": 2320000,
+    "faceId": "Working",
+    "rating": 4.9,
+    "network": "Factory Unlocked",
+    "fuelType": null,
+    "condition": "Brand New",
+    "availability": "In Stock",
+    "originalPrice": 2350000,
+    "year": null,
+    "mileageNumber": null,
+    "bodyType": null,
+    "imagePublicId": "milito_tech_products/rnrepdeeuv5xlxt5hyuk",
+    "batteryCondition": null,
+    "interiorColor": null,
+    "createdAt": "2026-08-12T15:32:49.834Z",
+    "reviewsCount": 12,
+    "customModel": null,
+    "featured": false,
+    "customBrand": null,
+    "batteryHealthValue": "100%",
+    "storageOptions": [
+      "512GB"
+    ],
+    "galleryPublicIds": [
+      "milito_tech_products/rnrepdeeuv5xlxt5hyuk"
+    ],
+    "badge": "Grade A++",
+    "gallery": [
+      "https://res.cloudinary.com/militotech/image/upload/v1786548742/milito_tech_products/rnrepdeeuv5xlxt5hyuk.jpg"
+    ],
+    "thumbnail": {
+      "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1786548742/milito_tech_products/rnrepdeeuv5xlxt5hyuk.jpg",
+      "public_id": "milito_tech_products/rnrepdeeuv5xlxt5hyuk"
+    },
+    "documentation": null,
+    "deviceLockStatus": "Unlocked",
+    "description": "iPhone 17 Pro Max, Brand New with 512GB storage, 12GB RAM, 5G network and Factory Unlocked. Battery health is 100% and Face ID is working. Device is tested and ready for use.",
+    "status": "In Stock",
+    "engine": null,
+    "batteryHealth": "100%",
+    "name": "iPhone 17 Pro Max",
+    "mileage": null,
+    "storage": [
+      "512GB"
+    ],
+    "color": [
+      {
+        "hex": "#1C1C1E",
+        "name": "Black"
+      },
+      {
+        "hex": "#F2F1EC",
+        "name": "White"
+      },
+      {
+        "name": "Blue",
+        "hex": "#1E3B5A"
+      },
+      {
+        "hex": "#D2E8D3",
+        "name": "Green"
+      },
+      {
+        "hex": "#D8D0E0",
+        "name": "Purple"
+      }
+    ],
+    "series": null,
+    "vehicleStatus": null,
+    "exteriorColor": null,
+    "galleryImages": [
+      {
+        "original_filename": "1001568199.jpg",
+        "width": 720,
+        "bytes": 396255,
+        "public_id": "milito_tech_products/rnrepdeeuv5xlxt5hyuk",
+        "created_at": "2026-08-12T15:32:22Z",
+        "format": "jpg",
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1786548742/milito_tech_products/rnrepdeeuv5xlxt5hyuk.jpg",
+        "height": 1600
+      }
+    ],
+    "brand": "Apple",
+    "driveType": null,
+    "specs": {
+      "warranty": "1-Year Warranty",
+      "accessories": "Original Box & Accessories",
+      "chipset": "Apple A19 Pro Bionic",
+      "simType": "Physical Nano SIM + eSIM",
+      "ram": "12GB",
+      "faceUnlock": null,
+      "os": "iOS 19",
+      "camera": "48MP Fusion + 48MP UltraWide + 48MP Telephoto",
+      "batterySize": "4850 mAh",
+      "fingerprint": null,
+      "screen": "6.9-inch Super Retina XDR OLED (120Hz ProMotion)"
+    },
+    "colorOptions": [
+      {
+        "hex": "#1C1C1E",
+        "name": "Black"
+      },
+      {
+        "hex": "#F2F1EC",
+        "name": "White"
+      },
+      {
+        "name": "Blue",
+        "hex": "#1E3B5A"
+      },
+      {
+        "hex": "#D2E8D3",
+        "name": "Green"
+      },
+      {
+        "name": "Purple",
+        "hex": "#D8D0E0"
+      }
+    ],
+    "id": "prod_1786548769833"
+  },
+  {
+    "specs": {
+      "batterySize": "5000 mAh (70W Fast Charge)",
+      "warranty": "1-Year Warranty",
+      "camera": "50MP OIS Main + 50MP UltraWide + 2MP",
+      "screen": "6.78-inch AMOLED (144Hz)",
+      "chipset": "MediaTek Dimensity 8200 Ultimate 5G",
+      "simType": "Dual Physical SIM",
+      "accessories": "Original Box & Accessories",
+      "os": "Android 14 (HiOS 14)"
+    },
+    "brand": "Tecno",
+    "createdAt": "2026-08-12T22:18:38.249Z",
+    "storageOptions": [
+      "128GB"
+    ],
+    "colorOptions": [
+      {
+        "name": "Alps Snowy Silver",
+        "hex": "#C0C0C0"
+      },
+      {
+        "name": "Iceland Basalt Black",
+        "hex": "#1F1F1F"
+      }
+    ],
+    "featured": false,
+    "badge": "Grade A++",
+    "galleryImages": [
+      {
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1786573046/milito_tech_products/tccl2z9tl0gq3bkrlrlb.jpg",
+        "height": 1008,
+        "created_at": "2026-08-12T22:17:26Z",
+        "width": 756,
+        "original_filename": "1000899811.jpg",
+        "bytes": 101354,
+        "public_id": "milito_tech_products/tccl2z9tl0gq3bkrlrlb",
+        "format": "jpg"
+      }
+    ],
+    "storage": [
+      "128GB"
+    ],
+    "thumbnail": {
+      "public_id": "milito_tech_products/tccl2z9tl0gq3bkrlrlb",
+      "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1786573046/milito_tech_products/tccl2z9tl0gq3bkrlrlb.jpg"
+    },
+    "reviewsCount": 12,
+    "imagePublicId": "milito_tech_products/tccl2z9tl0gq3bkrlrlb",
+    "network": "Factory Unlocked",
+    "galleryPublicIds": [
+      "milito_tech_products/tccl2z9tl0gq3bkrlrlb"
+    ],
+    "updatedAt": "2026-08-12T22:18:38.254Z",
+    "color": [
+      {
+        "hex": "#C0C0C0",
+        "name": "Alps Snowy Silver"
+      },
+      {
+        "name": "Iceland Basalt Black",
+        "hex": "#1F1F1F"
+      }
+    ],
+    "originalPrice": 270000,
+    "description": "Tecno Camon 30 Pro 5G, Premium UK Used, 256GB/512GB storage. Device has working fingerprint.",
+    "availability": "In Stock",
+    "faceId": "Working",
+    "batteryHealthValue": "100% (Brand New)",
+    "batteryHealth": "100% (Brand New)",
+    "quantity": 1,
+    "name": "Camon 30 Pro 5G",
+    "model": "Camon 30 Pro 5G",
+    "status": "In Stock",
+    "condition": "Brand New",
+    "rating": 4.9,
+    "price": 155000,
+    "image": "https://res.cloudinary.com/militotech/image/upload/v1786573046/milito_tech_products/tccl2z9tl0gq3bkrlrlb.jpg",
+    "gallery": [
+      "https://res.cloudinary.com/militotech/image/upload/v1786573046/milito_tech_products/tccl2z9tl0gq3bkrlrlb.jpg"
+    ],
+    "id": "prod_1786573118247",
+    "productType": "phone"
+  },
+  {
+    "updatedAt": "2026-08-12T22:30:39.647Z",
+    "batteryHealth": "100% (Brand New)",
+    "availability": "In Stock",
+    "originalPrice": 150000,
+    "galleryPublicIds": [
+      "milito_tech_products/ujpxyomv5rrfc0cfnuqe"
+    ],
+    "condition": "Brand New",
+    "gallery": [
+      "https://res.cloudinary.com/militotech/image/upload/v1786573723/milito_tech_products/ujpxyomv5rrfc0cfnuqe.jpg"
+    ],
+    "badge": "Grade A++",
+    "quantity": 1,
+    "brand": "Redmi/Xiaomi",
+    "specs": {
+      "screen": "6.74-inch HD+ (90Hz)",
+      "accessories": "Original Box & Accessories",
+      "warranty": "1-Year Warranty",
+      "camera": "50MP AI Main Camera",
+      "os": "Android 13 (MIUI 14)",
+      "simType": "Dual SIM",
+      "chipset": "MediaTek Helio G85",
+      "batterySize": "5000 mAh (18W)"
+    },
+    "status": "In Stock",
+    "createdAt": "2026-08-12T22:30:39.632Z",
+    "rating": 4.9,
+    "image": "https://res.cloudinary.com/militotech/image/upload/v1786573723/milito_tech_products/ujpxyomv5rrfc0cfnuqe.jpg",
+    "galleryImages": [
+      {
+        "public_id": "milito_tech_products/ujpxyomv5rrfc0cfnuqe",
+        "created_at": "2026-08-12T22:28:43Z",
+        "bytes": 109011,
+        "original_filename": "1000683727.jpg",
+        "width": 810,
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1786573723/milito_tech_products/ujpxyomv5rrfc0cfnuqe.jpg",
+        "format": "jpg",
+        "height": 1080
+      }
+    ],
+    "colorOptions": [
+      {
+        "name": "Midnight Black",
+        "hex": "#1C1C1E"
+      }
+    ],
+    "storageOptions": [
+      "128GB"
+    ],
+    "model": "Redmi 13C",
+    "batteryHealthValue": "100% (Brand New)",
+    "name": "Redmi 13C",
+    "price": 128000,
+    "network": "Factory Unlocked",
+    "thumbnail": {
+      "public_id": "milito_tech_products/ujpxyomv5rrfc0cfnuqe",
+      "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1786573723/milito_tech_products/ujpxyomv5rrfc0cfnuqe.jpg"
+    },
+    "imagePublicId": "milito_tech_products/ujpxyomv5rrfc0cfnuqe",
+    "description": "Redmi/Xiaomi Redmi 13C, Premium UK Used, 128GB/256GB storage.",
+    "reviewsCount": 12,
+    "storage": [
+      "128GB"
+    ],
+    "color": [
+      {
+        "name": "Midnight Black",
+        "hex": "#1C1C1E"
+      }
+    ],
+    "faceId": "Working",
+    "featured": false,
+    "id": "prod_1786573839608",
+    "productType": "phone"
+  },
+  {
+    "bodyType": null,
+    "specs": {
+      "batterySize": "4700 mAh",
+      "camera": "50MP + 10MP 3x + 12MP UltraWide",
+      "warranty": "1-Year Warranty",
+      "os": "Android 13",
+      "chipset": "Snapdragon 8 Gen 2",
+      "simType": "Dual SIM / eSIM",
+      "screen": "6.6-inch Dynamic AMOLED 2X (120Hz)",
+      "accessories": "Original Box & Accessories"
+    },
+    "colorOptions": [
+      {
+        "hex": "#1C1C1E",
+        "name": "Phantom Black"
+      },
+      {
+        "hex": "#F3EFE0",
+        "name": "Cream"
+      }
+    ],
+    "brand": "Samsung",
+    "condition": "Premium UK Used",
+    "year": null,
+    "featured": false,
+    "faceId": "Working",
+    "rating": 4.9,
+    "batteryHealth": "Excellent",
+    "updatedAt": "2026-09-15T07:44:46.870Z",
+    "mileage": null,
+    "storage": [
+      "128GB"
+    ],
+    "description": "Samsung Galaxy S23+, Premium UK Used, 256GB/512GB.",
+    "location": null,
+    "quantity": 5,
+    "galleryPublicIds": [
+      "milito_tech_products/jfbm88p6fsi62ouxgano"
+    ],
+    "thumbnail": {
+      "public_id": "milito_tech_products/jfbm88p6fsi62ouxgano",
+      "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1786612569/milito_tech_products/jfbm88p6fsi62ouxgano.jpg"
+    },
+    "color": [
+      {
+        "name": "Phantom Black",
+        "hex": "#1C1C1E"
+      },
+      {
+        "name": "Cream",
+        "hex": "#F3EFE0"
+      }
+    ],
+    "vehicleStatus": null,
+    "exteriorColor": null,
+    "batteryCondition": null,
+    "galleryImages": [
+      {
+        "format": "jpg",
+        "width": 1920,
+        "bytes": 399368,
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1786612569/milito_tech_products/jfbm88p6fsi62ouxgano.jpg",
+        "height": 2560,
+        "original_filename": "1001695058.jpg",
+        "created_at": "2026-08-13T09:16:09Z",
+        "public_id": "milito_tech_products/jfbm88p6fsi62ouxgano"
+      }
+    ],
+    "createdAt": "2026-08-13T09:17:30.233Z",
+    "fuelType": null,
+    "stockQuantity": 5,
+    "customBrand": null,
+    "badge": "Grade A++",
+    "name": "Galaxy S23+",
+    "status": "In Stock",
+    "network": "Network Unlocked",
+    "engine": null,
+    "reviewsCount": 12,
+    "originalPrice": 225000,
+    "customModel": null,
+    "deviceLockStatus": null,
+    "mileageNumber": null,
+    "series": null,
+    "imagePublicId": "milito_tech_products/jfbm88p6fsi62ouxgano",
+    "driveType": null,
+    "availability": "In Stock",
+    "interiorColor": null,
+    "storageOptions": [
+      "128GB"
+    ],
+    "image": "https://res.cloudinary.com/militotech/image/upload/v1786612569/milito_tech_products/jfbm88p6fsi62ouxgano.jpg",
+    "productType": "phone",
+    "gallery": [
+      "https://res.cloudinary.com/militotech/image/upload/v1786612569/milito_tech_products/jfbm88p6fsi62ouxgano.jpg"
+    ],
+    "model": "Galaxy S23+",
+    "batteryHealthValue": "Excellent",
+    "documentation": null,
+    "price": 210000,
+    "transmission": null,
+    "id": "prod_1786612650232"
+  },
+  {
+    "faceId": "Working",
+    "name": "infinix hot 50",
+    "batteryHealth": "100%",
+    "condition": "Premium UK Used",
+    "reviewsCount": 12,
+    "batteryCondition": "Excellent",
+    "originalPrice": 436999.99999999994,
+    "quantity": 1,
+    "galleryPublicIds": [
+      "milito_tech_products/sr3mgtisv5hbkcrmikph",
+      "milito_tech_products/kwi63v7tbjerqsydmqhj",
+      "milito_tech_products/xgjcuhuecm3o9vew9uyt",
+      "milito_tech_products/nrqiqwo5fxfborxdxjig"
+    ],
+    "network": "Factory Unlocked",
+    "specs": {
+      "os": "iOS 19",
+      "screen": "6.9-inch Super Retina XDR OLED (120Hz ProMotion)",
+      "accessories": "Original Box & Accessories",
+      "camera": "48MP Fusion + 48MP UltraWide + 48MP Telephoto",
+      "warranty": "1-Year Warranty",
+      "batterySize": "4850 mAh",
+      "simType": "Physical Nano SIM + eSIM",
+      "chipset": "Apple A19 Pro Bionic"
+    },
+    "brand": "Infinix",
+    "badge": "Grade A++",
+    "storage": [
+      "256GB",
+      "512GB",
+      "1TB"
+    ],
+    "rating": 4.9,
+    "colorOptions": [
+      {
+        "name": "Cosmic Titanium",
+        "hex": "#3A3845"
+      },
+      {
+        "hex": "#8F8B82",
+        "name": "Natural Titanium"
+      },
+      {
+        "name": "Desert Titanium",
+        "hex": "#C2A88F"
+      }
+    ],
+    "updatedAt": "2026-08-15T14:19:03.010Z",
+    "status": "In Stock",
+    "price": 380000,
+    "description": "iPhone 17 Pro Max, Premium UK Used, 256GB/512GB/1TB.",
+    "deviceLockStatus": "Unlocked",
+    "model": "infinix hot 50",
+    "galleryImages": [
+      {
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1786803542/milito_tech_products/sr3mgtisv5hbkcrmikph.jpg",
+        "original_filename": "somebody please get this for me ð.jpg",
+        "height": 1308,
+        "created_at": "2026-08-15T14:19:02Z",
+        "public_id": "milito_tech_products/sr3mgtisv5hbkcrmikph",
+        "bytes": 115450,
+        "format": "jpg",
+        "width": 736
+      },
+      {
+        "width": 736,
+        "bytes": 7930,
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1786803543/milito_tech_products/kwi63v7tbjerqsydmqhj.jpg",
+        "public_id": "milito_tech_products/kwi63v7tbjerqsydmqhj",
+        "format": "jpg",
+        "original_filename": "sticker logo apple _ iPhone (1).jpg",
+        "created_at": "2026-08-15T14:19:03Z",
+        "height": 736
+      },
+      {
+        "public_id": "milito_tech_products/xgjcuhuecm3o9vew9uyt",
+        "format": "jpg",
+        "width": 736,
+        "created_at": "2026-08-15T14:19:04Z",
+        "height": 736,
+        "bytes": 16963,
+        "original_filename": "Samsung Logo PNG Images (Transparent HD Photo Clipart).jpg",
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1786803544/milito_tech_products/xgjcuhuecm3o9vew9uyt.jpg"
+      },
+      {
+        "created_at": "2026-08-15T14:19:05Z",
+        "public_id": "milito_tech_products/nrqiqwo5fxfborxdxjig",
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1786803545/milito_tech_products/nrqiqwo5fxfborxdxjig.jpg",
+        "height": 736,
+        "bytes": 12462,
+        "original_filename": "Free download Infinix Mobile logo.jpg",
+        "format": "jpg",
+        "width": 736
+      }
+    ],
+    "thumbnail": {
+      "public_id": "milito_tech_products/sr3mgtisv5hbkcrmikph",
+      "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1786803542/milito_tech_products/sr3mgtisv5hbkcrmikph.jpg"
+    },
+    "image": "https://res.cloudinary.com/militotech/image/upload/v1786803542/milito_tech_products/sr3mgtisv5hbkcrmikph.jpg",
+    "gallery": [
+      "https://res.cloudinary.com/militotech/image/upload/v1786803542/milito_tech_products/sr3mgtisv5hbkcrmikph.jpg",
+      "https://res.cloudinary.com/militotech/image/upload/v1786803543/milito_tech_products/kwi63v7tbjerqsydmqhj.jpg",
+      "https://res.cloudinary.com/militotech/image/upload/v1786803544/milito_tech_products/xgjcuhuecm3o9vew9uyt.jpg",
+      "https://res.cloudinary.com/militotech/image/upload/v1786803545/milito_tech_products/nrqiqwo5fxfborxdxjig.jpg"
+    ],
+    "color": [
+      {
+        "name": "Cosmic Titanium",
+        "hex": "#3A3845"
+      },
+      {
+        "hex": "#8F8B82",
+        "name": "Natural Titanium"
+      },
+      {
+        "hex": "#C2A88F",
+        "name": "Desert Titanium"
+      }
+    ],
+    "featured": false,
+    "imagePublicId": "milito_tech_products/sr3mgtisv5hbkcrmikph",
+    "batteryHealthValue": "100%",
+    "createdAt": "2026-08-15T14:19:03.010Z",
+    "storageOptions": [
+      "256GB",
+      "512GB",
+      "1TB"
+    ],
+    "availability": "In Stock",
+    "id": "prod_1786803543010",
+    "productType": "phone"
+  },
+  {
+    "colorOptions": [
+      {
+        "name": "Prism Black",
+        "hex": "#1C1C1E"
+      }
+    ],
+    "status": "In Stock",
+    "updatedAt": "2026-08-17T08:21:35.422Z",
+    "rating": 4.9,
+    "description": "Samsung Galaxy S10+, Brand New, 128GB. Battery condition is Excellent and the device is Factory Unlocked.",
+    "batteryHealth": "Excellent",
+    "batteryHealthValue": "Excellent",
+    "originalPrice": 291500,
+    "reviewsCount": 12,
+    "badge": "Grade A++",
+    "condition": "Brand New",
+    "brand": "Samsung",
+    "name": "Galaxy S10+",
+    "specs": {
+      "accessories": "Original Box & Accessories",
+      "os": "Android 9.0",
+      "screen": "6.4-inch Dynamic AMOLED",
+      "warranty": "1-Year Warranty",
+      "camera": "12MP + 12MP Telephoto + 16MP UltraWide",
+      "batterySize": "4100 mAh",
+      "chipset": "Snapdragon 855",
+      "simType": "Dual SIM"
+    },
+    "deviceLockStatus": "Unlocked",
+    "quantity": 1,
+    "storageOptions": [
+      "128GB"
+    ],
+    "gallery": [
+      "https://res.cloudinary.com/militotech/image/upload/v1786894459/milito_tech_products/hmhyxsenoydv4vjzcdok.jpg",
+      "https://res.cloudinary.com/militotech/image/upload/v1786894463/milito_tech_products/khuah23zdiglwmuvvetq.jpg"
+    ],
+    "faceId": "Working",
+    "image": "https://res.cloudinary.com/militotech/image/upload/v1786894459/milito_tech_products/hmhyxsenoydv4vjzcdok.jpg",
+    "createdAt": "2026-08-16T15:34:25.761Z",
+    "availability": "In Stock",
+    "galleryImages": [
+      {
+        "original_filename": "799248265130182155.jpg",
+        "width": 736,
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1786894459/milito_tech_products/hmhyxsenoydv4vjzcdok.jpg",
+        "bytes": 77927,
+        "created_at": "2026-08-16T15:34:19Z",
+        "public_id": "milito_tech_products/hmhyxsenoydv4vjzcdok",
+        "format": "jpg",
+        "height": 953
+      },
+      {
+        "height": 978,
+        "public_id": "milito_tech_products/khuah23zdiglwmuvvetq",
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1786894463/milito_tech_products/khuah23zdiglwmuvvetq.jpg",
+        "format": "jpg",
+        "created_at": "2026-08-16T15:34:23Z",
+        "original_filename": "SAMSUNG GALAXY S10+ð°ð°ð¥ð¥_STORAGEâ¡ï¸ 128GB_8GB__SMALL DSP â¡ï¸285,000_ð°=__âï¸0687823148_TUPO KARIAKOO UHURU PLAZA (1).jpg",
+        "bytes": 70906,
+        "width": 736
+      }
+    ],
+    "model": "Galaxy S10+",
+    "galleryPublicIds": [
+      "milito_tech_products/hmhyxsenoydv4vjzcdok",
+      "milito_tech_products/khuah23zdiglwmuvvetq"
+    ],
+    "price": 265000,
+    "imagePublicId": "milito_tech_products/hmhyxsenoydv4vjzcdok",
+    "storage": [
+      "128GB"
+    ],
+    "batteryCondition": "Excellent",
+    "thumbnail": {
+      "public_id": "milito_tech_products/hmhyxsenoydv4vjzcdok",
+      "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1786894459/milito_tech_products/hmhyxsenoydv4vjzcdok.jpg"
+    },
+    "featured": false,
+    "network": "Factory Unlocked",
+    "color": [
+      {
+        "name": "Prism Black",
+        "hex": "#1C1C1E"
+      }
+    ],
+    "id": "prod_1786894465761",
+    "productType": "phone"
+  },
+  {
+    "network": "Factory Unlocked",
+    "originalPrice": 300000,
+    "batteryCondition": "Excellent",
+    "quantity": 1,
+    "name": "Galaxy S22",
+    "storage": [
+      "128GB",
+      "256GB"
+    ],
+    "reviewsCount": 12,
+    "batteryHealth": "100% (Brand New)",
+    "updatedAt": "2026-08-16T18:58:57.970Z",
+    "storageOptions": [
+      "128GB",
+      "256GB"
+    ],
+    "color": [
+      {
+        "hex": "#1C1C1E",
+        "name": "Phantom Black"
+      },
+      {
+        "name": "Phantom White",
+        "hex": "#F2F2F2"
+      }
+    ],
+    "image": "https://res.cloudinary.com/militotech/image/upload/v1786904304/milito_tech_products/file_rhxidt.jpg",
+    "condition": "Brand New",
+    "model": "Galaxy S22",
+    "colorOptions": [
+      {
+        "name": "Phantom Black",
+        "hex": "#1C1C1E"
+      },
+      {
+        "name": "Phantom White",
+        "hex": "#F2F2F2"
+      }
+    ],
+    "price": 285000,
+    "batteryHealthValue": "100% (Brand New)",
+    "galleryPublicIds": [
+      "milito_tech_products/file_rhxidt",
+      "milito_tech_products/file_phpokr",
+      "milito_tech_products/file_zbly4u",
+      "milito_tech_products/file_dpf2jg",
+      "milito_tech_products/file_fws5jf",
+      "milito_tech_products/file_tz0stg",
+      "milito_tech_products/file_biq6rj",
+      "milito_tech_products/file_kjki6a"
+    ],
+    "gallery": [
+      "https://res.cloudinary.com/militotech/image/upload/v1786904304/milito_tech_products/file_rhxidt.jpg",
+      "https://res.cloudinary.com/militotech/image/upload/v1786904306/milito_tech_products/file_phpokr.jpg",
+      "https://res.cloudinary.com/militotech/image/upload/v1786904308/milito_tech_products/file_zbly4u.jpg",
+      "https://res.cloudinary.com/militotech/image/upload/v1786904309/milito_tech_products/file_dpf2jg.jpg",
+      "https://res.cloudinary.com/militotech/image/upload/v1786904311/milito_tech_products/file_fws5jf.jpg",
+      "https://res.cloudinary.com/militotech/image/upload/v1786904312/milito_tech_products/file_tz0stg.jpg",
+      "https://res.cloudinary.com/militotech/image/upload/v1786904313/milito_tech_products/file_biq6rj.jpg",
+      "https://res.cloudinary.com/militotech/image/upload/v1786904314/milito_tech_products/file_kjki6a.jpg"
+    ],
+    "featured": false,
+    "badge": "Grade A++",
+    "faceId": "Working",
+    "description": "Samsung Galaxy S22, Brand New, 128GB/256GB. Battery condition is 100% (Brand New) and the device is Factory Unlocked.",
+    "brand": "Samsung",
+    "deviceLockStatus": "Unlocked",
+    "specs": {
+      "accessories": "Original Box & Accessories",
+      "os": "Android 12",
+      "camera": "50MP + 10MP 3x + 12MP UltraWide",
+      "warranty": "1-Year Warranty",
+      "screen": "6.1-inch Dynamic AMOLED 2X (120Hz)",
+      "simType": "Dual SIM / eSIM",
+      "chipset": "Snapdragon 8 Gen 1",
+      "batterySize": "3700 mAh"
+    },
+    "galleryImages": [
+      {
+        "format": "jpg",
+        "bytes": 127165,
+        "width": 810,
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1786904304/milito_tech_products/file_rhxidt.jpg",
+        "public_id": "milito_tech_products/file_rhxidt",
+        "height": 1080,
+        "original_filename": "file",
+        "created_at": "2026-08-16T18:18:24Z"
+      },
+      {
+        "height": 1080,
+        "created_at": "2026-08-16T18:18:26Z",
+        "format": "jpg",
+        "public_id": "milito_tech_products/file_phpokr",
+        "original_filename": "file",
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1786904306/milito_tech_products/file_phpokr.jpg",
+        "width": 810,
+        "bytes": 56691
+      },
+      {
+        "public_id": "milito_tech_products/file_zbly4u",
+        "bytes": 52017,
+        "width": 810,
+        "created_at": "2026-08-16T18:18:28Z",
+        "format": "jpg",
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1786904308/milito_tech_products/file_zbly4u.jpg",
+        "original_filename": "file",
+        "height": 1080
+      },
+      {
+        "public_id": "milito_tech_products/file_dpf2jg",
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1786904309/milito_tech_products/file_dpf2jg.jpg",
+        "width": 810,
+        "bytes": 53334,
+        "created_at": "2026-08-16T18:18:29Z",
+        "format": "jpg",
+        "height": 1080,
+        "original_filename": "file"
+      },
+      {
+        "width": 810,
+        "bytes": 54719,
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1786904311/milito_tech_products/file_fws5jf.jpg",
+        "original_filename": "file",
+        "format": "jpg",
+        "created_at": "2026-08-16T18:18:31Z",
+        "public_id": "milito_tech_products/file_fws5jf",
+        "height": 1080
+      },
+      {
+        "created_at": "2026-08-16T18:18:32Z",
+        "public_id": "milito_tech_products/file_tz0stg",
+        "bytes": 55535,
+        "height": 1080,
+        "width": 810,
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1786904312/milito_tech_products/file_tz0stg.jpg",
+        "format": "jpg",
+        "original_filename": "file"
+      },
+      {
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1786904313/milito_tech_products/file_biq6rj.jpg",
+        "height": 1080,
+        "format": "jpg",
+        "public_id": "milito_tech_products/file_biq6rj",
+        "width": 810,
+        "bytes": 58559,
+        "created_at": "2026-08-16T18:18:33Z",
+        "original_filename": "file"
+      },
+      {
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1786904314/milito_tech_products/file_kjki6a.jpg",
+        "bytes": 141956,
+        "format": "jpg",
+        "public_id": "milito_tech_products/file_kjki6a",
+        "width": 810,
+        "original_filename": "file",
+        "height": 1080,
+        "created_at": "2026-08-16T18:18:34Z"
+      }
+    ],
+    "createdAt": "2026-08-16T18:18:35.104Z",
+    "availability": "In Stock",
+    "thumbnail": {
+      "public_id": "milito_tech_products/file_rhxidt",
+      "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1786904304/milito_tech_products/file_rhxidt.jpg"
+    },
+    "status": "In Stock",
+    "rating": 4.9,
+    "imagePublicId": "milito_tech_products/file_rhxidt",
+    "id": "prod_1786904315103",
+    "productType": "phone"
+  },
+  {
+    "rating": 4.9,
+    "status": "In Stock",
+    "galleryPublicIds": [
+      "milito_tech_products/file_n95g8m",
+      "milito_tech_products/file_svmtu6"
+    ],
+    "name": "iPhone 12 Pro Max",
+    "reviewsCount": 12,
+    "quantity": 1,
+    "color": [
+      {
+        "name": "Pacific Blue",
+        "hex": "#2D4B5A"
+      },
+      {
+        "hex": "#3F3F3F",
+        "name": "Graphite"
+      },
+      {
+        "hex": "#F7E3C8",
+        "name": "Gold"
+      },
+      {
+        "hex": "#ECECEC",
+        "name": "Silver"
+      }
+    ],
+    "storageOptions": [
+      "128GB"
+    ],
+    "updatedAt": "2026-08-17T07:58:01.459Z",
+    "originalPrice": 48000,
+    "image": "https://res.cloudinary.com/militotech/image/upload/v1786953478/milito_tech_products/file_n95g8m.jpg",
+    "colorOptions": [
+      {
+        "hex": "#2D4B5A",
+        "name": "Pacific Blue"
+      },
+      {
+        "name": "Graphite",
+        "hex": "#3F3F3F"
+      },
+      {
+        "name": "Gold",
+        "hex": "#F7E3C8"
+      },
+      {
+        "name": "Silver",
+        "hex": "#ECECEC"
+      }
+    ],
+    "price": 450000,
+    "condition": "Premium UK Used",
+    "batteryHealth": "98%",
+    "model": "iPhone 12 Pro Max",
+    "faceId": "Working",
+    "batteryCondition": "Excellent",
+    "batteryHealthValue": "98%",
+    "gallery": [
+      "https://res.cloudinary.com/militotech/image/upload/v1786953478/milito_tech_products/file_n95g8m.jpg",
+      "https://res.cloudinary.com/militotech/image/upload/v1786953480/milito_tech_products/file_svmtu6.jpg"
+    ],
+    "badge": "Grade A++",
+    "featured": false,
+    "description": "iPhone 12 Pro Max, Premium UK Used, 128GB. Battery health is 98% and the device is Factory Unlocked and iCloud is Clean.",
+    "imagePublicId": "milito_tech_products/file_n95g8m",
+    "specs": {
+      "screen": "6.7-inch Super Retina XDR OLED",
+      "camera": "12MP Triple Camera + LiDAR",
+      "accessories": "Original Box & Accessories",
+      "batterySize": "3687 mAh",
+      "os": "iOS 14",
+      "warranty": "1-Year Warranty",
+      "simType": "Physical Nano SIM + eSIM",
+      "chipset": "Apple A14 Bionic",
+      "icloudStatus": "Clean / Unlocked"
+    },
+    "brand": "Apple",
+    "createdAt": "2026-08-17T07:51:33.486Z",
+    "storage": [
+      "128GB"
+    ],
+    "deviceLockStatus": "Unlocked",
+    "availability": "In Stock",
+    "galleryImages": [
+      {
+        "format": "jpg",
+        "width": 810,
+        "bytes": 69695,
+        "original_filename": "file",
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1786953478/milito_tech_products/file_n95g8m.jpg",
+        "height": 1080,
+        "created_at": "2026-08-17T07:57:58Z",
+        "public_id": "milito_tech_products/file_n95g8m"
+      },
+      {
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1786953480/milito_tech_products/file_svmtu6.jpg",
+        "public_id": "milito_tech_products/file_svmtu6",
+        "format": "jpg",
+        "height": 1080,
+        "bytes": 91242,
+        "original_filename": "file",
+        "width": 810,
+        "created_at": "2026-08-17T07:58:00Z"
+      }
+    ],
+    "thumbnail": {
+      "public_id": "milito_tech_products/file_n95g8m",
+      "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1786953478/milito_tech_products/file_n95g8m.jpg"
+    },
+    "network": "Factory Unlocked",
+    "id": "prod_1786953093485",
+    "productType": "phone"
+  },
+  {
+    "galleryImages": [
+      {
+        "original_filename": "file",
+        "public_id": "milito_tech_products/file_hb8ycd",
+        "width": 736,
+        "bytes": 114942,
+        "created_at": "2026-08-17T22:06:23Z",
+        "format": "jpg",
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787004383/milito_tech_products/file_hb8ycd.jpg",
+        "height": 981
+      }
+    ],
+    "featured": false,
+    "storage": [
+      "128GB"
+    ],
+    "availability": "In Stock",
+    "description": "TECNO SPARK 40, Brand New with 128GB storage, 6GB RAM, 4G network and Factory Unlocked. Battery condition is Excellent and Fingerprint and Face Unlock are working. Device is tested and ready for use.",
+    "condition": "Brand New",
+    "network": "Factory Unlocked",
+    "storageOptions": [
+      "128GB"
+    ],
+    "color": [],
+    "deviceLockStatus": "Unlocked",
+    "image": "https://res.cloudinary.com/militotech/image/upload/v1787004383/milito_tech_products/file_hb8ycd.jpg",
+    "imagePublicId": "milito_tech_products/file_hb8ycd",
+    "model": "SPARK 40",
+    "price": 170000,
+    "updatedAt": "2026-08-17T22:09:10.723Z",
+    "status": "In Stock",
+    "rating": 4.9,
+    "batteryHealth": null,
+    "colorOptions": [],
+    "badge": "Grade A++",
+    "batteryCondition": "Excellent",
+    "quantity": 1,
+    "specs": {
+      "warranty": "1-Year Warranty",
+      "accessories": "Original Box & Accessories",
+      "chipset": "MediaTek Helio G99 Ultimate",
+      "simType": "Dual Nano SIM (4G)",
+      "faceUnlock": "Face Unlock Supported",
+      "ram": "6GB",
+      "camera": "64MP AI Triple Camera",
+      "os": "Android 15 (HiOS 15)",
+      "batterySize": "5000 mAh (33W Fast Charge)",
+      "screen": "6.78-inch FHD+ 120Hz IPS LCD",
+      "fingerprint": "Side-Mounted Fingerprint"
+    },
+    "batteryHealthValue": null,
+    "brand": "TECNO",
+    "originalPrice": 185000,
+    "thumbnail": {
+      "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787004383/milito_tech_products/file_hb8ycd.jpg",
+      "public_id": "milito_tech_products/file_hb8ycd"
+    },
+    "gallery": [
+      "https://res.cloudinary.com/militotech/image/upload/v1787004383/milito_tech_products/file_hb8ycd.jpg"
+    ],
+    "reviewsCount": 12,
+    "galleryPublicIds": [
+      "milito_tech_products/file_hb8ycd"
+    ],
+    "name": "SPARK 40",
+    "createdAt": "2026-08-17T22:04:12.134Z",
+    "faceId": "Working",
+    "id": "prod_1787004252134",
+    "productType": "phone"
+  },
+  {
+    "rating": 4.9,
+    "status": "In Stock",
+    "condition": "Brand New",
+    "network": "Factory Unlocked",
+    "reviewsCount": 12,
+    "name": "CAMON 40 Pro",
+    "description": "TECNO CAMON 40 Pro, Brand New with 256GB storage, 12GB RAM, 5G network and Factory Unlocked. Battery condition is Excellent and Fingerprint and Face Unlock are working. Device is tested and ready for use.",
+    "color": [],
+    "batteryHealthValue": null,
+    "storageOptions": [
+      "256GB"
+    ],
+    "galleryImages": [
+      {
+        "bytes": 128714,
+        "original_filename": "file",
+        "width": 736,
+        "created_at": "2026-08-17T22:33:04Z",
+        "format": "jpg",
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787005984/milito_tech_products/file_p7yef0.jpg",
+        "public_id": "milito_tech_products/file_p7yef0",
+        "height": 981
+      },
+      {
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787005985/milito_tech_products/file_kmn7bh.jpg",
+        "public_id": "milito_tech_products/file_kmn7bh",
+        "height": 981,
+        "original_filename": "file",
+        "width": 736,
+        "created_at": "2026-08-17T22:33:05Z",
+        "bytes": 128151,
+        "format": "jpg"
+      },
+      {
+        "created_at": "2026-08-17T22:33:05Z",
+        "height": 981,
+        "format": "jpg",
+        "width": 736,
+        "original_filename": "file",
+        "bytes": 103213,
+        "public_id": "milito_tech_products/file_x5aqph",
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787005985/milito_tech_products/file_x5aqph.jpg"
+      }
+    ],
+    "storage": [
+      "256GB"
+    ],
+    "updatedAt": "2026-08-17T22:33:20.117Z",
+    "image": "https://res.cloudinary.com/militotech/image/upload/v1787005984/milito_tech_products/file_p7yef0.jpg",
+    "deviceLockStatus": "Unlocked",
+    "colorOptions": [],
+    "price": 300000,
+    "faceId": "Working",
+    "model": "CAMON 40 Pro",
+    "featured": false,
+    "imagePublicId": "milito_tech_products/file_p7yef0",
+    "galleryPublicIds": [
+      "milito_tech_products/file_p7yef0",
+      "milito_tech_products/file_kmn7bh",
+      "milito_tech_products/file_x5aqph"
+    ],
+    "badge": "Grade A++",
+    "thumbnail": {
+      "public_id": "milito_tech_products/file_p7yef0",
+      "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787005984/milito_tech_products/file_p7yef0.jpg"
+    },
+    "gallery": [
+      "https://res.cloudinary.com/militotech/image/upload/v1787005984/milito_tech_products/file_p7yef0.jpg",
+      "https://res.cloudinary.com/militotech/image/upload/v1787005985/milito_tech_products/file_kmn7bh.jpg",
+      "https://res.cloudinary.com/militotech/image/upload/v1787005985/milito_tech_products/file_x5aqph.jpg"
+    ],
+    "originalPrice": 325000,
+    "batteryHealth": null,
+    "specs": {
+      "ram": "12GB",
+      "simType": "Dual Nano SIM (5G)",
+      "chipset": "MediaTek Dimensity 8300 Ultra 5G",
+      "camera": "50MP Sony IMX906 OIS + 50MP UltraWide + 50MP Front",
+      "screen": "6.78-inch 1.5K AMOLED 144Hz",
+      "accessories": "Original Box & Accessories",
+      "os": "Android 15 (HiOS 15)",
+      "faceUnlock": "Face Unlock Supported",
+      "fingerprint": "In-Display Optical Fingerprint",
+      "batterySize": "5100 mAh (70W Fast Charge)",
+      "warranty": "1-Year Warranty"
+    },
+    "brand": "TECNO",
+    "createdAt": "2026-08-17T22:33:20.117Z",
+    "availability": "In Stock",
+    "quantity": 3,
+    "stockQuantity": 3,
+    "batteryCondition": "Excellent",
+    "id": "prod_1787006000117",
+    "productType": "phone"
+  },
+  {
+    "transmission": "Automatic",
+    "rating": 4.9,
+    "galleryPublicIds": [
+      "milito_tech_products/file_ph49hg"
+    ],
+    "stockQuantity": 1,
+    "createdAt": "2026-08-18T07:51:06.888Z",
+    "availability": "In Stock",
+    "badge": "Verified Clean",
+    "batteryHealthValue": null,
+    "batteryCondition": null,
+    "name": "X3",
+    "originalPrice": 200000000,
+    "network": null,
+    "thumbnail": {
+      "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787039401/milito_tech_products/file_ph49hg.jpg",
+      "public_id": "milito_tech_products/file_ph49hg"
+    },
+    "faceId": null,
+    "image": "https://res.cloudinary.com/militotech/image/upload/v1787039401/milito_tech_products/file_ph49hg.jpg",
+    "imagePublicId": "milito_tech_products/file_ph49hg",
+    "reviewsCount": 12,
+    "mileageNumber": null,
+    "model": "X3",
+    "updatedAt": "2026-08-18T07:51:06.888Z",
+    "interiorColor": null,
+    "price": 8500000,
+    "description": "2020 BMW, in clean Foreign Used condition. Equipped with automatic transmission, petrol fuel system and AWD drivetrain. Comes with complete original customs paper documentation, available for physical inspection in Lagos. Offered at ₦8,500,000.",
+    "documentation": "Complete Original Customs Paper",
+    "condition": "Foreign Used",
+    "gallery": [
+      "https://res.cloudinary.com/militotech/image/upload/v1787039401/milito_tech_products/file_ph49hg.jpg"
+    ],
+    "status": "In Stock",
+    "engine": "2.0L Turbo",
+    "location": "Lagos",
+    "customModel": null,
+    "quantity": 1,
+    "storageOptions": [],
+    "batteryHealth": null,
+    "mileage": null,
+    "storage": [],
+    "customBrand": null,
+    "brand": "BMW",
+    "specs": {
+      "os": "",
+      "warranty": "Inspection Guaranteed",
+      "camera": "",
+      "simType": "",
+      "chipset": "",
+      "screen": "",
+      "batterySize": ""
+    },
+    "driveType": "AWD",
+    "year": "2020",
+    "fuelType": "Petrol",
+    "productType": "vehicle",
+    "bodyType": "SUV",
+    "vehicleStatus": "Available",
+    "exteriorColor": null,
+    "featured": false,
+    "galleryImages": [
+      {
+        "created_at": "2026-08-18T07:50:01Z",
+        "public_id": "milito_tech_products/file_ph49hg",
+        "height": 552,
+        "original_filename": "file",
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787039401/milito_tech_products/file_ph49hg.jpg",
+        "bytes": 87715,
+        "width": 736,
+        "format": "jpg"
+      }
+    ],
+    "series": "5 Series",
+    "deviceLockStatus": null,
+    "colorOptions": [],
+    "color": [],
+    "id": "prod_1787039466888"
+  },
+  {
+    "availability": "In Stock",
+    "description": "2016 Lexus RX 350, Foreign Used, with 35000 km mileage. Equipped with automatic transmission, 3.5L V6 engine, petrol fuel system, AWD drivetrain and suv styling. Features a clean white exterior. Comes with complete original customs paper documentation, available for physical inspection in Lagos. Offered at ₦25,000,000.",
+    "driveType": "AWD",
+    "batteryCondition": null,
+    "brand": "Lexus",
+    "year": "2016",
+    "specs": {
+      "warranty": "Inspection Guaranteed",
+      "camera": "",
+      "os": "",
+      "simType": "",
+      "chipset": "",
+      "batterySize": "",
+      "screen": ""
+    },
+    "galleryImages": [
+      {
+        "height": 902,
+        "posterUrl": null,
+        "public_id": "milito_tech_products/file_wtkb7l",
+        "width": 735,
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787130101/milito_tech_products/file_wtkb7l.jpg",
+        "bytes": 91796,
+        "created_at": "2026-08-19T09:01:41Z",
+        "original_filename": "file",
+        "format": "jpg"
+      }
+    ],
+    "transmission": "Automatic",
+    "galleryPublicIds": [
+      "milito_tech_products/file_wtkb7l"
+    ],
+    "exteriorColor": "White",
+    "vehicleStatus": "Available",
+    "series": "RX Series",
+    "storage": [],
+    "mileage": "35000",
+    "status": "In Stock",
+    "batteryHealth": null,
+    "color": [],
+    "engine": "3.5L V6",
+    "reviewsCount": 12,
+    "bodyType": "SUV",
+    "documentation": "Complete Original Customs Paper",
+    "badge": "Verified Clean",
+    "featured": false,
+    "thumbnail": {
+      "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787130101/milito_tech_products/file_wtkb7l.jpg",
+      "public_id": "milito_tech_products/file_wtkb7l"
+    },
+    "name": "RX 350",
+    "network": null,
+    "productType": "vehicle",
+    "interiorColor": null,
+    "createdAt": "2026-08-19T09:01:42.940Z",
+    "mileageNumber": null,
+    "imagePublicId": "milito_tech_products/file_wtkb7l",
+    "deviceLockStatus": null,
+    "location": "Lagos",
+    "colorOptions": [],
+    "customBrand": null,
+    "originalPrice": 28000000,
+    "quantity": 1,
+    "rating": 4.9,
+    "condition": "Foreign Used",
+    "storageOptions": [],
+    "batteryHealthValue": null,
+    "gallery": [
+      "https://res.cloudinary.com/militotech/image/upload/v1787130101/milito_tech_products/file_wtkb7l.jpg"
+    ],
+    "image": "https://res.cloudinary.com/militotech/image/upload/v1787130101/milito_tech_products/file_wtkb7l.jpg",
+    "faceId": null,
+    "fuelType": "Petrol",
+    "stockQuantity": 1,
+    "updatedAt": "2026-08-19T09:01:42.940Z",
+    "customModel": null,
+    "model": "RX 350",
+    "price": 25000000,
+    "id": "prod_1787130102940"
+  },
+  {
+    "updatedAt": "2026-08-19T09:25:41.001Z",
+    "gallery": [
+      "https://res.cloudinary.com/militotech/image/upload/v1787131098/milito_tech_products/file_neg7m6.jpg",
+      "https://res.cloudinary.com/militotech/image/upload/v1787131101/milito_tech_products/file_p0scpn.jpg",
+      "https://res.cloudinary.com/militotech/image/upload/v1787131180/milito_tech_products/file_wa2kwl.jpg",
+      "https://res.cloudinary.com/militotech/image/upload/v1787131316/milito_tech_products/file_atczrx.jpg",
+      "https://res.cloudinary.com/militotech/image/upload/v1787131540/milito_tech_products/file_aknp1s.jpg"
+    ],
+    "storageOptions": [],
+    "series": "GLE-Class",
+    "batteryCondition": null,
+    "productType": "vehicle",
+    "originalPrice": 78000000,
+    "stockQuantity": 1,
+    "reviewsCount": 12,
+    "color": [],
+    "condition": "Foreign Used",
+    "galleryPublicIds": [
+      "milito_tech_products/file_neg7m6",
+      "milito_tech_products/file_p0scpn",
+      "milito_tech_products/file_wa2kwl",
+      "milito_tech_products/file_atczrx",
+      "milito_tech_products/file_aknp1s"
+    ],
+    "batteryHealthValue": null,
+    "createdAt": "2026-08-19T09:25:41.001Z",
+    "availability": "In Stock",
+    "customModel": "AMG GLE43",
+    "network": null,
+    "documentation": "Complete Original Customs Paper",
+    "engine": null,
+    "mileageNumber": null,
+    "name": "AMG GLE43",
+    "imagePublicId": "milito_tech_products/file_neg7m6",
+    "transmission": "Automatic",
+    "brand": "Mercedes-Benz",
+    "thumbnail": {
+      "public_id": "milito_tech_products/file_neg7m6",
+      "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787131098/milito_tech_products/file_neg7m6.jpg"
+    },
+    "specs": {
+      "warranty": "Inspection Guaranteed",
+      "screen": "",
+      "camera": "",
+      "chipset": "",
+      "simType": "",
+      "batterySize": "",
+      "os": ""
+    },
+    "status": "In Stock",
+    "interiorColor": "Brown",
+    "customBrand": null,
+    "price": 73000000,
+    "colorOptions": [],
+    "bodyType": null,
+    "batteryHealth": null,
+    "model": "AMG GLE43",
+    "image": "https://res.cloudinary.com/militotech/image/upload/v1787131098/milito_tech_products/file_neg7m6.jpg",
+    "featured": false,
+    "description": "2017 Mercedes-Benz AMG GLE43, Foreign Used, with 50000 km mileage. Equipped with automatic transmission, petrol fuel system and AWD drivetrain. Features a clean white exterior and well-kept brown interior. Comes with complete original customs paper documentation, available for physical inspection in Lagos. Offered at ₦73,000,000.",
+    "deviceLockStatus": null,
+    "location": "Lagos",
+    "galleryImages": [
+      {
+        "format": "jpg",
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787131098/milito_tech_products/file_neg7m6.jpg",
+        "created_at": "2026-08-19T09:18:18Z",
+        "width": 736,
+        "posterUrl": null,
+        "bytes": 78209,
+        "height": 981,
+        "public_id": "milito_tech_products/file_neg7m6",
+        "original_filename": "file"
+      },
+      {
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787131101/milito_tech_products/file_p0scpn.jpg",
+        "format": "jpg",
+        "posterUrl": null,
+        "public_id": "milito_tech_products/file_p0scpn",
+        "width": 736,
+        "height": 981,
+        "bytes": 84363,
+        "original_filename": "file",
+        "created_at": "2026-08-19T09:18:21Z"
+      },
+      {
+        "original_filename": "file",
+        "public_id": "milito_tech_products/file_wa2kwl",
+        "bytes": 110006,
+        "width": 736,
+        "posterUrl": null,
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787131180/milito_tech_products/file_wa2kwl.jpg",
+        "height": 981,
+        "created_at": "2026-08-19T09:19:40Z",
+        "format": "jpg"
+      },
+      {
+        "original_filename": "file",
+        "bytes": 98288,
+        "created_at": "2026-08-19T09:21:56Z",
+        "width": 736,
+        "format": "jpg",
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787131316/milito_tech_products/file_atczrx.jpg",
+        "public_id": "milito_tech_products/file_atczrx",
+        "height": 981,
+        "posterUrl": null
+      },
+      {
+        "bytes": 69073,
+        "original_filename": "file",
+        "width": 736,
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787131540/milito_tech_products/file_aknp1s.jpg",
+        "height": 981,
+        "format": "jpg",
+        "posterUrl": null,
+        "created_at": "2026-08-19T09:25:40Z",
+        "public_id": "milito_tech_products/file_aknp1s"
+      }
+    ],
+    "mileage": "50000",
+    "quantity": 1,
+    "faceId": null,
+    "storage": [],
+    "driveType": "AWD",
+    "rating": 4.9,
+    "year": "2017",
+    "badge": "Verified Clean",
+    "fuelType": "Petrol",
+    "exteriorColor": "White",
+    "vehicleStatus": "Available",
+    "id": "prod_1787131541001"
+  },
+  {
+    "transmission": "Automatic",
+    "faceId": null,
+    "gallery": [
+      "https://res.cloudinary.com/militotech/image/upload/v1787212906/milito_tech_products/file_uvrutu.jpg",
+      "https://res.cloudinary.com/militotech/image/upload/v1787212900/milito_tech_products/file_nhdkfq.jpg",
+      "https://res.cloudinary.com/militotech/image/upload/v1787212900/milito_tech_products/file_w4linp.jpg",
+      "https://res.cloudinary.com/militotech/image/upload/v1787212902/milito_tech_products/file_byta3w.jpg",
+      "https://res.cloudinary.com/militotech/image/upload/v1787212902/milito_tech_products/file_z1j0ab.jpg",
+      "https://res.cloudinary.com/militotech/image/upload/v1787212904/milito_tech_products/file_k8ulex.jpg",
+      "https://res.cloudinary.com/militotech/image/upload/v1787212904/milito_tech_products/file_sjywjv.jpg"
+    ],
+    "documentation": "Complete Original Customs Paper",
+    "specs": {
+      "screen": "",
+      "os": "",
+      "batterySize": "",
+      "camera": "",
+      "simType": "",
+      "warranty": "Inspection Guaranteed",
+      "chipset": ""
+    },
+    "brand": "Mercedes-Benz",
+    "mileageNumber": null,
+    "availability": "In Stock",
+    "storageOptions": [],
+    "imagePublicId": "milito_tech_products/file_uvrutu",
+    "interiorColor": "Beige",
+    "rating": 4.9,
+    "batteryCondition": null,
+    "reviewsCount": 12,
+    "network": null,
+    "description": "",
+    "originalPrice": 180000000,
+    "driveType": "AWD",
+    "stockQuantity": 3,
+    "color": [],
+    "year": "2024",
+    "galleryPublicIds": [
+      "milito_tech_products/file_uvrutu",
+      "milito_tech_products/file_nhdkfq",
+      "milito_tech_products/file_w4linp",
+      "milito_tech_products/file_byta3w",
+      "milito_tech_products/file_z1j0ab",
+      "milito_tech_products/file_k8ulex",
+      "milito_tech_products/file_sjywjv"
+    ],
+    "fuelType": "Petrol",
+    "galleryImages": [
+      {
+        "width": 736,
+        "created_at": "2026-08-20T08:01:46Z",
+        "bytes": 51746,
+        "posterUrl": null,
+        "public_id": "milito_tech_products/file_uvrutu",
+        "original_filename": "file",
+        "height": 736,
+        "format": "jpg",
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787212906/milito_tech_products/file_uvrutu.jpg"
+      },
+      {
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787212900/milito_tech_products/file_nhdkfq.jpg",
+        "public_id": "milito_tech_products/file_nhdkfq",
+        "format": "jpg",
+        "posterUrl": null,
+        "original_filename": "file",
+        "height": 736,
+        "width": 736,
+        "bytes": 54371,
+        "created_at": "2026-08-20T08:01:40Z"
+      },
+      {
+        "bytes": 78485,
+        "width": 736,
+        "created_at": "2026-08-20T08:01:40Z",
+        "height": 736,
+        "public_id": "milito_tech_products/file_w4linp",
+        "original_filename": "file",
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787212900/milito_tech_products/file_w4linp.jpg",
+        "posterUrl": null,
+        "format": "jpg"
+      },
+      {
+        "format": "jpg",
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787212902/milito_tech_products/file_byta3w.jpg",
+        "original_filename": "file",
+        "width": 736,
+        "bytes": 76420,
+        "public_id": "milito_tech_products/file_byta3w",
+        "height": 736,
+        "posterUrl": null,
+        "created_at": "2026-08-20T08:01:42Z"
+      },
+      {
+        "original_filename": "file",
+        "width": 736,
+        "bytes": 63495,
+        "created_at": "2026-08-20T08:01:42Z",
+        "format": "jpg",
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787212902/milito_tech_products/file_z1j0ab.jpg",
+        "public_id": "milito_tech_products/file_z1j0ab",
+        "posterUrl": null,
+        "height": 736
+      },
+      {
+        "public_id": "milito_tech_products/file_k8ulex",
+        "posterUrl": null,
+        "created_at": "2026-08-20T08:01:44Z",
+        "format": "jpg",
+        "height": 736,
+        "original_filename": "file",
+        "bytes": 61905,
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787212904/milito_tech_products/file_k8ulex.jpg",
+        "width": 736
+      },
+      {
+        "original_filename": "file",
+        "width": 736,
+        "created_at": "2026-08-20T08:01:44Z",
+        "bytes": 67114,
+        "format": "jpg",
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787212904/milito_tech_products/file_sjywjv.jpg",
+        "public_id": "milito_tech_products/file_sjywjv",
+        "height": 736,
+        "posterUrl": null
+      }
+    ],
+    "deviceLockStatus": null,
+    "condition": "Foreign Used",
+    "customBrand": null,
+    "customModel": null,
+    "quantity": 3,
+    "engine": "3.0L Turbo",
+    "location": "Lagos",
+    "status": "In Stock",
+    "exteriorColor": null,
+    "vehicleStatus": "Available",
+    "badge": "Verified Clean",
+    "updatedAt": "2026-08-20T08:02:53.724Z",
+    "model": "AMG GLE 53",
+    "storage": [],
+    "mileage": "600000",
+    "batteryHealth": null,
+    "price": 160000000,
+    "thumbnail": {
+      "public_id": "milito_tech_products/file_uvrutu",
+      "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787212906/milito_tech_products/file_uvrutu.jpg"
+    },
+    "image": "https://res.cloudinary.com/militotech/image/upload/v1787212906/milito_tech_products/file_uvrutu.jpg",
+    "series": "GLE-Class",
+    "featured": false,
+    "colorOptions": [],
+    "productType": "vehicle",
+    "batteryHealthValue": null,
+    "bodyType": "SUV",
+    "createdAt": "2026-08-20T08:02:53.724Z",
+    "name": "AMG GLE 53",
+    "id": "prod_1787212973723"
+  },
+  {
+    "reviewsCount": 12,
+    "batteryHealthValue": null,
+    "status": "In Stock",
+    "updatedAt": "2026-08-20T08:41:35.319Z",
+    "engine": "2.5L",
+    "batteryHealth": null,
+    "color": [],
+    "fuelType": "Petrol",
+    "condition": "Foreign Used",
+    "location": "Lagos",
+    "quantity": 1,
+    "gallery": [
+      "https://res.cloudinary.com/militotech/image/upload/v1787215278/milito_tech_products/file_ungf0y.jpg",
+      "https://res.cloudinary.com/militotech/image/upload/v1787215270/milito_tech_products/file_inkxqy.jpg",
+      "https://res.cloudinary.com/militotech/image/upload/v1787215270/milito_tech_products/file_flsyco.jpg",
+      "https://res.cloudinary.com/militotech/image/upload/v1787215272/milito_tech_products/file_byugj0.jpg",
+      "https://res.cloudinary.com/militotech/image/upload/v1787215273/milito_tech_products/file_uwm5my.jpg",
+      "https://res.cloudinary.com/militotech/image/upload/v1787215275/milito_tech_products/file_m7xxan.jpg",
+      "https://res.cloudinary.com/militotech/image/upload/v1787215275/milito_tech_products/file_ygop2y.jpg",
+      "https://res.cloudinary.com/militotech/image/upload/v1787215277/milito_tech_products/file_k2mhrp.jpg",
+      "https://res.cloudinary.com/militotech/image/upload/v1787215279/milito_tech_products/file_i80iqj.jpg"
+    ],
+    "galleryPublicIds": [
+      "milito_tech_products/file_ungf0y",
+      "milito_tech_products/file_inkxqy",
+      "milito_tech_products/file_flsyco",
+      "milito_tech_products/file_byugj0",
+      "milito_tech_products/file_uwm5my",
+      "milito_tech_products/file_m7xxan",
+      "milito_tech_products/file_ygop2y",
+      "milito_tech_products/file_k2mhrp",
+      "milito_tech_products/file_i80iqj"
+    ],
+    "createdAt": "2026-08-20T08:41:35.319Z",
+    "description": "",
+    "transmission": "Automatic",
+    "specs": {
+      "simType": "",
+      "chipset": "",
+      "screen": "",
+      "os": "",
+      "camera": "",
+      "batterySize": "",
+      "warranty": "Inspection Guaranteed"
+    },
+    "brand": "Toyota",
+    "galleryImages": [
+      {
+        "height": 981,
+        "posterUrl": null,
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787215278/milito_tech_products/file_ungf0y.jpg",
+        "public_id": "milito_tech_products/file_ungf0y",
+        "format": "jpg",
+        "bytes": 76503,
+        "created_at": "2026-08-20T08:41:18Z",
+        "width": 736,
+        "original_filename": "file"
+      },
+      {
+        "original_filename": "file",
+        "bytes": 72825,
+        "height": 981,
+        "width": 736,
+        "created_at": "2026-08-20T08:41:10Z",
+        "public_id": "milito_tech_products/file_inkxqy",
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787215270/milito_tech_products/file_inkxqy.jpg",
+        "posterUrl": null,
+        "format": "jpg"
+      },
+      {
+        "height": 981,
+        "created_at": "2026-08-20T08:41:10Z",
+        "public_id": "milito_tech_products/file_flsyco",
+        "original_filename": "file",
+        "posterUrl": null,
+        "format": "jpg",
+        "width": 736,
+        "bytes": 53800,
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787215270/milito_tech_products/file_flsyco.jpg"
+      },
+      {
+        "bytes": 78384,
+        "width": 736,
+        "created_at": "2026-08-20T08:41:12Z",
+        "format": "jpg",
+        "posterUrl": null,
+        "public_id": "milito_tech_products/file_byugj0",
+        "original_filename": "file",
+        "height": 981,
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787215272/milito_tech_products/file_byugj0.jpg"
+      },
+      {
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787215273/milito_tech_products/file_uwm5my.jpg",
+        "format": "jpg",
+        "height": 981,
+        "posterUrl": null,
+        "original_filename": "file",
+        "public_id": "milito_tech_products/file_uwm5my",
+        "width": 736,
+        "bytes": 54523,
+        "created_at": "2026-08-20T08:41:13Z"
+      },
+      {
+        "public_id": "milito_tech_products/file_m7xxan",
+        "posterUrl": null,
+        "bytes": 60522,
+        "width": 736,
+        "created_at": "2026-08-20T08:41:15Z",
+        "original_filename": "file",
+        "height": 981,
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787215275/milito_tech_products/file_m7xxan.jpg",
+        "format": "jpg"
+      },
+      {
+        "posterUrl": null,
+        "format": "jpg",
+        "public_id": "milito_tech_products/file_ygop2y",
+        "created_at": "2026-08-20T08:41:15Z",
+        "width": 736,
+        "original_filename": "file",
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787215275/milito_tech_products/file_ygop2y.jpg",
+        "bytes": 62168,
+        "height": 981
+      },
+      {
+        "format": "jpg",
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787215277/milito_tech_products/file_k2mhrp.jpg",
+        "width": 736,
+        "public_id": "milito_tech_products/file_k2mhrp",
+        "bytes": 66594,
+        "original_filename": "file",
+        "height": 981,
+        "posterUrl": null,
+        "created_at": "2026-08-20T08:41:17Z"
+      },
+      {
+        "height": 981,
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787215279/milito_tech_products/file_i80iqj.jpg",
+        "original_filename": "file",
+        "posterUrl": null,
+        "format": "jpg",
+        "width": 736,
+        "public_id": "milito_tech_products/file_i80iqj",
+        "bytes": 70313,
+        "created_at": "2026-08-20T08:41:19Z"
+      }
+    ],
+    "series": "Sedans",
+    "availability": "In Stock",
+    "bodyType": "Sedan",
+    "vehicleStatus": "Available",
+    "exteriorColor": "White",
+    "thumbnail": {
+      "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787215278/milito_tech_products/file_ungf0y.jpg",
+      "public_id": "milito_tech_products/file_ungf0y"
+    },
+    "featured": false,
+    "year": "2025",
+    "network": null,
+    "batteryCondition": null,
+    "rating": 4.9,
+    "originalPrice": 69000000,
+    "customBrand": null,
+    "image": "https://res.cloudinary.com/militotech/image/upload/v1787215278/milito_tech_products/file_ungf0y.jpg",
+    "colorOptions": [],
+    "deviceLockStatus": null,
+    "stockQuantity": 1,
+    "model": "Camry",
+    "storageOptions": [],
+    "customModel": null,
+    "price": 65000000,
+    "faceId": null,
+    "badge": "Verified Clean",
+    "documentation": "Complete Original Customs Paper",
+    "driveType": "AWD",
+    "productType": "vehicle",
+    "mileage": "250000",
+    "interiorColor": "Grey",
+    "storage": [],
+    "mileageNumber": null,
+    "name": "Camry",
+    "imagePublicId": "milito_tech_products/file_ungf0y",
+    "id": "prod_1787215295319"
+  },
+  {
+    "updatedAt": "2026-08-24T12:02:51.360Z",
+    "brand": "Toyota",
+    "specs": {
+      "screen": "",
+      "warranty": "Inspection Guaranteed",
+      "batterySize": "",
+      "simType": "",
+      "chipset": "",
+      "camera": "",
+      "os": ""
+    },
+    "documentation": "Complete Original Customs Paper",
+    "colorOptions": [],
+    "imagePublicId": "milito_tech_products/milito_1787572924890_d3lokc_RELIABLE_FAMILY_SEDAN_FOREIGN_1787572924058_wfaso",
+    "condition": "Foreign Used",
+    "productType": "vehicle",
+    "mileageNumber": null,
+    "year": "2025",
+    "storage": [],
+    "series": "Sedans",
+    "interiorColor": null,
+    "mileage": "11000",
+    "createdAt": "2026-08-24T12:02:51.360Z",
+    "customBrand": null,
+    "batteryCondition": null,
+    "batteryHealthValue": null,
+    "color": [],
+    "engine": "1.8L",
+    "originalPrice": 17000000,
+    "status": "In Stock",
+    "storageOptions": [],
+    "thumbnail": {
+      "public_id": "milito_tech_products/milito_1787572924890_d3lokc_RELIABLE_FAMILY_SEDAN_FOREIGN_1787572924058_wfaso",
+      "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787572925/milito_tech_products/milito_1787572924890_d3lokc_RELIABLE_FAMILY_SEDAN_FOREIGN_1787572924058_wfaso.jpg"
+    },
+    "stockQuantity": 1,
+    "galleryPublicIds": [
+      "milito_tech_products/milito_1787572924890_d3lokc_RELIABLE_FAMILY_SEDAN_FOREIGN_1787572924058_wfaso",
+      "milito_tech_products/milito_1787572965895_mutw10_RELIABLE_FAMILY_SEDAN_FOREIGN_1787572965633_qrd9i",
+      "milito_tech_products/milito_1787572966209_w7ag28_RELIABLE_FAMILY_SEDAN_FOREIGN_1787572965638_kmf4d",
+      "milito_tech_products/milito_1787572968216_62aeyq_RELIABLE_FAMILY_SEDAN_FOREIGN_1787572967807_ueluz",
+      "milito_tech_products/milito_1787572969756_kv6o3m_RELIABLE_FAMILY_SEDAN_FOREIGN_1787572969209_x07u1"
+    ],
+    "customModel": null,
+    "galleryImages": [
+      {
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787572925/milito_tech_products/milito_1787572924890_d3lokc_RELIABLE_FAMILY_SEDAN_FOREIGN_1787572924058_wfaso.jpg",
+        "public_id": "milito_tech_products/milito_1787572924890_d3lokc_RELIABLE_FAMILY_SEDAN_FOREIGN_1787572924058_wfaso",
+        "posterUrl": null,
+        "height": 981,
+        "width": 736,
+        "original_filename": "RELIABLE_FAMILY_SEDAN_FOREIGN__1787572924058_wfaso.jpg",
+        "bytes": 118915,
+        "created_at": "2026-08-24T12:02:05Z",
+        "format": "jpg"
+      },
+      {
+        "created_at": "2026-08-24T12:02:46Z",
+        "height": 981,
+        "bytes": 70193,
+        "width": 736,
+        "posterUrl": null,
+        "public_id": "milito_tech_products/milito_1787572965895_mutw10_RELIABLE_FAMILY_SEDAN_FOREIGN_1787572965633_qrd9i",
+        "original_filename": "RELIABLE_FAMILY_SEDAN_FOREIGN__1787572965633_qrd9i.jpg",
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787572966/milito_tech_products/milito_1787572965895_mutw10_RELIABLE_FAMILY_SEDAN_FOREIGN_1787572965633_qrd9i.jpg",
+        "format": "jpg"
+      },
+      {
+        "original_filename": "RELIABLE_FAMILY_SEDAN_FOREIGN__1787572965638_kmf4d.jpg",
+        "posterUrl": null,
+        "created_at": "2026-08-24T12:02:46Z",
+        "bytes": 98868,
+        "public_id": "milito_tech_products/milito_1787572966209_w7ag28_RELIABLE_FAMILY_SEDAN_FOREIGN_1787572965638_kmf4d",
+        "width": 736,
+        "format": "jpg",
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787572966/milito_tech_products/milito_1787572966209_w7ag28_RELIABLE_FAMILY_SEDAN_FOREIGN_1787572965638_kmf4d.jpg",
+        "height": 981
+      },
+      {
+        "height": 981,
+        "created_at": "2026-08-24T12:02:48Z",
+        "posterUrl": null,
+        "original_filename": "RELIABLE_FAMILY_SEDAN_FOREIGN__1787572967807_ueluz.jpg",
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787572968/milito_tech_products/milito_1787572968216_62aeyq_RELIABLE_FAMILY_SEDAN_FOREIGN_1787572967807_ueluz.jpg",
+        "public_id": "milito_tech_products/milito_1787572968216_62aeyq_RELIABLE_FAMILY_SEDAN_FOREIGN_1787572967807_ueluz",
+        "format": "jpg",
+        "width": 736,
+        "bytes": 85945
+      },
+      {
+        "created_at": "2026-08-24T12:02:50Z",
+        "format": "jpg",
+        "original_filename": "RELIABLE_FAMILY_SEDAN_FOREIGN__1787572969209_x07u1.jpg",
+        "public_id": "milito_tech_products/milito_1787572969756_kv6o3m_RELIABLE_FAMILY_SEDAN_FOREIGN_1787572969209_x07u1",
+        "height": 981,
+        "posterUrl": null,
+        "bytes": 63005,
+        "width": 736,
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1787572970/milito_tech_products/milito_1787572969756_kv6o3m_RELIABLE_FAMILY_SEDAN_FOREIGN_1787572969209_x07u1.jpg"
+      }
+    ],
+    "bodyType": "Sedan",
+    "description": "2025 Toyota Camry, Foreign Used, with 11000 km mileage. Equipped with automatic transmission, 1.8L engine, petrol fuel system, AWD drivetrain and sedan styling. Features a clean white exterior. Comes with complete original customs paper documentation, available for physical inspection in Lagos. Offered at ₦15,500,000.",
+    "featured": false,
+    "deviceLockStatus": null,
+    "badge": "Verified Clean",
+    "network": null,
+    "vehicleStatus": "Available",
+    "exteriorColor": "White",
+    "reviewsCount": 12,
+    "name": "Camry",
+    "location": "Lagos",
+    "batteryHealth": null,
+    "quantity": 1,
+    "rating": 4.9,
+    "availability": "In Stock",
+    "gallery": [
+      "https://res.cloudinary.com/militotech/image/upload/v1787572925/milito_tech_products/milito_1787572924890_d3lokc_RELIABLE_FAMILY_SEDAN_FOREIGN_1787572924058_wfaso.jpg",
+      "https://res.cloudinary.com/militotech/image/upload/v1787572966/milito_tech_products/milito_1787572965895_mutw10_RELIABLE_FAMILY_SEDAN_FOREIGN_1787572965633_qrd9i.jpg",
+      "https://res.cloudinary.com/militotech/image/upload/v1787572966/milito_tech_products/milito_1787572966209_w7ag28_RELIABLE_FAMILY_SEDAN_FOREIGN_1787572965638_kmf4d.jpg",
+      "https://res.cloudinary.com/militotech/image/upload/v1787572968/milito_tech_products/milito_1787572968216_62aeyq_RELIABLE_FAMILY_SEDAN_FOREIGN_1787572967807_ueluz.jpg",
+      "https://res.cloudinary.com/militotech/image/upload/v1787572970/milito_tech_products/milito_1787572969756_kv6o3m_RELIABLE_FAMILY_SEDAN_FOREIGN_1787572969209_x07u1.jpg"
+    ],
+    "driveType": "AWD",
+    "faceId": null,
+    "model": "Camry",
+    "price": 15500000,
+    "fuelType": "Petrol",
+    "transmission": "Automatic",
+    "image": "https://res.cloudinary.com/militotech/image/upload/v1787572925/milito_tech_products/milito_1787572924890_d3lokc_RELIABLE_FAMILY_SEDAN_FOREIGN_1787572924058_wfaso.jpg",
+    "id": "prod_1787572971360"
+  },
+  {
+    "badge": "Grade A++",
+    "documentation": null,
+    "colorOptions": [],
+    "series": null,
+    "year": null,
+    "gallery": [
+      "https://res.cloudinary.com/militotech/image/upload/v1790959732/milito_tech_products/milito_1790959732224_s3yuqv_snaptik-app-760739026173962165_1790959729678_mj24z.webp"
+    ],
+    "driveType": null,
+    "productType": "phone",
+    "deviceLockStatus": "Unlocked",
+    "interiorColor": null,
+    "imagePublicId": "milito_tech_products/milito_1790959732224_s3yuqv_snaptik-app-760739026173962165_1790959729678_mj24z",
+    "mileageNumber": null,
+    "originalPrice": 595000,
+    "network": "Factory Unlocked",
+    "customModel": null,
+    "batteryHealthValue": "95%",
+    "status": "In Stock",
+    "image": "https://res.cloudinary.com/militotech/image/upload/v1790959732/milito_tech_products/milito_1790959732224_s3yuqv_snaptik-app-760739026173962165_1790959729678_mj24z.webp",
+    "engine": null,
+    "price": 530000,
+    "customBrand": null,
+    "model": "iPhone 14",
+    "stockQuantity": 6,
+    "bodyType": null,
+    "name": "iPhone 14",
+    "galleryImages": [
+      {
+        "format": "webp",
+        "original_filename": "snaptik-app-760739026173962165_1790959729678_mj24z.jpg",
+        "created_at": "2026-10-02T16:48:52Z",
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1790959732/milito_tech_products/milito_1790959732224_s3yuqv_snaptik-app-760739026173962165_1790959729678_mj24z.webp",
+        "height": 1080,
+        "public_id": "milito_tech_products/milito_1790959732224_s3yuqv_snaptik-app-760739026173962165_1790959729678_mj24z",
+        "posterUrl": null,
+        "width": 810,
+        "bytes": 55984
+      }
+    ],
+    "specs": {
+      "fingerprint": null,
+      "batterySize": "3279 mAh",
+      "camera": "12MP Main + 12MP UltraWide",
+      "warranty": "1-Year Warranty",
+      "screen": "6.1-inch Super Retina XDR OLED",
+      "ram": "12GB",
+      "simType": "Physical Nano SIM + eSIM",
+      "chipset": "Apple A15 Bionic",
+      "os": "iOS 16",
+      "faceUnlock": null,
+      "accessories": "Original Box & Accessories"
+    },
+    "thumbnail": {
+      "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1790959732/milito_tech_products/milito_1790959732224_s3yuqv_snaptik-app-760739026173962165_1790959729678_mj24z.webp",
+      "public_id": "milito_tech_products/milito_1790959732224_s3yuqv_snaptik-app-760739026173962165_1790959729678_mj24z"
+    },
+    "brand": "Apple",
+    "featured": false,
+    "reviewsCount": 12,
+    "exteriorColor": null,
+    "vehicleStatus": null,
+    "description": "iPhone 14, Premium UK Used with 128GB storage, 12GB RAM, 4G network and Factory Unlocked. Battery health is 95% and Face ID is working. Device is tested and ready for use.",
+    "createdAt": "2026-10-02T16:48:57.428Z",
+    "galleryPublicIds": [
+      "milito_tech_products/milito_1790959732224_s3yuqv_snaptik-app-760739026173962165_1790959729678_mj24z"
+    ],
+    "availability": "In Stock",
+    "location": null,
+    "batteryHealth": "95%",
+    "quantity": 6,
+    "color": [],
+    "mileage": null,
+    "storageOptions": [
+      "128GB"
+    ],
+    "storage": [
+      "128GB"
+    ],
+    "condition": "Premium UK Used",
+    "faceId": "Working",
+    "rating": 4.9,
+    "transmission": null,
+    "updatedAt": "2026-10-02T16:51:30.594Z",
+    "fuelType": null,
+    "batteryCondition": null,
+    "id": "prod_1790959737428"
+  },
+  {
+    "featured": false,
+    "imagePublicId": "milito_tech_products/milito_1790960229637_otjy74_snaptik-app-764761916029759003_1790960222574_fate1",
+    "mileageNumber": null,
+    "color": [],
+    "bodyType": null,
+    "interiorColor": null,
+    "reviewsCount": 12,
+    "productType": "phone",
+    "documentation": null,
+    "gallery": [
+      "https://res.cloudinary.com/militotech/image/upload/v1790960230/milito_tech_products/milito_1790960229637_otjy74_snaptik-app-764761916029759003_1790960222574_fate1.jpg"
+    ],
+    "customBrand": null,
+    "availability": "In Stock",
+    "stockQuantity": 3,
+    "faceId": "Working",
+    "quantity": 3,
+    "location": null,
+    "brand": "Apple",
+    "specs": {
+      "ram": "",
+      "fingerprint": null,
+      "batterySize": "2815 mAh",
+      "os": "iOS 14",
+      "faceUnlock": null,
+      "screen": "6.1-inch Super Retina XDR OLED",
+      "warranty": "1-Year Warranty",
+      "accessories": "Original Box & Accessories",
+      "camera": "12MP Dual Main Camera",
+      "simType": "Physical Nano SIM + eSIM",
+      "chipset": "Apple A14 Bionic"
+    },
+    "driveType": null,
+    "year": null,
+    "fuelType": null,
+    "batteryHealthValue": null,
+    "transmission": null,
+    "originalPrice": 350000,
+    "network": "Factory Unlocked",
+    "rating": 4.9,
+    "customModel": null,
+    "deviceLockStatus": "Unlocked",
+    "colorOptions": [],
+    "description": "iPhone 12, Premium UK Used with 128GB storage, 4G network and Factory Unlocked. Face ID is working. Device is tested and ready for use.",
+    "galleryPublicIds": [
+      "milito_tech_products/milito_1790960229637_otjy74_snaptik-app-764761916029759003_1790960222574_fate1"
+    ],
+    "series": null,
+    "vehicleStatus": null,
+    "exteriorColor": null,
+    "condition": "Premium UK Used",
+    "galleryImages": [
+      {
+        "posterUrl": null,
+        "public_id": "milito_tech_products/milito_1790960229637_otjy74_snaptik-app-764761916029759003_1790960222574_fate1",
+        "bytes": 518509,
+        "width": 2158,
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1790960230/milito_tech_products/milito_1790960229637_otjy74_snaptik-app-764761916029759003_1790960222574_fate1.jpg",
+        "format": "jpg",
+        "original_filename": "snaptik-app-764761916029759003_1790960222574_fate1.jpg",
+        "created_at": "2026-10-02T16:57:10Z",
+        "height": 3836
+      }
+    ],
+    "batteryCondition": null,
+    "image": "https://res.cloudinary.com/militotech/image/upload/v1790960230/milito_tech_products/milito_1790960229637_otjy74_snaptik-app-764761916029759003_1790960222574_fate1.jpg",
+    "price": 290000,
+    "updatedAt": "2026-10-02T16:57:09.747Z",
+    "model": "iPhone 12",
+    "storageOptions": [
+      "128GB"
+    ],
+    "badge": "Grade A++",
+    "thumbnail": {
+      "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1790960230/milito_tech_products/milito_1790960229637_otjy74_snaptik-app-764761916029759003_1790960222574_fate1.jpg",
+      "public_id": "milito_tech_products/milito_1790960229637_otjy74_snaptik-app-764761916029759003_1790960222574_fate1"
+    },
+    "storage": [
+      "128GB"
+    ],
+    "batteryHealth": null,
+    "name": "iPhone 12",
+    "mileage": null,
+    "status": "In Stock",
+    "engine": null,
+    "createdAt": "2026-10-02T16:57:09.747Z",
+    "id": "prod_1790960229747"
+  },
+  {
+    "mileageNumber": null,
+    "featured": false,
+    "imagePublicId": "milito_tech_products/milito_1790960911553_856xuo_snaptik-app-756910198782899328_1790960908766_frpjl",
+    "createdAt": "2026-10-02T17:08:30.654Z",
+    "badge": "Grade A++",
+    "batteryHealthValue": "100%",
+    "interiorColor": null,
+    "bodyType": null,
+    "thumbnail": {
+      "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1790960912/milito_tech_products/milito_1790960911553_856xuo_snaptik-app-756910198782899328_1790960908766_frpjl.jpg",
+      "public_id": "milito_tech_products/milito_1790960911553_856xuo_snaptik-app-756910198782899328_1790960908766_frpjl"
+    },
+    "gallery": [
+      "https://res.cloudinary.com/militotech/image/upload/v1790960912/milito_tech_products/milito_1790960911553_856xuo_snaptik-app-756910198782899328_1790960908766_frpjl.jpg"
+    ],
+    "documentation": null,
+    "stockQuantity": 4,
+    "quantity": 4,
+    "galleryPublicIds": [
+      "milito_tech_products/milito_1790960911553_856xuo_snaptik-app-756910198782899328_1790960908766_frpjl"
+    ],
+    "name": "iPhone 13 Pro Max",
+    "updatedAt": "2026-10-02T17:08:30.654Z",
+    "faceId": "Working",
+    "location": null,
+    "condition": "Brand New",
+    "price": 620000,
+    "rating": 4.9,
+    "fuelType": null,
+    "model": "iPhone 13 Pro Max",
+    "description": "iPhone 13 Pro Max, Brand New with 256GB storage, 4G network and Factory Unlocked. Battery health is 100% and Face ID is working. Device is tested and ready for use.",
+    "batteryCondition": null,
+    "colorOptions": [],
+    "originalPrice": 650000,
+    "network": "Factory Unlocked",
+    "image": "https://res.cloudinary.com/militotech/image/upload/v1790960912/milito_tech_products/milito_1790960911553_856xuo_snaptik-app-756910198782899328_1790960908766_frpjl.jpg",
+    "specs": {
+      "screen": "6.7-inch Super Retina XDR OLED (120Hz ProMotion)",
+      "simType": "Physical Nano SIM + eSIM",
+      "chipset": "Apple A15 Bionic",
+      "accessories": "Original Box & Accessories",
+      "ram": "",
+      "warranty": "1-Year Warranty",
+      "camera": "12MP Triple Camera + LiDAR Scanner",
+      "batterySize": "4352 mAh",
+      "fingerprint": null,
+      "os": "iOS 15",
+      "faceUnlock": null
+    },
+    "series": null,
+    "brand": "Apple",
+    "customModel": null,
+    "transmission": null,
+    "vehicleStatus": null,
+    "exteriorColor": null,
+    "deviceLockStatus": "Unlocked",
+    "galleryImages": [
+      {
+        "bytes": 144561,
+        "original_filename": "snaptik-app-756910198782899328_1790960908766_frpjl.jpg",
+        "width": 1080,
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1790960912/milito_tech_products/milito_1790960911553_856xuo_snaptik-app-756910198782899328_1790960908766_frpjl.jpg",
+        "height": 1440,
+        "posterUrl": null,
+        "public_id": "milito_tech_products/milito_1790960911553_856xuo_snaptik-app-756910198782899328_1790960908766_frpjl",
+        "format": "jpg",
+        "created_at": "2026-10-02T17:08:32Z"
+      }
+    ],
+    "customBrand": null,
+    "driveType": null,
+    "availability": "In Stock",
+    "storageOptions": [
+      "256GB"
+    ],
+    "year": null,
+    "color": [],
+    "productType": "phone",
+    "reviewsCount": 12,
+    "engine": null,
+    "mileage": null,
+    "batteryHealth": "100%",
+    "status": "In Stock",
+    "storage": [
+      "256GB"
+    ],
+    "id": "prod_1790960910654"
+  },
+  {
+    "batteryHealthValue": null,
+    "color": [],
+    "batteryHealth": null,
+    "customBrand": null,
+    "fuelType": null,
+    "driveType": null,
+    "storage": [
+      "256GB"
+    ],
+    "mileage": null,
+    "batteryCondition": null,
+    "location": null,
+    "galleryPublicIds": [
+      "milito_tech_products/milito_1790961176851_zw6qdn_snaptik-app-756910198782899328_1790961173952_nx0cy"
+    ],
+    "quantity": 1,
+    "customModel": null,
+    "faceId": "Working",
+    "brand": "Apple",
+    "specs": {
+      "simType": "Physical Nano SIM + eSIM",
+      "accessories": "Original Box & Accessories",
+      "camera": "12MP Triple Camera + LiDAR Scanner",
+      "chipset": "Apple A15 Bionic",
+      "os": "iOS 15",
+      "screen": "6.7-inch Super Retina XDR OLED (120Hz ProMotion)",
+      "warranty": "1-Year Warranty",
+      "ram": "",
+      "fingerprint": null,
+      "faceUnlock": null,
+      "batterySize": "4352 mAh"
+    },
+    "galleryImages": [
+      {
+        "format": "jpg",
+        "original_filename": "snaptik-app-756910198782899328_1790961173952_nx0cy.jpg",
+        "created_at": "2026-10-02T17:12:57Z",
+        "public_id": "milito_tech_products/milito_1790961176851_zw6qdn_snaptik-app-756910198782899328_1790961173952_nx0cy",
+        "bytes": 98261,
+        "width": 1030,
+        "posterUrl": null,
+        "height": 1202,
+        "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1790961177/milito_tech_products/milito_1790961176851_zw6qdn_snaptik-app-756910198782899328_1790961173952_nx0cy.jpg"
+      }
+    ],
+    "year": null,
+    "colorOptions": [],
+    "bodyType": null,
+    "productType": "phone",
+    "rating": 4.9,
+    "featured": false,
+    "vehicleStatus": null,
+    "exteriorColor": null,
+    "network": "Factory Unlocked",
+    "availability": "In Stock",
+    "thumbnail": {
+      "public_id": "milito_tech_products/milito_1790961176851_zw6qdn_snaptik-app-756910198782899328_1790961173952_nx0cy",
+      "secure_url": "https://res.cloudinary.com/militotech/image/upload/v1790961177/milito_tech_products/milito_1790961176851_zw6qdn_snaptik-app-756910198782899328_1790961173952_nx0cy.jpg"
+    },
+    "originalPrice": 620000,
+    "series": null,
+    "price": 600000,
+    "stockQuantity": 1,
+    "model": "iPhone 13 Pro Max",
+    "createdAt": "2026-10-02T17:12:55.943Z",
+    "image": "https://res.cloudinary.com/militotech/image/upload/v1790961177/milito_tech_products/milito_1790961176851_zw6qdn_snaptik-app-756910198782899328_1790961173952_nx0cy.jpg",
+    "transmission": null,
+    "name": "iPhone 13 Pro Max",
+    "gallery": [
+      "https://res.cloudinary.com/militotech/image/upload/v1790961177/milito_tech_products/milito_1790961176851_zw6qdn_snaptik-app-756910198782899328_1790961173952_nx0cy.jpg"
+    ],
+    "description": "iPhone 13 Pro Max, Premium UK Used with 256GB storage, 4G network and Factory Unlocked. Face ID is working. Device is tested and ready for use.",
+    "deviceLockStatus": "Unlocked",
+    "storageOptions": [
+      "256GB"
+    ],
+    "badge": "Grade A++",
+    "condition": "Premium UK Used",
+    "documentation": null,
+    "mileageNumber": null,
+    "imagePublicId": "milito_tech_products/milito_1790961176851_zw6qdn_snaptik-app-756910198782899328_1790961173952_nx0cy",
+    "updatedAt": "2026-10-02T17:12:55.943Z",
+    "engine": null,
+    "interiorColor": null,
+    "reviewsCount": 12,
+    "status": "In Stock",
+    "id": "prod_1790961175943"
+  }
+]

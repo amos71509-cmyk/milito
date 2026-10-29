@@ -3,11 +3,7 @@ import {
   Car,
   ArrowRight,
   ShieldCheck,
-  FileCheck2,
-  Calculator,
-  Sparkles,
-  ChevronLeft,
-  ChevronRight
+  FileCheck2
 } from "lucide-react";
 import { useVehicleShowcase } from "../context/VehicleShowcaseContext";
 
@@ -139,21 +135,34 @@ export default function VehicleShowcaseBanner({
       <div className="absolute inset-0 w-full h-full overflow-hidden select-none pointer-events-none z-0">
         {activeItems.map((item, index) => {
           const isCurrent = index === currentIndex;
+          let isSlowNetwork = false;
+          try {
+            const conn = typeof navigator !== "undefined" ? (navigator as any).connection : null;
+            if (conn && (conn.saveData || conn.effectiveType === "slow-2g" || conn.effectiveType === "2g" || conn.effectiveType === "3g")) {
+              isSlowNetwork = true;
+            }
+          } catch {}
+
           const isVideo =
-            item.type === "video" ||
-            /\.(mp4|webm|mov|mkv|m4v|avi)(\?.*)?$/i.test(item.url || "") ||
-            (item.url || "").includes("/video/");
+            !isSlowNetwork &&
+            (item.type === "video" ||
+              /\.(mp4|webm|mov|mkv|m4v|avi)(\?.*)?$/i.test(item.url || "") ||
+              (item.url || "").includes("/video/"));
+
+          const optimizeShowcaseImg = (raw: string) => {
+            if (!raw) return "";
+            if (raw.includes("images.unsplash.com")) {
+              return raw.replace(/w=\d+/g, isSlowNetwork ? "w=540" : "w=960").replace(/q=\d+/g, isSlowNetwork ? "q=60" : "q=75");
+            }
+            return raw;
+          };
 
           return (
             <div
               key={item.id}
-              className={`absolute inset-0 w-full h-full transition-opacity duration-1000 ease-in-out ${
+              className={`absolute inset-0 w-full h-full transition-opacity duration-500 ease-in-out ${
                 isCurrent ? "opacity-100 z-10 scale-100" : "opacity-0 z-0 scale-105 pointer-events-none"
               }`}
-              style={{
-                transitionProperty: "opacity, transform",
-                transitionDuration: config.transitionType === "fade" ? "1200ms" : "800ms"
-              }}
             >
               {isVideo ? (
                 <div className="w-full h-full relative overflow-hidden bg-black">
@@ -166,12 +175,12 @@ export default function VehicleShowcaseBanner({
                       }
                     }}
                     src={item.url}
-                    poster={item.posterUrl}
+                    poster={optimizeShowcaseImg(item.posterUrl || "")}
                     muted={isMuted}
-                    autoPlay={true}
+                    autoPlay={isCurrent}
                     loop={true}
                     playsInline={true}
-                    preload="auto"
+                    preload={isCurrent ? "metadata" : "none"}
                     onLoadedData={() => {
                       setVideoLoaded((prev) => ({ ...prev, [item.id]: true }));
                       const el = videoRefs.current[item.id];
@@ -190,8 +199,10 @@ export default function VehicleShowcaseBanner({
                   {/* Poster fallback displayed only while video initializes */}
                   {item.posterUrl && !videoLoaded[item.id] && (
                     <img
-                      src={item.posterUrl}
+                      src={optimizeShowcaseImg(item.posterUrl)}
                       alt={item.title || "Vehicle Preview"}
+                      loading="lazy"
+                      decoding="async"
                       className="w-full h-full object-cover absolute inset-0 z-0 opacity-80"
                       referrerPolicy="no-referrer"
                     />
@@ -199,21 +210,17 @@ export default function VehicleShowcaseBanner({
                 </div>
               ) : (
                 <img
-                  src={item.url}
+                  src={optimizeShowcaseImg(item.posterUrl || item.url)}
                   alt={item.title || "Vehicle Showcase"}
                   className="w-full h-full object-cover absolute inset-0"
-                  loading={index === 0 ? "eager" : "lazy"}
+                  loading="lazy"
+                  decoding="async"
                   referrerPolicy="no-referrer"
                 />
               )}
             </div>
           );
         })}
-
-        {/* Hidden preloader for next slide media to guarantee seamless transitions */}
-        {nextItem && nextItem.type === "image" && (
-          <img src={nextItem.url} alt="preload" className="hidden" loading="eager" referrerPolicy="no-referrer" />
-        )}
 
         {/* 2. RICH DARK GRADIENT OVERLAYS FOR CRISP READABILITY & CONTRAST */}
         {/* Balanced Dark Mask for Centered Readability */}
@@ -273,23 +280,9 @@ export default function VehicleShowcaseBanner({
             </div>
           </div>
 
-          {/* Slide Navigation Controls & Interactive Dots (Centered) */}
+          {/* Progress Dots (Centered) */}
           {activeItems.length > 1 && (
-            <div className="pt-4 flex items-center justify-center gap-3">
-              {/* Previous Slide Button */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setCurrentIndex((prev) => (prev - 1 + activeItems.length) % activeItems.length);
-                }}
-                className="w-9 h-9 rounded-xl bg-black/70 hover:bg-black/90 border border-white/20 flex items-center justify-center text-white transition-all cursor-pointer shadow-md"
-                title="Previous Slide"
-                aria-label="Previous Slide"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-
-              {/* Progress Dots */}
+            <div className="pt-4 flex items-center justify-center">
               <div className="flex items-center gap-1.5 bg-black/60 px-3 py-2 rounded-xl border border-white/15">
                 {activeItems.map((_, idx) => (
                   <button
@@ -308,19 +301,6 @@ export default function VehicleShowcaseBanner({
                   />
                 ))}
               </div>
-
-              {/* Next Slide Button */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setCurrentIndex((prev) => (prev + 1) % activeItems.length);
-                }}
-                className="w-9 h-9 rounded-xl bg-black/70 hover:bg-black/90 border border-white/20 flex items-center justify-center text-white transition-all cursor-pointer shadow-md"
-                title="Next Slide"
-                aria-label="Next Slide"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
             </div>
           )}
         </div>

@@ -1,7 +1,7 @@
 import React from "react";
 import { ArrowRight, ShoppingBag, Sparkles, Smartphone, Tablet, Watch } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
-import { useDiscoveryCards, DiscoveryCardId } from "../context/DiscoveryCardsContext";
+import { useDiscoveryCards, DiscoveryCardId, STATIC_DISCOVERY_CARD_IMAGES } from "../context/DiscoveryCardsContext";
 
 interface HomepageProductTeaserProps {
   onExploreStore: () => void;
@@ -23,13 +23,12 @@ export default function HomepageProductTeaser({
   const { config } = useDiscoveryCards();
 
   return (
-    <section className="py-16 sm:py-20 bg-white border-b border-gray-150 relative" id="product-teaser">
+    <section className="py-12 sm:py-20 bg-white border-b border-gray-150 relative" id="product-teaser">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 sm:mb-12 gap-5">
           <div>
-
             <motion.h2
               initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 10 }}
               whileInView={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
@@ -63,32 +62,43 @@ export default function HomepageProductTeaser({
           </motion.div>
         </div>
 
-        {/* The 4 Category Discovery Cards in exact same grid dimensions and card structure */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-5 items-start">
+        {/* The 4 Category Discovery Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-5 items-stretch">
           {CATEGORIES_LIST.map((item) => {
             const cardData = config.cards[item.id];
             const title = cardData?.title || item.defaultTitle;
-            const imageUrl = cardData?.imageUrl || "";
+            const fallbackSrc = STATIC_DISCOVERY_CARD_IMAGES[item.id];
+            const rawUrl = cardData?.imageUrl || fallbackSrc;
+            const imageUrl = rawUrl.startsWith("data:image/jpeg;base64,UklGR")
+              ? rawUrl.replace("data:image/jpeg;base64,", "data:image/webp;base64,")
+              : rawUrl;
             const Icon = item.icon;
 
             return (
               <div
                 key={item.id}
                 onClick={() => onSelectCategory(item.id)}
-                className="group relative bg-white rounded-3xl overflow-hidden border border-gray-250 hover:border-[#00B14F]/50 shadow-md hover:shadow-xl transition-all duration-300 flex flex-col will-change-transform cursor-pointer"
+                className="group relative bg-white rounded-2xl sm:rounded-3xl overflow-hidden border border-gray-200 hover:border-[#00B14F]/50 shadow-md hover:shadow-xl transition-all duration-300 flex flex-col cursor-pointer"
               >
-                {/* 1:1 Aspect Ratio Image Container */}
-                <div className="w-full aspect-square relative bg-gray-100 overflow-hidden group-hover:bg-gray-200 transition-colors flex items-center justify-center">
+                {/* 1:1 Aspect Ratio Image Container with explicit mobile height guarantee */}
+                <div className="w-full aspect-square min-h-[145px] relative bg-gray-100 overflow-hidden group-hover:bg-gray-200 transition-colors shrink-0">
                   {imageUrl ? (
                     <img
                       src={imageUrl}
                       alt={title}
-                      loading="lazy"
+                      loading="eager"
                       decoding="async"
-                      className="w-full h-full object-cover block transition-transform duration-300 group-hover:scale-105"
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        const target = e.currentTarget;
+                        if (fallbackSrc && target.src !== window.location.origin + fallbackSrc) {
+                          target.src = fallbackSrc;
+                        }
+                      }}
+                      className="absolute inset-0 w-full h-full object-cover block transition-transform duration-300 group-hover:scale-105"
                     />
                   ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 text-gray-400 p-4 text-center select-none">
+                    <div className="absolute inset-0 w-full h-full flex flex-col items-center justify-center bg-gray-50 text-gray-400 p-4 text-center select-none">
                       <div className="w-12 h-12 rounded-2xl bg-gray-200/80 flex items-center justify-center mb-2 text-gray-400 group-hover:text-[#00B14F] group-hover:bg-[#00B14F]/10 transition-colors">
                         <Icon className="w-6 h-6 stroke-[1.5]" />
                       </div>
@@ -98,13 +108,13 @@ export default function HomepageProductTeaser({
                   )}
 
                   {/* Subtle click cue on hover */}
-                  <div className="absolute inset-x-0 bottom-0 bg-[#1A2025]/90 backdrop-blur-xs py-1.5 text-center text-[10px] font-bold text-gray-200 opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0 duration-300">
+                  <div className="hidden sm:block absolute inset-x-0 bottom-0 bg-[#1A2025]/90 backdrop-blur-xs py-1.5 text-center text-[10px] font-bold text-gray-200 opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0 duration-300 z-10">
                     Click to Browse
                   </div>
                 </div>
 
                 {/* Category Phrase Only */}
-                <div className="p-3 sm:p-4 text-center bg-white flex items-center justify-center min-h-[56px] border-t border-gray-100">
+                <div className="p-3 sm:p-4 text-center bg-white flex items-center justify-center min-h-[52px] sm:min-h-[56px] border-t border-gray-100 flex-1">
                   <h3 className="font-extrabold text-xs sm:text-sm md:text-base text-gray-900 group-hover:text-[#00B14F] transition-colors leading-snug">
                     {title}
                   </h3>

@@ -1,40 +1,40 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { ShieldAlert, CreditCard, ChevronDown, Award, Star, ArrowRight, ArrowLeft, ShieldCheck, Play, Sparkles, Truck, RefreshCw, Search, SlidersHorizontal, Trash2, X, ChevronLeft, ChevronRight, Car } from "lucide-react";
+import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense, lazy } from "react";
+import { ChevronDown, ArrowRight, ArrowLeft, ShieldCheck, Truck, RefreshCw, X } from "lucide-react";
 import { motion } from "motion/react";
 
-// Components
+// Critical above-the-fold components
 import Header from "./components/Header";
 import HomepageProductTeaser from "./components/HomepageProductTeaser";
-import HomepageAutomotiveTeaser from "./components/HomepageAutomotiveTeaser";
-import StorePage from "./components/StorePage";
-import ProductCard from "./components/ProductCard";
-import ProductDetailsModal from "./components/ProductDetailsModal";
-import SwapDealsSection from "./components/SwapDealsSection";
-import SwapDealsPage from "./components/SwapDealsPage";
-import MilitoQCSection from "./components/MilitoQCSection";
-import VehicleImport from "./components/VehicleImport";
-import VehiclesPage from "./components/VehiclesPage";
-import VehicleCalloutBanner from "./components/VehicleCalloutBanner";
 import VehicleShowcaseBanner from "./components/VehicleShowcaseBanner";
-import PublicTestimonialsSection from "./components/testimonials/PublicTestimonialsSection";
-import FinalCtaSection from "./components/FinalCtaSection";
 import Footer from "./components/Footer";
 import MobileBottomNav from "./components/MobileBottomNav";
-import OrderTrackerModal from "./components/OrderTrackerModal";
-import CheckoutModal from "./components/CheckoutModal";
-import SupportChat from "./components/SupportChat";
-import { SiteConfig } from "./components/CustomizerDashboard";
-import AdminDashboard from "./components/AdminDashboard";
-import CategoryShoppingPage, { CategoryKey } from "./components/CategoryShoppingPage";
-import PublicProductPage from "./components/PublicProductPage";
-import ShareProductModal from "./components/ShareProductModal";
-import { NotifyMeModal } from "./components/NotifyMeModal";
+import type { SiteConfig } from "./components/CustomizerDashboard";
+import type { CategoryKey } from "./components/CategoryShoppingPage";
 import { generateProductShareUrl } from "./utils/productUrl";
 
+import StorePage from "./components/StorePage";
+import VehiclesPage from "./components/VehiclesPage";
+import SwapDealsPage from "./components/SwapDealsPage";
+import CategoryShoppingPage from "./components/CategoryShoppingPage";
+import PublicProductPage from "./components/PublicProductPage";
+import SwapDealsSection from "./components/SwapDealsSection";
+import MilitoQCSection from "./components/MilitoQCSection";
+import PublicTestimonialsSection from "./components/testimonials/PublicTestimonialsSection";
+import FinalCtaSection from "./components/FinalCtaSection";
+import ProductDetailsModal from "./components/ProductDetailsModal";
+
+// Lazy-loaded secondary modals & admin dashboard
+const OrderTrackerModal = lazy(() => import("./components/OrderTrackerModal"));
+const CheckoutModal = lazy(() => import("./components/CheckoutModal"));
+const SupportChat = lazy(() => import("./components/SupportChat"));
+const AdminDashboard = lazy(() => import("./components/AdminDashboard"));
+const ShareProductModal = lazy(() => import("./components/ShareProductModal"));
+const NotifyMeModal = lazy(() => import("./components/NotifyMeModal").then((m) => ({ default: m.NotifyMeModal })));
+
 // Types & Data
-import { Product, ProductAlertType, CartItem, resolveImageUrl, extractProductOriginalImages, getImageCanonicalKey } from "./types";
-import { SAMPLE_PRODUCTS, TESTIMONIALS, FAQS } from "./data";
-import { UploadService } from "./services/UploadService";
+import { Product, ProductAlertType, CartItem, resolveImageUrl, getImageCanonicalKey } from "./types";
+import { SAMPLE_PRODUCTS, FAQS } from "./data";
+import liveCatalogSnapshot from "./data/liveCatalogSnapshot.json";
 import { searchStoreProducts } from "./utils/searchUtils";
 import { DiscoveryCardId } from "./context/DiscoveryCardsContext";
 import {
@@ -66,7 +66,9 @@ const DEFAULT_CONFIG: SiteConfig = {
     glowIntensity: 4,
     particleCount: 15
   },
-  products: SAMPLE_PRODUCTS,
+  products: (Array.isArray(liveCatalogSnapshot) && liveCatalogSnapshot.length > 0
+    ? (liveCatalogSnapshot as unknown as Product[])
+    : SAMPLE_PRODUCTS),
   animationMedia: {
     useCustomShowcase: false,
     type: "image",
@@ -395,22 +397,28 @@ export default function App() {
   });
 
   useEffect(() => {
-    try {
-      localStorage.setItem("milito_tech_site_config", JSON.stringify(config));
-    } catch (e) {
-      console.error("Storage save failed:", e);
-    }
+    const saveTimer = setTimeout(() => {
+      try {
+        localStorage.setItem("milito_tech_site_config", JSON.stringify(config));
+      } catch (e) {
+        // Ignore storage quota warnings on constrained mobile devices
+      }
+    }, 600);
+    return () => clearTimeout(saveTimer);
   }, [config]);
 
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
+    let isCancelled = false;
 
-    const setupLiveCatalogSync = async () => {
+    const timer = setTimeout(async () => {
+      if (isCancelled) return;
       try {
         const { db, isFirebasePlaceholder } = await import("./lib/firebase");
-        if (isFirebasePlaceholder || !db) return;
+        if (isCancelled || isFirebasePlaceholder || !db) return;
 
         const { collection, onSnapshot, query } = await import("firebase/firestore");
+        if (isCancelled) return;
         const qProduct = query(collection(db, "product"));
         const qProducts = query(collection(db, "products"));
 
@@ -637,23 +645,23 @@ export default function App() {
           unsub1();
           unsub2();
         };
-
-        // Asynchronously check and clean up any historical Firestore documents with duplicated gallery items
-        UploadService.cleanAndDeduplicateFirestoreProducts(db).then((cleaned) => {
-          if (cleaned > 0) {
-            console.log(`[UploadService] Cleaned and deduplicated ${cleaned} Firestore catalog items.`);
-          }
-        }).catch(() => {
-          // ignore
-        });
       } catch (err) {
         console.error("Failed to sync live catalog on boot:", err);
       }
-    };
+    }, 180);
 
-    setupLiveCatalogSync();
+    // Prefetch primary experience chunks in idle time after initial paint so navigation is instant
+    const prefetchTimer = setTimeout(() => {
+      if (isCancelled) return;
+      import("./components/StorePage").catch(() => {});
+      import("./components/VehiclesPage").catch(() => {});
+      import("./components/SwapDealsSection").catch(() => {});
+    }, 450);
 
     return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+      clearTimeout(prefetchTimer);
       if (unsubscribe) unsubscribe();
     };
   }, []);
@@ -691,28 +699,39 @@ export default function App() {
 
   const [cart, setCart] = useState<CartItem[]>([]);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [shouldLoadHeroVideo, setShouldLoadHeroVideo] = useState(false);
 
   useEffect(() => {
+    // Skip heavy background MP4 download on 2G / 3G / Data Saver so bandwidth goes 100% to fast browsing
+    try {
+      const conn = typeof navigator !== "undefined" ? (navigator as any).connection : null;
+      if (conn && (conn.saveData || conn.effectiveType === "slow-2g" || conn.effectiveType === "2g" || conn.effectiveType === "3g")) {
+        return;
+      }
+    } catch {}
+
+    const vidTimer = setTimeout(() => {
+      setShouldLoadHeroVideo(true);
+    }, 300);
+    return () => clearTimeout(vidTimer);
+  }, []);
+
+  useEffect(() => {
+    if (!shouldLoadHeroVideo) return;
     const video = videoRef.current;
     if (video) {
       video.muted = true;
       video.playsInline = true;
       video.autoplay = true;
 
-      // Try playing immediately
-      video.play().catch((err) => {
-        console.log("Background video auto-play prevented initially:", err);
-      });
+      video.play().catch(() => {});
 
       const playVideo = () => {
         if (video) {
-          video.play().catch((err) => {
-            console.log("Video play attempt failed on user interaction:", err);
-          });
+          video.play().catch(() => {});
         }
       };
 
-      // Add fallback listeners to trigger playback upon the first mouse move, click, or scroll
       window.addEventListener("click", playVideo, { once: true });
       window.addEventListener("touchstart", playVideo, { once: true });
       window.addEventListener("scroll", playVideo, { once: true });
@@ -725,7 +744,7 @@ export default function App() {
         window.removeEventListener("mousemove", playVideo);
       };
     }
-  }, []);
+  }, [shouldLoadHeroVideo]);
   const [selectedProductDetails, setSelectedProductDetails] = useState<Product | null>(null);
   
   // Modals state
@@ -1023,36 +1042,65 @@ export default function App() {
 
   const isInitialGatewayView = !publicProductRoute && !activeCategory && activePage === "gateway";
 
-  // Horizontal Gateway Carousel state (0 = Shop Gadgets, 1 = Explore Cars) — manual user swipe only
+  // Horizontal Gateway Carousel state (0 = Shop Gadgets, 1 = Explore Cars) — user swipe left or right
   const [gatewaySlideIndex, setGatewaySlideIndex] = useState<0 | 1>(0);
   const [gatewayDragOffset, setGatewayDragOffset] = useState<number>(0);
   const [isGatewayDragging, setIsGatewayDragging] = useState<boolean>(false);
   const gatewayDragStartXRef = useRef<number | null>(null);
+  const gatewayDragStartYRef = useRef<number | null>(null);
+  const gatewayDragDeltaXRef = useRef<number>(0);
+  const gatewayIsDraggingRef = useRef<boolean>(false);
+  const gatewayAxisLockedRef = useRef<"x" | "y" | null>(null);
   const gatewayWheelCooldownRef = useRef<number>(0);
 
-  const handleGatewayDragStart = (clientX: number) => {
+  const handleGatewayDragStart = (clientX: number, clientY: number) => {
     gatewayDragStartXRef.current = clientX;
-    setIsGatewayDragging(true);
+    gatewayDragStartYRef.current = clientY;
+    gatewayDragDeltaXRef.current = 0;
+    gatewayAxisLockedRef.current = null;
+    gatewayIsDraggingRef.current = true;
     setGatewayDragOffset(0);
   };
 
-  const handleGatewayDragMove = (clientX: number) => {
-    if (!isGatewayDragging || gatewayDragStartXRef.current === null) return;
+  const handleGatewayDragMove = (clientX: number, clientY: number) => {
+    if (!gatewayIsDraggingRef.current || gatewayDragStartXRef.current === null || gatewayDragStartYRef.current === null) {
+      return;
+    }
     const deltaX = clientX - gatewayDragStartXRef.current;
-    setGatewayDragOffset(deltaX);
+    const deltaY = clientY - gatewayDragStartYRef.current;
+
+    if (gatewayAxisLockedRef.current === null) {
+      if (Math.abs(deltaX) < 6 && Math.abs(deltaY) < 6) return;
+      if (Math.abs(deltaX) >= Math.abs(deltaY) * 0.75) {
+        gatewayAxisLockedRef.current = "x";
+        setIsGatewayDragging(true);
+      } else {
+        gatewayAxisLockedRef.current = "y";
+        return;
+      }
+    }
+
+    if (gatewayAxisLockedRef.current === "x") {
+      gatewayDragDeltaXRef.current = deltaX;
+      setGatewayDragOffset(deltaX);
+    }
   };
 
   const handleGatewayDragEnd = () => {
-    if (!isGatewayDragging) return;
-    const threshold = 50; // minimum px swipe to change slide
-    if (gatewayDragOffset < -threshold) {
-      // Swiped left -> next slide (or wrap)
+    if (!gatewayIsDraggingRef.current) return;
+    const deltaX = gatewayDragDeltaXRef.current;
+    const threshold = 35; // responsive px swipe left or right to switch hero slide
+
+    if (gatewayAxisLockedRef.current === "x" && Math.abs(deltaX) >= threshold) {
+      // Swipe left or right switches to the other hero slide
       setGatewaySlideIndex((prev) => (prev === 0 ? 1 : 0));
-    } else if (gatewayDragOffset > threshold) {
-      // Swiped right -> previous slide (or wrap)
-      setGatewaySlideIndex((prev) => (prev === 1 ? 0 : 1));
     }
+
+    gatewayIsDraggingRef.current = false;
     gatewayDragStartXRef.current = null;
+    gatewayDragStartYRef.current = null;
+    gatewayDragDeltaXRef.current = 0;
+    gatewayAxisLockedRef.current = null;
     setGatewayDragOffset(0);
     setIsGatewayDragging(false);
   };
@@ -1067,17 +1115,20 @@ export default function App() {
       }`}
       id="hero"
     >
-      {/* Background video */}
+      {/* Background video loaded after first paint */}
       <div className="absolute inset-0 z-0 overflow-hidden select-none pointer-events-none">
-        <video
-          ref={videoRef}
-          src="https://res.cloudinary.com/militotech/video/upload/v1782058769/9f6ae906f73ccfec6f37203801e8eb81_720w_l1qwvu.mp4"
-          autoPlay={true}
-          loop={true}
-          muted={true}
-          playsInline={true}
-          className="w-full h-full object-cover opacity-45 transition-opacity duration-1000"
-        />
+        {shouldLoadHeroVideo && (
+          <video
+            ref={videoRef}
+            src="https://res.cloudinary.com/militotech/video/upload/v1782058769/9f6ae906f73ccfec6f37203801e8eb81_720w_l1qwvu.mp4"
+            autoPlay={true}
+            loop={true}
+            muted={true}
+            playsInline={true}
+            preload="metadata"
+            className="w-full h-full object-cover opacity-45 transition-opacity duration-1000"
+          />
+        )}
         {/* Protecting layer - balanced for high contrast with hero text */}
         <div className="absolute inset-0 bg-[#1A2025]/30"></div>
       </div>
@@ -1293,269 +1344,244 @@ export default function App() {
         />
       )}
 
-      {publicProductRoute ? (
-        <PublicProductPage
-          product={activePublicProduct}
-          allProducts={config.products}
-          trafficSource={publicProductRoute.source}
-          onNavigateHome={() =>
-            handleClosePublicProductPage(activePublicProduct?.productType === "vehicle" ? "vehicles" : "gadgets")
-          }
-          onNavigateStore={() =>
-            handleClosePublicProductPage(activePublicProduct?.productType === "vehicle" ? "vehicles" : "store")
-          }
-          onSelectProduct={(p) => {
-            handleOpenPublicProductPage(p, publicProductRoute.source);
-          }}
-          onAddToCart={handleAddToCart}
-          onOpenCart={() => setIsCartOpen(true)}
-          onOrderNow={(prod, storage, color, price, src) => {
-            handleBuyNowProtectedOrder(prod, storage, color, price, src || publicProductRoute.source);
-          }}
-          onSwapForThis={handleSwapForThis}
-          onShare={handleShareProduct}
-          onNotifyMe={handleOpenNotifyMe}
-        />
-      ) : activeCategory ? (
-        <CategoryShoppingPage
-          category={activeCategory}
-          products={config.products}
-          compareList={compareList}
-          onToggleCompare={toggleCompare}
-          onOpenDetails={handleOpenProductDetails}
-          onQuickAdd={handleQuickAdd}
-          onShareProduct={handleShareProduct}
-          onBackToHome={() => {
-            setActiveCategory(null);
-            handleNavigatePage("gadgets");
-          }}
-          onSelectCategory={(cat) => {
-            setActiveCategory(cat);
-          }}
-          onOpenCart={() => setIsCartOpen(true)}
-        />
-      ) : activePage === "gateway" ? (
-        /* INITIAL TWO-OPTION HORIZONTAL GATEWAY CAROUSEL: Side-by-side slides swiped manually by the user */
-        <main
-          className="relative w-full min-h-screen overflow-hidden bg-[#070A10] select-none touch-pan-y cursor-grab active:cursor-grabbing"
-          onTouchStart={(e) => {
-            if (e.touches && e.touches[0]) {
-              handleGatewayDragStart(e.touches[0].clientX);
+      <Suspense fallback={<div className="min-h-[60vh] bg-white" />}>
+        {publicProductRoute ? (
+          <PublicProductPage
+            product={activePublicProduct}
+            allProducts={config.products}
+            trafficSource={publicProductRoute.source}
+            onNavigateHome={() =>
+              handleClosePublicProductPage(activePublicProduct?.productType === "vehicle" ? "vehicles" : "gadgets")
             }
-          }}
-          onTouchMove={(e) => {
-            if (e.touches && e.touches[0]) {
-              handleGatewayDragMove(e.touches[0].clientX);
+            onNavigateStore={() =>
+              handleClosePublicProductPage(activePublicProduct?.productType === "vehicle" ? "vehicles" : "store")
             }
-          }}
-          onTouchEnd={handleGatewayDragEnd}
-          onTouchCancel={handleGatewayDragEnd}
-          onMouseDown={(e) => {
-            // Ignore clicks on buttons so CTAs fire normally
-            if ((e.target as HTMLElement).closest("button, a")) return;
-            handleGatewayDragStart(e.clientX);
-          }}
-          onMouseMove={(e) => {
-            handleGatewayDragMove(e.clientX);
-          }}
-          onMouseUp={handleGatewayDragEnd}
-          onMouseLeave={handleGatewayDragEnd}
-          onWheel={(e) => {
-            if (Math.abs(e.deltaX) > 35 && Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
-              const now = Date.now();
-              if (now - gatewayWheelCooldownRef.current > 600) {
-                gatewayWheelCooldownRef.current = now;
-                if (e.deltaX > 0) {
-                  setGatewaySlideIndex(1);
-                } else {
-                  setGatewaySlideIndex(0);
+            onSelectProduct={(p) => {
+              handleOpenPublicProductPage(p, publicProductRoute.source);
+            }}
+            onAddToCart={handleAddToCart}
+            onOpenCart={() => setIsCartOpen(true)}
+            onOrderNow={(prod, storage, color, price, src) => {
+              handleBuyNowProtectedOrder(prod, storage, color, price, src || publicProductRoute.source);
+            }}
+            onSwapForThis={handleSwapForThis}
+            onShare={handleShareProduct}
+            onNotifyMe={handleOpenNotifyMe}
+          />
+        ) : activeCategory ? (
+          <CategoryShoppingPage
+            category={activeCategory}
+            products={config.products}
+            compareList={compareList}
+            onToggleCompare={toggleCompare}
+            onOpenDetails={handleOpenProductDetails}
+            onQuickAdd={handleQuickAdd}
+            onShareProduct={handleShareProduct}
+            onBackToHome={() => {
+              setActiveCategory(null);
+              handleNavigatePage("gadgets");
+            }}
+            onSelectCategory={(cat) => {
+              setActiveCategory(cat);
+            }}
+            onOpenCart={() => setIsCartOpen(true)}
+          />
+        ) : activePage === "gateway" ? (
+          /* INITIAL TWO-OPTION HORIZONTAL GATEWAY CAROUSEL: Side-by-side slides swiped left or right by the user */
+          <main
+            className="relative w-full min-h-screen overflow-hidden bg-[#070A10] select-none touch-pan-y cursor-grab active:cursor-grabbing"
+            onTouchStart={(e) => {
+              if (e.touches && e.touches[0]) {
+                handleGatewayDragStart(e.touches[0].clientX, e.touches[0].clientY);
+              }
+            }}
+            onTouchMove={(e) => {
+              if (e.touches && e.touches[0]) {
+                handleGatewayDragMove(e.touches[0].clientX, e.touches[0].clientY);
+              }
+            }}
+            onTouchEnd={handleGatewayDragEnd}
+            onTouchCancel={handleGatewayDragEnd}
+            onMouseDown={(e) => {
+              if ((e.target as HTMLElement).closest("button, a")) return;
+              handleGatewayDragStart(e.clientX, e.clientY);
+            }}
+            onMouseMove={(e) => {
+              handleGatewayDragMove(e.clientX, e.clientY);
+            }}
+            onMouseUp={handleGatewayDragEnd}
+            onMouseLeave={handleGatewayDragEnd}
+            onWheel={(e) => {
+              if (Math.abs(e.deltaX) > 30 && Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+                const now = Date.now();
+                if (now - gatewayWheelCooldownRef.current > 500) {
+                  gatewayWheelCooldownRef.current = now;
+                  setGatewaySlideIndex((prev) => (prev === 0 ? 1 : 0));
                 }
               }
-            }
-          }}
-        >
-          {/* Horizontal Flex Track containing the two Hero Carousels side-by-side */}
-          <div
-            className={`flex flex-row w-full min-h-screen items-stretch will-change-transform ${
-              isGatewayDragging ? "transition-none" : "transition-transform duration-700 ease-out"
-            }`}
-            style={{
-              transform: `translate3d(calc(-${gatewaySlideIndex * 100}% + ${gatewayDragOffset}px), 0, 0)`,
             }}
           >
-            {/* Slide 1: Shop Gadgets Hero Carousel */}
-            <div className="w-full min-w-full min-h-screen flex-shrink-0 flex flex-col">
-              {renderGadgetHeroCarousel(true)}
-            </div>
-
-            {/* Slide 2: Explore Cars Hero Carousel */}
-            <div className="w-full min-w-full min-h-screen flex-shrink-0 flex flex-col">
-              <VehicleShowcaseBanner
-                isGatewayMode={true}
-                onExploreVehicles={() => handleNavigatePage("vehicles")}
-                onOpenEstimator={() => handleNavigatePage("vehicles", "vehicle-import")}
-                vehicleCount={vehicleProducts.length}
-              />
-            </div>
-          </div>
-
-          {/* Manual Side-by-Side Slide Arrows for easy swiping/switching between the two carousels */}
-          {gatewaySlideIndex === 1 && (
-            <button
-              type="button"
-              onClick={() => setGatewaySlideIndex(0)}
-              aria-label="Previous Carousel Slide"
-              className="fixed left-3 sm:left-5 top-1/2 -translate-y-1/2 z-50 w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/65 hover:bg-black/90 text-white border border-white/25 backdrop-blur-md flex items-center justify-center shadow-[0_8px_25px_rgba(0,0,0,0.5)] transition-all cursor-pointer active:scale-95"
+            {/* Horizontal Flex Track containing the two Hero Carousels side-by-side */}
+            <div
+              className={`flex flex-row w-full min-h-screen items-stretch will-change-transform ${
+                isGatewayDragging ? "transition-none" : "transition-transform duration-250 ease-out"
+              }`}
+              style={{
+                transform: `translate3d(calc(-${gatewaySlideIndex * 100}% + ${gatewayDragOffset}px), 0, 0)`,
+              }}
             >
-              <ChevronLeft className="w-6 h-6" />
-            </button>
-          )}
-          {gatewaySlideIndex === 0 && (
-            <button
-              type="button"
-              onClick={() => setGatewaySlideIndex(1)}
-              aria-label="Next Carousel Slide"
-              className="fixed right-3 sm:right-5 top-1/2 -translate-y-1/2 z-50 w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/65 hover:bg-black/90 text-white border border-white/25 backdrop-blur-md flex items-center justify-center shadow-[0_8px_25px_rgba(0,0,0,0.5)] transition-all cursor-pointer active:scale-95"
-            >
-              <ChevronRight className="w-6 h-6" />
-            </button>
-          )}
-        </main>
-      ) : activePage === "vehicles" ? (
-        /* CAR-ONLY HOMEPAGE */
-        <VehiclesPage
-          vehicles={vehicleProducts}
-          compareList={compareList}
-          onToggleCompare={toggleCompare}
-          onOpenDetails={handleOpenProductDetails}
-          onQuickAdd={handleQuickAdd}
-          onBackToGadgets={() => handleNavigatePage("gateway")}
-          onScrollToSection={handleScrollToSection}
-          onShareProduct={handleShareProduct}
-        />
-      ) : activePage === "swap-deals" ? (
-        <SwapDealsPage
-          onBack={handleBackFromSwapDeals}
-          products={phoneProducts}
-          initialTargetProduct={swapTargetProduct}
-          onClearTargetProduct={() => setSwapTargetProduct(null)}
-        />
-      ) : activePage === "store" ? (
-        <StorePage
-          products={phoneProducts}
-          compareList={compareList}
-          onToggleCompare={toggleCompare}
-          onOpenDetails={handleOpenProductDetails}
-          onQuickAdd={handleQuickAdd}
-          initialSearch={storeInitialSearch}
-          initialBrand={storeInitialBrand}
-          onShareProduct={handleShareProduct}
-        />
-      ) : (
-        /* GADGET-ONLY HOMEPAGE (Starts directly with Main Homepage sections — Hero Carousel is NOT repeated) */
-        <>
-          {/* Plain text link with clear arrow allowing the user to revisit the Main Carousel */}
-          <div id="hero" className="bg-white pt-5 pb-1 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-7xl mx-auto">
-              <button
-                type="button"
-                onClick={() => handleNavigatePage("gateway")}
-                className="inline-flex items-center gap-2 text-sm sm:text-base font-extrabold text-[#1A2025] hover:text-milito-green transition-colors cursor-pointer group bg-transparent border-0 p-0 shadow-none"
-              >
-                <ArrowLeft className="w-5 h-5 text-milito-green stroke-[2.5] transition-transform group-hover:-translate-x-1" />
-                <span>Back to Main Carousel</span>
-              </button>
-            </div>
-          </div>
-
-          {/* 2. HOMEPAGE PRODUCT TEASER: Visual Discovery Cards */}
-          <HomepageProductTeaser
-            onExploreStore={() => {
-              setStoreInitialSearch("");
-              setStoreInitialBrand("All");
-              try {
-                sessionStorage.setItem("milito_store_category", "All");
-                sessionStorage.setItem("milito_store_search", "");
-              } catch (e) {}
-              handleNavigatePage("store");
-            }}
-            onSelectCategory={handleSelectDiscoveryCategory}
-          />
-
-          {/* 4. Premium Full-Bleed Swap Deals Section */}
-          <SwapDealsSection
-            onSwapClick={() => {
-              handleNavigatePage("swap-deals");
-            }}
-          />
-
-          {/* 5. Detailed 35-Point MILITO QC Section & Simulator */}
-          <MilitoQCSection />
-
-          {/* 6. Verified Nigeria Clients Testimonials & Customer Proof */}
-          <PublicTestimonialsSection
-            onExploreDevices={() => {
-              handleNavigatePage("store");
-            }}
-            onStartSwap={() => {
-              handleNavigatePage("swap-deals");
-            }}
-          />
-
-          {/* 7. Detailed Gadget FAQ Section accordion */}
-          <section className="py-24 bg-white border-b border-gray-100" id="faq">
-            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="text-center max-w-2xl mx-auto mb-16">
-                <span className="text-xs uppercase font-extrabold tracking-widest text-milito-green bg-milito-green/10 px-3.5 py-1.5 rounded-full inline-block mb-3 border border-milito-green/20">
-                  Clear Answers
-                </span>
-                <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">
-                  Frequently Asked Questions
-                </h2>
-                <p className="text-gray-600 mt-2 text-sm leading-relaxed">
-                  Find fast clarification on device ordering, 35-point quality grading, and nationwide delivery.
-                </p>
+              {/* Slide 1: Shop Gadgets Hero Carousel */}
+              <div className="w-full min-w-full min-h-screen flex-shrink-0 flex flex-col">
+                {renderGadgetHeroCarousel(true)}
               </div>
 
-              {/* Accordions */}
-              <div className="space-y-4">
-                {gadgetFaqs.map((faq, index) => {
-                  const isFaqOpen = openFaqIndex === index;
-                  return (
-                    <div
-                      key={faq.id}
-                      className="bg-gray-50 rounded-2xl border border-gray-200 overflow-hidden transition-all duration-300"
-                    >
-                      <button
-                        onClick={() => setOpenFaqIndex(isFaqOpen ? null : index)}
-                        className="w-full text-left p-6 flex justify-between items-center text-sm font-extrabold text-[#1A2025] cursor-pointer focus:outline-none"
+              {/* Slide 2: Explore Cars Hero Carousel */}
+              <div className="w-full min-w-full min-h-screen flex-shrink-0 flex flex-col">
+                <VehicleShowcaseBanner
+                  isGatewayMode={true}
+                  onExploreVehicles={() => handleNavigatePage("vehicles")}
+                  onOpenEstimator={() => handleNavigatePage("vehicles", "vehicle-import")}
+                  vehicleCount={vehicleProducts.length}
+                />
+              </div>
+            </div>
+          </main>
+        ) : activePage === "vehicles" ? (
+          /* CAR-ONLY HOMEPAGE */
+          <VehiclesPage
+            vehicles={vehicleProducts}
+            compareList={compareList}
+            onToggleCompare={toggleCompare}
+            onOpenDetails={handleOpenProductDetails}
+            onQuickAdd={handleQuickAdd}
+            onBackToGadgets={() => handleNavigatePage("gateway")}
+            onScrollToSection={handleScrollToSection}
+            onShareProduct={handleShareProduct}
+          />
+        ) : activePage === "swap-deals" ? (
+          <SwapDealsPage
+            onBack={handleBackFromSwapDeals}
+            products={phoneProducts}
+            initialTargetProduct={swapTargetProduct}
+            onClearTargetProduct={() => setSwapTargetProduct(null)}
+          />
+        ) : activePage === "store" ? (
+          <StorePage
+            products={phoneProducts}
+            compareList={compareList}
+            onToggleCompare={toggleCompare}
+            onOpenDetails={handleOpenProductDetails}
+            onQuickAdd={handleQuickAdd}
+            initialSearch={storeInitialSearch}
+            initialBrand={storeInitialBrand}
+            onShareProduct={handleShareProduct}
+          />
+        ) : (
+          /* GADGET-ONLY HOMEPAGE (Starts directly with Main Homepage sections — Hero Carousel is NOT repeated) */
+          <>
+            {/* Plain text link with clear arrow allowing the user to revisit the Main Carousel */}
+            <div id="hero" className="bg-white pt-5 pb-1 px-4 sm:px-6 lg:px-8">
+              <div className="max-w-7xl mx-auto">
+                <button
+                  type="button"
+                  onClick={() => handleNavigatePage("gateway")}
+                  className="inline-flex items-center gap-2 text-sm sm:text-base font-extrabold text-[#1A2025] hover:text-milito-green transition-colors cursor-pointer group bg-transparent border-0 p-0 shadow-none"
+                >
+                  <ArrowLeft className="w-5 h-5 text-milito-green stroke-[2.5] transition-transform group-hover:-translate-x-1" />
+                  <span>Back to Main Carousel</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 2. HOMEPAGE PRODUCT TEASER: Visual Discovery Cards */}
+            <HomepageProductTeaser
+              onExploreStore={() => {
+                setStoreInitialSearch("");
+                setStoreInitialBrand("All");
+                try {
+                  sessionStorage.setItem("milito_store_category", "All");
+                  sessionStorage.setItem("milito_store_search", "");
+                } catch (e) {}
+                handleNavigatePage("store");
+              }}
+              onSelectCategory={handleSelectDiscoveryCategory}
+            />
+
+            {/* 4. Premium Full-Bleed Swap Deals Section */}
+            <SwapDealsSection
+              onSwapClick={() => {
+                handleNavigatePage("swap-deals");
+              }}
+            />
+
+            {/* 5. Detailed 35-Point MILITO QC Section & Simulator */}
+            <MilitoQCSection />
+
+            {/* 6. Verified Nigeria Clients Testimonials & Customer Proof */}
+            <PublicTestimonialsSection
+              onExploreDevices={() => {
+                handleNavigatePage("store");
+              }}
+              onStartSwap={() => {
+                handleNavigatePage("swap-deals");
+              }}
+            />
+
+            {/* 7. Detailed Gadget FAQ Section accordion */}
+            <section className="py-24 bg-white border-b border-gray-100" id="faq">
+              <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="text-center max-w-2xl mx-auto mb-16">
+                  <span className="text-xs uppercase font-extrabold tracking-widest text-milito-green bg-milito-green/10 px-3.5 py-1.5 rounded-full inline-block mb-3 border border-milito-green/20">
+                    Clear Answers
+                  </span>
+                  <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">
+                    Frequently Asked Questions
+                  </h2>
+                  <p className="text-gray-600 mt-2 text-sm leading-relaxed">
+                    Find fast clarification on device ordering, 35-point quality grading, and nationwide delivery.
+                  </p>
+                </div>
+
+                {/* Accordions */}
+                <div className="space-y-4">
+                  {gadgetFaqs.map((faq, index) => {
+                    const isFaqOpen = openFaqIndex === index;
+                    return (
+                      <div
+                        key={faq.id}
+                        className="bg-gray-50 rounded-2xl border border-gray-200 overflow-hidden transition-all duration-300"
                       >
-                        <span>{faq.question}</span>
-                        <ChevronDown
-                          className={`w-4 h-4 text-milito-green transition-transform duration-300 ${
-                            isFaqOpen ? "rotate-180" : ""
-                          }`}
-                        />
-                      </button>
-                      {isFaqOpen && (
-                        <div className="px-6 pb-6 text-xs text-gray-600 leading-relaxed border-t border-gray-200 pt-3 animate-fadeIn">
-                          {faq.answer}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                        <button
+                          onClick={() => setOpenFaqIndex(isFaqOpen ? null : index)}
+                          className="w-full text-left p-6 flex justify-between items-center text-sm font-extrabold text-[#1A2025] cursor-pointer focus:outline-none"
+                        >
+                          <span>{faq.question}</span>
+                          <ChevronDown
+                            className={`w-4 h-4 text-milito-green transition-transform duration-300 ${
+                              isFaqOpen ? "rotate-180" : ""
+                            }`}
+                          />
+                        </button>
+                        {isFaqOpen && (
+                          <div className="px-6 pb-6 text-xs text-gray-600 leading-relaxed border-t border-gray-200 pt-3 animate-fadeIn">
+                            {faq.answer}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          </section>
+            </section>
 
-          {/* 8. Final CTA: Ready for Your Next Device? */}
-          <FinalCtaSection
-            onExploreStore={() => handleScrollToSection("store-inventory")}
-            onStartSwap={() => handleNavigatePage("swap-deals")}
-          />
-        </>
-      )}
+            {/* 8. Final CTA: Ready for Your Next Device? */}
+            <FinalCtaSection
+              onExploreStore={() => handleScrollToSection("store-inventory")}
+              onStartSwap={() => handleNavigatePage("swap-deals")}
+            />
+          </>
+        )}
+      </Suspense>
 
       {/* 9. Footer brand section details (Hidden on the initial two-option Gateway) */}
       {!isInitialGatewayView && (
@@ -1600,7 +1626,11 @@ export default function App() {
       )}
 
       {/* Float support chat utility (Hidden on initial two-option Gateway) */}
-      {!isInitialGatewayView && <SupportChat />}
+      {!isInitialGatewayView && (
+        <Suspense fallback={null}>
+          <SupportChat />
+        </Suspense>
+      )}
 
       {/* Floating Compare Bar overlay */}
       {compareList.length > 0 && (
@@ -1761,31 +1791,31 @@ export default function App() {
                       {/* Screen specs */}
                       <div className="py-2.5 border-b border-gray-100 flex justify-between items-center md:block">
                         <span className="md:hidden font-bold text-gray-500">Screen: </span>
-                        <span className="text-gray-650 leading-relaxed font-medium block">{prod.specs.screen}</span>
+                        <span className="text-gray-650 leading-relaxed font-medium block">{prod.specs?.screen}</span>
                       </div>
 
                       {/* camera */}
                       <div className="py-2.5 border-b border-gray-100 flex justify-between items-center md:block">
                         <span className="md:hidden font-bold text-gray-500">Camera: </span>
-                        <span className="text-gray-650 leading-relaxed font-medium block">{prod.specs.camera}</span>
+                        <span className="text-gray-650 leading-relaxed font-medium block">{prod.specs?.camera}</span>
                       </div>
 
                       {/* CPU chip */}
                       <div className="py-2.5 border-b border-gray-100 flex justify-between items-center md:block">
                         <span className="md:hidden font-bold text-gray-500">Chipset: </span>
-                        <span className="text-gray-650 leading-relaxed font-medium block">{prod.specs.chipset}</span>
+                        <span className="text-gray-650 leading-relaxed font-medium block">{prod.specs?.chipset}</span>
                       </div>
 
                       {/* warranty */}
                       <div className="py-2.5 border-b border-gray-100 flex justify-between items-center md:block">
                         <span className="md:hidden font-bold text-gray-500">Warranty: </span>
-                        <span className="text-gray-650 leading-relaxed font-medium block">{prod.specs.warranty}</span>
+                        <span className="text-gray-650 leading-relaxed font-medium block">{prod.specs?.warranty}</span>
                       </div>
 
                       {/* SIM type */}
                       <div className="py-2.5 flex justify-between items-center md:block">
                         <span className="md:hidden font-bold text-gray-500">SIM Type: </span>
-                        <span className="text-gray-650 leading-relaxed font-semibold block">{prod.specs.simType}</span>
+                        <span className="text-gray-650 leading-relaxed font-semibold block">{prod.specs?.simType}</span>
                       </div>
 
                       {/* Actions */}
@@ -1847,73 +1877,76 @@ export default function App() {
       )}
 
       {/* --------------------- MODALS MATRIX --------------------- */}
+      <Suspense fallback={null}>
+        {/* Product Spec detailed details popup drawer */}
+        {selectedProductDetails && (
+          <ProductDetailsModal
+            product={selectedProductDetails}
+            onClose={handleCloseProductDetails}
+            onAddToCart={handleAddToCart}
+            onOpenCart={() => setIsCartOpen(true)}
+            onBuyNow={handleBuyNowProtectedOrder}
+            onSwapForThis={handleSwapForThis}
+            onShare={handleShareProduct}
+            onNotifyMe={handleOpenNotifyMe}
+          />
+        )}
 
-      {/* Product Spec detailed details popup drawer */}
-      {selectedProductDetails && (
-        <ProductDetailsModal
-          product={selectedProductDetails}
-          onClose={handleCloseProductDetails}
-          onAddToCart={handleAddToCart}
-          onOpenCart={() => setIsCartOpen(true)}
-          onBuyNow={handleBuyNowProtectedOrder}
-          onSwapForThis={handleSwapForThis}
-          onShare={handleShareProduct}
-          onNotifyMe={handleOpenNotifyMe}
-        />
-      )}
+        {/* Direct Order checkout dialog popup */}
+        {isCheckoutOpen && (
+          <CheckoutModal
+            cart={cart}
+            directItem={checkoutDirectItem}
+            onClose={handleCloseCheckout}
+            onClearCart={handleClearCart}
+            onViewOrderDetails={(orderId) => {
+              setTrackerInitialOrderId(orderId);
+              handleOpenTracker();
+            }}
+          />
+        )}
 
-      {/* Direct Order checkout dialog popup */}
-      {isCheckoutOpen && (
-        <CheckoutModal
-          cart={cart}
-          directItem={checkoutDirectItem}
-          onClose={handleCloseCheckout}
-          onClearCart={handleClearCart}
-          onViewOrderDetails={(orderId) => {
-            setTrackerInitialOrderId(orderId);
-            handleOpenTracker();
-          }}
-        />
-      )}
+        {/* Parcel Delivery tracking modal */}
+        {isTrackerOpen && (
+          <OrderTrackerModal
+            initialOrderId={trackerInitialOrderId}
+            onClose={() => {
+              setTrackerInitialOrderId("");
+              handleCloseTracker();
+            }}
+          />
+        )}
 
-      {/* Parcel Delivery tracking modal */}
-      {isTrackerOpen && (
-        <OrderTrackerModal
-          initialOrderId={trackerInitialOrderId}
-          onClose={() => {
-            setTrackerInitialOrderId("");
-            handleCloseTracker();
-          }}
-        />
-      )}
+        {/* 11. Admin Business Dashboard Modal (Only mounted when opened) */}
+        {isDashboardOpen && (
+          <AdminDashboard
+            isOpen={isDashboardOpen}
+            onClose={handleCloseDashboard}
+            config={config}
+            onChangeConfig={(newConfig) => setConfig(newConfig)}
+            onShareProduct={handleShareProduct}
+          />
+        )}
 
-      {/* 11. Admin Business Dashboard Modal */}
-      <AdminDashboard
-        isOpen={isDashboardOpen}
-        onClose={handleCloseDashboard}
-        config={config}
-        onChangeConfig={(newConfig) => setConfig(newConfig)}
-        onShareProduct={handleShareProduct}
-      />
+        {/* Product Shareable Funnel Generator Modal */}
+        {sharingProduct && (
+          <ShareProductModal
+            isOpen={Boolean(sharingProduct)}
+            onClose={() => setSharingProduct(null)}
+            product={sharingProduct}
+          />
+        )}
 
-      {/* Product Shareable Funnel Generator Modal */}
-      {sharingProduct && (
-        <ShareProductModal
-          isOpen={Boolean(sharingProduct)}
-          onClose={() => setSharingProduct(null)}
-          product={sharingProduct}
-        />
-      )}
-
-      {/* Customer Restock / Price Change Notification Modal (Phase 1) */}
-      {notifyProduct && (
-        <NotifyMeModal
-          isOpen={Boolean(notifyProduct)}
-          product={notifyProduct}
-          initialAlertType={notifyAlertType}
-          onClose={() => setNotifyProduct(null)}
-        />
-      )}
+        {/* Customer Restock / Price Change Notification Modal (Phase 1) */}
+        {notifyProduct && (
+          <NotifyMeModal
+            isOpen={Boolean(notifyProduct)}
+            product={notifyProduct}
+            initialAlertType={notifyAlertType}
+            onClose={() => setNotifyProduct(null)}
+          />
+        )}
+      </Suspense>
 
     </div>
   );

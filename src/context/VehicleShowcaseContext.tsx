@@ -1,7 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { VehicleShowcaseConfig, ShowcaseMediaItem, DEFAULT_VEHICLE_SHOWCASE_CONFIG } from "../types";
-import { db, isFirebasePlaceholder } from "../lib/firebase";
-import { doc, setDoc, onSnapshot } from "firebase/firestore";
 
 interface VehicleShowcaseContextType {
   config: VehicleShowcaseConfig;
@@ -17,7 +15,7 @@ interface VehicleShowcaseContextType {
 
 const VehicleShowcaseContext = createContext<VehicleShowcaseContextType>({
   config: DEFAULT_VEHICLE_SHOWCASE_CONFIG,
-  loading: true,
+  loading: false,
   saveConfig: async () => {},
   addMediaItem: async () => {},
   updateMediaItem: async () => {},
@@ -86,43 +84,57 @@ export function VehicleShowcaseProvider({ children }: { children: React.ReactNod
     return DEFAULT_VEHICLE_SHOWCASE_CONFIG;
   });
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  // Real-time Firestore sync with local caching
+  // Real-time Firestore sync deferred after initial paint
   useEffect(() => {
-    if (isFirebasePlaceholder || !db) {
-      setLoading(false);
-      return;
-    }
+    let unsubscribe: (() => void) | undefined;
+    let isCancelled = false;
 
-    try {
-      const showcaseDocRef = doc(db, "site_settings", "vehicle_showcase");
-      const unsubscribe = onSnapshot(
-        showcaseDocRef,
-        (snapshot) => {
-          if (snapshot.exists()) {
-            const data = snapshot.data();
-            const normalized = normalizeConfig(data);
-            setConfig(normalized);
-            try {
-              localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
-            } catch (err) {
-              console.warn("[ShowcaseContext] LocalStorage sync failed:", err);
-            }
-          }
+    const timer = setTimeout(async () => {
+      if (isCancelled) return;
+      try {
+        const [{ db, isFirebasePlaceholder }, { doc, onSnapshot }] = await Promise.all([
+          import("../lib/firebase"),
+          import("firebase/firestore")
+        ]);
+        if (isCancelled || isFirebasePlaceholder || !db) {
           setLoading(false);
-        },
-        (error) => {
-          console.warn("[ShowcaseContext] Firestore subscription error:", error);
-          setLoading(false);
+          return;
         }
-      );
 
-      return () => unsubscribe();
-    } catch (e) {
-      console.warn("[ShowcaseContext] Setup error:", e);
-      setLoading(false);
-    }
+        const showcaseDocRef = doc(db, "site_settings", "vehicle_showcase");
+        unsubscribe = onSnapshot(
+          showcaseDocRef,
+          (snapshot) => {
+            if (snapshot.exists()) {
+              const data = snapshot.data();
+              const normalized = normalizeConfig(data);
+              setConfig(normalized);
+              try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+              } catch (err) {
+                console.warn("[ShowcaseContext] LocalStorage sync failed:", err);
+              }
+            }
+            setLoading(false);
+          },
+          (error) => {
+            console.warn("[ShowcaseContext] Firestore subscription error:", error);
+            setLoading(false);
+          }
+        );
+      } catch (e) {
+        console.warn("[ShowcaseContext] Setup error:", e);
+        setLoading(false);
+      }
+    }, 150);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+      if (unsubscribe) unsubscribe();
+    };
   }, []);
 
   const saveConfig = async (newConfig: VehicleShowcaseConfig) => {
@@ -141,15 +153,18 @@ export function VehicleShowcaseProvider({ children }: { children: React.ReactNod
     }
 
     // Persist to Firestore site_settings/vehicle_showcase
-    if (!isFirebasePlaceholder && db) {
-      try {
+    try {
+      const [{ db, isFirebasePlaceholder }, { doc, setDoc }] = await Promise.all([
+        import("../lib/firebase"),
+        import("firebase/firestore")
+      ]);
+      if (!isFirebasePlaceholder && db) {
         const showcaseDocRef = doc(db, "site_settings", "vehicle_showcase");
         await setDoc(showcaseDocRef, prepared, { merge: true });
-        console.log("[ShowcaseContext] Persisted vehicle showcase to Firestore successfully");
-      } catch (err) {
-        console.error("[ShowcaseContext] Firestore save error:", err);
-        throw err;
       }
+    } catch (err) {
+      console.error("[ShowcaseContext] Firestore save error:", err);
+      throw err;
     }
   };
 

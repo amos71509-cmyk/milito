@@ -607,6 +607,41 @@ export function resolveImageUrl(
     finalUrl = `https://res.cloudinary.com/militotech/image/upload/${cleanPath}`;
   }
 
+  // Upgrade http:// Cloudinary URLs to https://
+  if (finalUrl.startsWith("http://res.cloudinary.com/")) {
+    finalUrl = finalUrl.replace("http://", "https://");
+  }
+
+  // Inject adaptive Cloudinary compression & resizing for 2G / mobile speed
+  if (finalUrl.includes("res.cloudinary.com/") && finalUrl.includes("/image/upload/")) {
+    const afterUpload = finalUrl.split("/image/upload/")[1] || "";
+    const firstSeg = afterUpload.split("/")[0] || "";
+    const alreadyHasTransforms =
+      firstSeg.includes("f_auto") ||
+      firstSeg.includes("q_auto") ||
+      firstSeg.includes("w_") ||
+      firstSeg.includes("c_");
+
+    if (!alreadyHasTransforms) {
+      let isSlowConnection = false;
+      try {
+        const conn = typeof navigator !== "undefined" ? (navigator as any).connection : null;
+        if (conn && (conn.saveData || conn.effectiveType === "slow-2g" || conn.effectiveType === "2g")) {
+          isSlowConnection = true;
+        }
+      } catch {}
+
+      const targetWidth = options?.width
+        ? options.width
+        : isSlowConnection
+        ? 320
+        : 500;
+      const targetQuality = isSlowConnection ? "q_auto:low" : (options?.quality || "q_auto:eco");
+      const transforms = `f_auto,${targetQuality},w_${targetWidth},c_limit`;
+      finalUrl = finalUrl.replace("/image/upload/", `/image/upload/${transforms}/`);
+    }
+  }
+
   return finalUrl;
 }
 

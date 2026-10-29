@@ -1,6 +1,4 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
-import { db, isFirebasePlaceholder } from "../lib/firebase";
-import { doc, getDoc, setDoc } from "firebase/firestore";
 
 export interface CustomerUser {
   id: string;
@@ -75,8 +73,13 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 
     // 2. Fetch authoritative state from Firestore
     async function fetchFromFirestore() {
-      if (!currentUser || isFirebasePlaceholder || !db) return;
+      if (!currentUser) return;
       try {
+        const [{ db, isFirebasePlaceholder }, { doc, getDoc, setDoc }] = await Promise.all([
+          import("../lib/firebase"),
+          import("firebase/firestore")
+        ]);
+        if (isFirebasePlaceholder || !db || !isMounted) return;
         const userRef = doc(db, "customers", currentUser.id);
         const snap = await getDoc(userRef);
         if (snap.exists() && isMounted) {
@@ -134,8 +137,12 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     } catch (e) {}
 
     // Persist to Firestore
-    if (!isFirebasePlaceholder && db) {
-      try {
+    try {
+      const [{ db, isFirebasePlaceholder }, { doc, setDoc }] = await Promise.all([
+        import("../lib/firebase"),
+        import("firebase/firestore")
+      ]);
+      if (!isFirebasePlaceholder && db) {
         const userRef = doc(db, "customers", currentUser.id);
         await setDoc(userRef, {
           id: currentUser.id,
@@ -144,9 +151,9 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
           likedProductIds: updated,
           updatedAt: new Date().toISOString(),
         }, { merge: true });
-      } catch (err) {
-        console.error("Failed to update liked products in Firestore:", err);
       }
+    } catch (err) {
+      console.error("Failed to update liked products in Firestore:", err);
     }
 
     return { success: true, action };
@@ -171,8 +178,12 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     } catch (e) {}
 
     // Upsert customer in Firestore
-    if (!isFirebasePlaceholder && db) {
-      try {
+    try {
+      const [{ db, isFirebasePlaceholder }, { doc, getDoc, setDoc }] = await Promise.all([
+        import("../lib/firebase"),
+        import("firebase/firestore")
+      ]);
+      if (!isFirebasePlaceholder && db) {
         const userRef = doc(db, "customers", id);
         const snap = await getDoc(userRef);
         if (snap.exists()) {
@@ -192,9 +203,9 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
             updatedAt: new Date().toISOString(),
           }, { merge: true });
         }
-      } catch (e) {
-        console.warn("Firestore customer login sync error:", e);
       }
+    } catch (e) {
+      console.warn("Firestore customer login sync error:", e);
     }
 
     setIsAuthPromptOpen(false);
