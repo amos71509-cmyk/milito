@@ -25,8 +25,10 @@ try {
     const rawConfig = JSON.parse(fs.readFileSync(fbConfigPath, "utf-8"));
     if (rawConfig.apiKey && rawConfig.apiKey !== "YOUR_API_KEY") {
       const fbApp = getFirebaseApps().length === 0 ? initFirebaseApp(rawConfig) : getFirebaseApps()[0];
-      serverDb = getFirestoreInstance(fbApp);
-      console.log(`[Server Firebase] Initialized Firestore connected to project: ${rawConfig.projectId}`);
+      serverDb = rawConfig.firestoreDatabaseId
+        ? getFirestoreInstance(fbApp, rawConfig.firestoreDatabaseId)
+        : getFirestoreInstance(fbApp);
+      console.log(`[Server Firebase] Initialized Firestore connected to project: ${rawConfig.projectId} (db: ${rawConfig.firestoreDatabaseId || "default"})`);
     }
   }
 } catch (fbInitErr) {
@@ -514,6 +516,123 @@ async function startServer() {
     }
   }
 
+  // Vehicle Import / Automobile Ordering Store
+  const vehicleImportsFilePath = path.join(process.cwd(), "vehicle_import_requests.json");
+  let vehicleImportsStore: Record<string, any> = {};
+
+  try {
+    if (fs.existsSync(vehicleImportsFilePath)) {
+      const content = fs.readFileSync(vehicleImportsFilePath, "utf-8");
+      vehicleImportsStore = JSON.parse(content || "{}");
+      console.log(`[Server] Loaded ${Object.keys(vehicleImportsStore).length} vehicle import requests`);
+    }
+  } catch (err) {
+    console.warn("[Server] Could not read vehicle_import_requests.json, starting fresh:", err);
+  }
+
+  function saveVehicleImportsStore() {
+    try {
+      fs.writeFileSync(vehicleImportsFilePath, JSON.stringify(vehicleImportsStore, null, 2));
+    } catch (err) {
+      console.error("[Server] Failed to write vehicle_import_requests.json:", err);
+    }
+  }
+
+  // Helper to synchronize a vehicle request into ordersStore & Firestore orders
+  function syncVehicleRequestToOrder(record: any, customStatus?: string) {
+    if (!record) return null;
+    const refId = String(record.referenceNumber || record.id || record.orderId).trim().toUpperCase();
+    const vehiclePrice = Number(record.vehiclePrice) || 0;
+    const vehicleTitle = `${record.vehicleYear ? record.vehicleYear + " " : ""}${record.vehicleBrand || ""} ${record.vehicleName || ""}`.trim() || "Vehicle";
+    const existing = ordersStore[refId] || {};
+
+    const isConfirmed = record.status === "Availability Confirmed" || customStatus === "availability_confirmed" || existing.orderStatus === "availability_confirmed" || existing.availabilityConfirmed === true;
+    const isPaid = record.status === "Paid" || existing.paymentStatus === "paid";
+    const isPendingPayment = existing.paymentStatus === "pending_verification";
+
+    const unifiedOrder = {
+      ...existing,
+      id: existing.id || `doc_${refId.toLowerCase().replace(/[^a-z0-9]/g, "_")}`,
+      orderId: refId,
+      orderSource: record.orderSource || existing.orderSource || "automobile_section",
+      orderType: "vehicle",
+      productType: "vehicle",
+      customer: {
+        name: record.customerName || existing.customer?.name || "Customer",
+        email: existing.customer?.email || `${refId.toLowerCase()}@milito.ng`,
+        phone: record.customerPhone || existing.customer?.phone || "",
+        address: record.deliveryLocation || record.deliveryCity || existing.customer?.address || "",
+        state: record.deliveryState || existing.customer?.state || "Lagos",
+        city: record.deliveryCity || existing.customer?.city || "",
+        notes: record.message || existing.customer?.notes || ""
+      },
+      items: [
+        {
+          productId: String(record.vehicleId || existing.items?.[0]?.productId || "vehicle"),
+          productName: vehicleTitle,
+          productImage: record.vehicleImage || existing.items?.[0]?.productImage || "",
+          selectedSpecification: {
+            condition: record.vehicleCondition || "Foreign Used",
+            specsSummary: `${record.vehicleYear || ""} ${record.vehicleBrand || ""} • ${record.vehicleTransmission || "Automatic"}`
+          },
+          quantity: 1,
+          unitPrice: vehiclePrice,
+          totalPrice: vehiclePrice
+        }
+      ],
+      productId: String(record.vehicleId || "vehicle"),
+      productName: vehicleTitle,
+      productImage: record.vehicleImage || existing.productImage || "",
+      selectedSpecification: `${record.vehicleCondition || "Foreign Used"}${record.vehicleTransmission ? ` • ${record.vehicleTransmission}` : ""}`,
+      quantity: 1,
+      unitPrice: vehiclePrice,
+      subtotal: vehiclePrice,
+      deliveryFee: 0,
+      totalAmount: vehiclePrice,
+      totalPurchasePrice: vehiclePrice,
+      includesShippingClearing: true,
+      depositPercentage: Number(record.depositPercentage || existing.depositPercentage || 30),
+      requiredDepositAmount: Number(record.requiredDepositAmount || existing.requiredDepositAmount || Math.round(vehiclePrice * 0.3)),
+      remainingBalanceAmount: Number(record.remainingBalanceAmount || existing.remainingBalanceAmount || (vehiclePrice - Math.round(vehiclePrice * 0.3))),
+      depositPaymentStatus: record.depositPaymentStatus || existing.depositPaymentStatus || (isPaid ? "paid" : "unpaid"),
+      depositPaymentProofUrl: record.depositPaymentProofUrl || existing.depositPaymentProofUrl || existing.paymentProofUrl || "",
+      balancePaymentStatus: record.balancePaymentStatus || existing.balancePaymentStatus || (isPaid ? "paid" : "unpaid"),
+      balancePaymentProofUrl: record.balancePaymentProofUrl || existing.balancePaymentProofUrl || "",
+      availabilityConfirmed: isConfirmed,
+      availabilityStatus: isConfirmed ? "Confirmed Available" : "Pending Confirmation",
+      orderStatus: isPaid ? "confirmed" : isPendingPayment ? "payment_verification_pending" : isConfirmed ? "availability_confirmed" : "awaiting_availability",
+      paymentStatus: isPaid ? "paid" : isPendingPayment ? "pending_verification" : isConfirmed ? "ready_for_payment" : "awaiting_availability",
+      vehicleDetails: {
+        id: record.vehicleId || existing.vehicleDetails?.id,
+        brand: record.vehicleBrand || existing.vehicleDetails?.brand,
+        name: record.vehicleName || existing.vehicleDetails?.name,
+        year: record.vehicleYear || existing.vehicleDetails?.year,
+        condition: record.vehicleCondition || existing.vehicleDetails?.condition,
+        transmission: record.vehicleTransmission || existing.vehicleDetails?.transmission,
+        mileage: record.vehicleMileage || existing.vehicleDetails?.mileage,
+        fuelType: record.vehicleFuelType || existing.vehicleDetails?.fuelType,
+        engine: record.vehicleEngine || existing.vehicleDetails?.engine,
+        location: record.deliveryLocation || existing.vehicleDetails?.location,
+        image: record.vehicleImage || existing.vehicleDetails?.image
+      },
+      createdAt: existing.createdAt || record.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    ordersStore[refId] = unifiedOrder;
+    ordersStore[unifiedOrder.id] = unifiedOrder;
+    saveOrdersStore();
+
+    if (serverDb) {
+      try {
+        const orderDocRef = firestoreDoc(serverDb, "orders", refId);
+        firestoreSetDoc(orderDocRef, unifiedOrder, { merge: true }).catch(() => {});
+      } catch (_) {}
+    }
+
+    return unifiedOrder;
+  }
+
   // Trusted State Transit Fee Table
   const STATE_DELIVERY_FEES: Record<string, { fee: number; eta: string }> = {
     "Lagos": { fee: 5000, eta: "24 Hours (Same Day/Next Day)" },
@@ -898,37 +1017,87 @@ async function startServer() {
   });
 
   // API Route: Customer Notifies Manual Bank Transfer Made
+  // API Route: Customer Notifies Manual Bank Transfer Made
   app.post("/api/orders/notify-transfer", (req, res) => {
     res.setHeader("Content-Type", "application/json");
     try {
-      const { orderId, senderName, senderBank, narration, transferReference, paymentProofUrl, receiptUrl } = req.body || {};
+      const { orderId, senderName, senderBank, narration, transferReference, paymentProofUrl, receiptUrl, paymentType } = req.body || {};
       if (!orderId) {
         return res.status(400).json({ success: false, error: "orderId is required." });
       }
 
-      const order = ordersStore[orderId];
+      let order = ordersStore[orderId] || ordersStore[orderId.toUpperCase()];
+      if (!order) {
+        const vReq = vehicleImportsStore[orderId] || vehicleImportsStore[orderId.toUpperCase()];
+        if (vReq) {
+          syncVehicleRequestToOrder(vReq, "Payment Pending");
+          order = ordersStore[orderId] || ordersStore[orderId.toUpperCase()];
+        }
+      }
+
       if (!order) {
         return res.status(404).json({ success: false, error: `Order '${orderId}' was not found.` });
       }
 
       const proof = paymentProofUrl || receiptUrl || null;
-      order.paymentStatus = "pending_verification";
-      order.orderStatus = "payment_verification_pending";
-      if (proof) {
-        order.paymentProofUrl = String(proof).trim();
+
+      if (paymentType === "balance") {
+        order.balancePaymentStatus = "pending_verification";
+        if (proof) {
+          order.balancePaymentProofUrl = String(proof).trim();
+        }
+        order.balanceTransferNotice = {
+          senderName: senderName ? String(senderName).trim() : order.customer.name,
+          senderBank: senderBank ? String(senderBank).trim() : "Direct Bank Transfer",
+          narration: narration ? String(narration).trim() : `Balance payment for ${orderId}`,
+          transferReference: transferReference ? String(transferReference).trim() : null,
+          paymentProofUrl: proof ? String(proof).trim() : null,
+          notifiedAt: new Date().toISOString()
+        };
+      } else {
+        order.paymentStatus = "pending_verification";
+        order.orderStatus = "payment_verification_pending";
+        order.depositPaymentStatus = "pending_verification";
+        if (proof) {
+          order.paymentProofUrl = String(proof).trim();
+          order.depositPaymentProofUrl = String(proof).trim();
+        }
+        order.transferNotice = {
+          senderName: senderName ? String(senderName).trim() : order.customer.name,
+          senderBank: senderBank ? String(senderBank).trim() : "Direct Bank Transfer",
+          narration: narration ? String(narration).trim() : `Deposit payment for ${orderId}`,
+          transferReference: transferReference ? String(transferReference).trim() : null,
+          paymentProofUrl: proof ? String(proof).trim() : null,
+          notifiedAt: new Date().toISOString()
+        };
       }
-      order.transferNotice = {
-        senderName: senderName ? String(senderName).trim() : order.customer.name,
-        senderBank: senderBank ? String(senderBank).trim() : "Direct Bank Transfer",
-        narration: narration ? String(narration).trim() : `Payment for ${orderId}`,
-        transferReference: transferReference ? String(transferReference).trim() : null,
-        paymentProofUrl: proof ? String(proof).trim() : null,
-        notifiedAt: new Date().toISOString()
-      };
+
       order.updatedAt = new Date().toISOString();
 
+      // If vehicle import request exists, update it too
+      const vReq = vehicleImportsStore[orderId] || vehicleImportsStore[orderId.toUpperCase()];
+      if (vReq) {
+        vReq.status = "Payment Pending";
+        if (paymentType === "balance") {
+          vReq.balancePaymentStatus = "pending_verification";
+        } else {
+          vReq.depositPaymentStatus = "pending_verification";
+        }
+        vReq.updatedAt = new Date().toISOString();
+        saveVehicleImportsStore();
+      }
+
       saveOrdersStore();
-      console.log(`[Server Telemetry] Customer Notified Manual Bank Transfer for ${orderId} | Status: payment_verification_pending | Proof: ${proof ? "Attached" : "None"}`);
+
+      // Persist to Firestore if available
+      if (serverDb) {
+        try {
+          const docRef = firestoreDoc(serverDb, "orders", order.orderId);
+          firestoreSetDoc(docRef, order, { merge: true }).catch(() => {});
+        } catch (_) {}
+      }
+
+      console.log(`[Server Telemetry] Customer Notified Manual Bank Transfer for ${orderId} (${paymentType || "deposit"}) | Status: pending_verification | Proof: ${proof ? "Attached" : "None"}`);
 
       return res.json({
         success: true,
@@ -945,6 +1114,13 @@ async function startServer() {
   app.get("/api/orders", (req, res) => {
     res.setHeader("Content-Type", "application/json");
     try {
+      // Ensure all vehicle import/order requests are synchronized into ordersStore
+      Object.values(vehicleImportsStore).forEach((veh: any) => {
+        if (veh && (veh.referenceNumber || veh.id)) {
+          syncVehicleRequestToOrder(veh);
+        }
+      });
+
       // Deduplicate orders by orderId
       const uniqueOrdersMap: { [orderId: string]: any } = {};
       Object.values(ordersStore).forEach((ord: any) => {
@@ -963,27 +1139,103 @@ async function startServer() {
   });
 
   // API Route: Admin Updates Order / Payment Status
-  app.post("/api/orders/:orderId/update-status", (req, res) => {
+  app.post("/api/orders/:orderId/update-status", async (req, res) => {
     res.setHeader("Content-Type", "application/json");
     try {
       const { orderId } = req.params;
-      const { paymentStatus, orderStatus, adminNotes } = req.body || {};
+      const { paymentStatus, orderStatus, adminNotes, confirmAvailability, depositPaymentStatus, balancePaymentStatus } = req.body || {};
 
-      const order = ordersStore[orderId];
+      let order = ordersStore[orderId];
+      if (!order && vehicleImportsStore[orderId]) {
+        order = syncVehicleRequestToOrder(vehicleImportsStore[orderId]);
+      }
+
       if (!order) {
         return res.status(404).json({ success: false, error: `Order '${orderId}' not found.` });
       }
 
-      if (paymentStatus) order.paymentStatus = paymentStatus;
-      if (orderStatus) order.orderStatus = orderStatus;
+      const isAvailabilityConfirmation = 
+        confirmAvailability === true || 
+        orderStatus === "availability_confirmed" || 
+        orderStatus === "Confirmed Available";
+
+      if (isAvailabilityConfirmation) {
+        order.availabilityConfirmed = true;
+        order.availabilityStatus = "Confirmed Available";
+        order.availabilityConfirmedAt = new Date().toISOString();
+        order.orderStatus = "availability_confirmed";
+        order.paymentStatus = "ready_for_payment";
+        if (!adminNotes) {
+          order.adminNotes = `Vehicle availability confirmed by Admin on ${new Date().toLocaleTimeString()}`;
+        }
+      } else {
+        if (paymentStatus) order.paymentStatus = paymentStatus;
+        if (orderStatus) order.orderStatus = orderStatus;
+      }
+
+      if (depositPaymentStatus) {
+        order.depositPaymentStatus = depositPaymentStatus;
+        if (depositPaymentStatus === "paid" && order.orderStatus !== "protected") {
+          order.orderStatus = "processing";
+          order.paymentStatus = "processing";
+        }
+      }
+
+      if (balancePaymentStatus) {
+        order.balancePaymentStatus = balancePaymentStatus;
+        if (balancePaymentStatus === "paid") {
+          order.paymentStatus = "paid";
+          order.orderStatus = "protected";
+          order.paidAt = new Date().toISOString();
+        }
+      }
+
       if (adminNotes !== undefined) order.adminNotes = adminNotes;
+
       if (paymentStatus === "paid" && !order.paidAt) {
         order.paidAt = new Date().toISOString();
+        order.orderStatus = "protected";
+        order.depositPaymentStatus = "paid";
+        order.balancePaymentStatus = "paid";
       }
+
       order.updatedAt = new Date().toISOString();
 
+      ordersStore[orderId] = order;
+      if (order.id) ordersStore[order.id] = order;
       saveOrdersStore();
-      console.log(`[Server Telemetry] Admin updated order ${orderId}: Payment=${order.paymentStatus}, Order=${order.orderStatus}`);
+
+      // Synchronize back to vehicleImportsStore if vehicle order
+      if (vehicleImportsStore[orderId]) {
+        if (isAvailabilityConfirmation) {
+          vehicleImportsStore[orderId].status = "Availability Confirmed";
+        } else if (paymentStatus === "paid" || balancePaymentStatus === "paid") {
+          vehicleImportsStore[orderId].status = "Paid";
+          vehicleImportsStore[orderId].balancePaymentStatus = "paid";
+          vehicleImportsStore[orderId].depositPaymentStatus = "paid";
+        } else if (depositPaymentStatus === "paid") {
+          vehicleImportsStore[orderId].depositPaymentStatus = "paid";
+        }
+        vehicleImportsStore[orderId].updatedAt = new Date().toISOString();
+        saveVehicleImportsStore();
+      }
+
+      // Persist to server Firestore
+      if (serverDb) {
+        try {
+          const docRef = firestoreDoc(serverDb, "orders", orderId);
+          await firestoreSetDoc(docRef, order, { merge: true });
+
+          if (vehicleImportsStore[orderId]) {
+            const vehDocRef = firestoreDoc(serverDb, "vehicle_import_requests", orderId);
+            await firestoreSetDoc(vehDocRef, vehicleImportsStore[orderId], { merge: true });
+          }
+        } catch (fsErr) {
+          console.warn("[Server Firestore] Failed to update order in Firestore:", fsErr);
+        }
+      }
+
+      console.log(`[Server Telemetry] Admin updated order ${orderId}: Payment=${order.paymentStatus}, Order=${order.orderStatus}, Deposit=${order.depositPaymentStatus}, Balance=${order.balancePaymentStatus}`);
 
       return res.json({ success: true, order });
     } catch (error: any) {
@@ -992,15 +1244,51 @@ async function startServer() {
     }
   });
 
-  // API Route: Get Single Order Details by ID
-  app.get("/api/orders/:orderId", (req, res) => {
+  // API Route: Get Single Order Details by ID (for Customer Order Tracking)
+  app.get("/api/orders/:orderId", async (req, res) => {
     res.setHeader("Content-Type", "application/json");
-    const { orderId } = req.params;
-    const order = ordersStore[orderId];
-    if (!order) {
-      return res.status(404).json({ success: false, error: `Order '${orderId}' not found.` });
+    try {
+      const rawId = String(req.params.orderId || "").trim();
+      const orderId = rawId.toUpperCase();
+
+      let order = ordersStore[orderId] || ordersStore[rawId];
+
+      if (!order && vehicleImportsStore[orderId]) {
+        order = syncVehicleRequestToOrder(vehicleImportsStore[orderId]);
+      }
+
+      if (!order && serverDb) {
+        try {
+          // Check Firestore 'orders'
+          const docRef = firestoreDoc(serverDb, "orders", orderId);
+          const snap = await firestoreGetDoc(docRef);
+          if (snap.exists()) {
+            order = snap.data();
+            ordersStore[orderId] = order;
+            saveOrdersStore();
+          } else {
+            // Check Firestore 'vehicle_import_requests'
+            const vehRef = firestoreDoc(serverDb, "vehicle_import_requests", orderId);
+            const vehSnap = await firestoreGetDoc(vehRef);
+            if (vehSnap.exists()) {
+              const vehData = vehSnap.data();
+              vehicleImportsStore[orderId] = vehData;
+              order = syncVehicleRequestToOrder(vehData);
+            }
+          }
+        } catch (fsErr) {
+          console.warn("[Server Firestore] Error looking up order:", fsErr);
+        }
+      }
+
+      if (!order) {
+        return res.status(404).json({ success: false, error: `Order '${orderId}' not found.` });
+      }
+
+      return res.json({ success: true, order });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message || "Failed to retrieve order." });
     }
-    return res.json({ success: true, order });
   });
 
   // =========================================================================
@@ -1239,6 +1527,139 @@ async function startServer() {
       delete swapRequestsStore[id];
       saveSwapRequestsStore();
       return res.json({ success: true, message: `Swap request ${id} removed.` });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // =========================================================================
+  // VEHICLE IMPORT & AUTOMOBILE ORDERING API (PHASE 1)
+  // =========================================================================
+  app.post(["/api/vehicle-imports", "/api/vehicle-imports/create"], async (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    try {
+      const importReq = req.body;
+      if (!importReq || (!importReq.referenceNumber && !importReq.id)) {
+        return res.status(400).json({ success: false, error: "Missing import quote reference number." });
+      }
+
+      const refId = String(importReq.referenceNumber || importReq.id).trim().toUpperCase();
+      const now = new Date().toISOString();
+      const record = {
+        ...importReq,
+        id: refId,
+        referenceNumber: refId,
+        status: importReq.status || "Pending",
+        createdAt: importReq.createdAt || now,
+        updatedAt: now
+      };
+
+      vehicleImportsStore[refId] = record;
+      saveVehicleImportsStore();
+
+      // Automatically sync into ordersStore and Firestore orders collection
+      syncVehicleRequestToOrder(record);
+
+      if (serverDb) {
+        try {
+          const docRef = firestoreDoc(serverDb, "vehicle_import_requests", refId);
+          await firestoreSetDoc(docRef, record, { merge: true });
+        } catch (fsErr) {
+          console.warn("[Server Firestore] Failed to save vehicle import request:", fsErr);
+        }
+      }
+
+      console.log(`[Server Telemetry] Vehicle Order Saved: ${refId} | Customer: ${record.customerName} | Vehicle: ${record.vehicleYear || ""} ${record.vehicleBrand} ${record.vehicleName} | Price: NGN ${record.vehiclePrice}`);
+      return res.status(200).json({ success: true, request: record });
+    } catch (err: any) {
+      console.error("[Server Telemetry] Error saving vehicle import request:", err);
+      return res.status(500).json({ success: false, error: err.message || "Failed to save vehicle import request." });
+    }
+  });
+
+  app.get("/api/vehicle-imports", async (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    try {
+      if (serverDb) {
+        try {
+          const snap = await firestoreGetDocs(firestoreCollection(serverDb, "vehicle_import_requests"));
+          snap.forEach((docSnap) => {
+            const data = docSnap.data();
+            if (data && (data.referenceNumber || data.id || docSnap.id)) {
+              const key = String(data.referenceNumber || data.id || docSnap.id).toUpperCase();
+              vehicleImportsStore[key] = { ...data, id: key, referenceNumber: key };
+              syncVehicleRequestToOrder(vehicleImportsStore[key]);
+            }
+          });
+          saveVehicleImportsStore();
+        } catch (fsErr) {
+          console.warn("[Server Firestore] Error reading vehicle_import_requests:", fsErr);
+        }
+      }
+
+      const list = Object.values(vehicleImportsStore).sort((a: any, b: any) => {
+        return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+      });
+
+      return res.json({ success: true, requests: list });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, error: err.message || "Failed to list vehicle import requests." });
+    }
+  });
+
+  app.post(["/api/vehicle-imports/:id/status", "/api/vehicle-imports/:id/update-status"], async (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    try {
+      const refId = String(req.params.id || "").trim().toUpperCase();
+      const { status, adminNotes } = req.body || {};
+
+      let record = vehicleImportsStore[refId];
+      if (!record && serverDb) {
+        try {
+          const snap = await firestoreGetDoc(firestoreDoc(serverDb, "vehicle_import_requests", refId));
+          if (snap.exists()) {
+            record = snap.data();
+          }
+        } catch (_) {}
+      }
+
+      if (!record) {
+        return res.status(404).json({ success: false, error: `Import request '${refId}' not found.` });
+      }
+
+      const now = new Date().toISOString();
+      if (status) record.status = status;
+      if (adminNotes !== undefined) record.adminNotes = adminNotes;
+      record.updatedAt = now;
+
+      vehicleImportsStore[refId] = record;
+      saveVehicleImportsStore();
+
+      // Synchronize with unified order status
+      const customOrderStatus = status === "Availability Confirmed" ? "availability_confirmed" : status === "Paid" ? "confirmed" : undefined;
+      syncVehicleRequestToOrder(record, customOrderStatus);
+
+      if (serverDb) {
+        try {
+          await firestoreSetDoc(firestoreDoc(serverDb, "vehicle_import_requests", refId), record, { merge: true });
+        } catch (fsErr) {
+          console.warn("[Server Firestore] Failed to update vehicle import request:", fsErr);
+        }
+      }
+
+      return res.json({ success: true, request: record });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, error: err.message || "Failed to update status." });
+    }
+  });
+
+  app.delete("/api/vehicle-imports/:id", async (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    try {
+      const refId = String(req.params.id || "").trim().toUpperCase();
+      delete vehicleImportsStore[refId];
+      saveVehicleImportsStore();
+      return res.json({ success: true, message: `Import request ${refId} deleted.` });
     } catch (err: any) {
       return res.status(500).json({ success: false, error: err.message });
     }

@@ -2,6 +2,7 @@ import React, { memo, useState, useEffect, useMemo } from "react";
 import { ShoppingCart, Smartphone, Car, ArrowRight } from "lucide-react";
 import { Product, resolveImageUrl, extractProductOriginalImages, getFallbackImage } from "../types";
 import { getStockStatus } from "../utils/stockUtils";
+import { calculateEasyBuy, formatNaira } from "../utils/easyBuyUtils";
 
 interface ProductCardProps {
   key?: string;
@@ -207,6 +208,18 @@ function ProductCardComponent({
             <span className="text-[12px] sm:text-sm font-black text-gray-950 group-hover:text-milito-green transition-colors font-mono truncate">
               {formatPrice(product.price)}
             </span>
+            {/* Easy Buy line for phones/gadgets */}
+            {product.productType !== "vehicle" && product.price > 0 && (() => {
+              const easyBuy = calculateEasyBuy(product.price, 12, 30);
+              return (
+                <span
+                  className="text-[7.5px] sm:text-[9px] font-bold text-[#00B14F] mt-0.5 truncate block font-sans"
+                  title={`Easy Buy: ${formatNaira(easyBuy.depositAmount)} deposit · ${formatNaira(easyBuy.weeklyAmount)} weekly`}
+                >
+                  {formatNaira(easyBuy.depositAmount)} deposit · {formatNaira(easyBuy.weeklyAmount)} weekly
+                </span>
+              );
+            })()}
           </div>
 
           <div className="flex items-center gap-1.5 flex-shrink-0">

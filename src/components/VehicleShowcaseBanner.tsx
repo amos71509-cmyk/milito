@@ -82,7 +82,7 @@ export default function VehicleShowcaseBanner({
 
   // Auto-rotation timer loop
   useEffect(() => {
-    if (!config.autoRotate || activeItems.length <= 1 || isHovered || !isPlaying) {
+    if (!config.autoRotate || activeItems.length <= 1 || isHovered) {
       return;
     }
 
@@ -91,7 +91,7 @@ export default function VehicleShowcaseBanner({
     }, rotationMs);
 
     return () => clearInterval(intervalId);
-  }, [config.autoRotate, activeItems.length, rotationMs, isHovered, isPlaying]);
+  }, [config.autoRotate, activeItems.length, rotationMs, isHovered]);
 
   // Ensure current index is within bounds if items change
   useEffect(() => {
@@ -113,6 +113,26 @@ export default function VehicleShowcaseBanner({
       }
     });
   }, [currentIndex, activeItems, triggerPlay]);
+
+  // Also bind user gesture listeners to wake up video playback if suspended
+  useEffect(() => {
+    const handleWakeVideo = () => {
+      const currentItem = activeItems[currentIndex];
+      if (currentItem && videoRefs.current[currentItem.id]) {
+        triggerPlay(videoRefs.current[currentItem.id]);
+      }
+    };
+
+    window.addEventListener("click", handleWakeVideo, { passive: true });
+    window.addEventListener("touchstart", handleWakeVideo, { passive: true });
+    window.addEventListener("scroll", handleWakeVideo, { passive: true });
+
+    return () => {
+      window.removeEventListener("click", handleWakeVideo);
+      window.removeEventListener("touchstart", handleWakeVideo);
+      window.removeEventListener("scroll", handleWakeVideo);
+    };
+  }, [activeItems, currentIndex, triggerPlay]);
 
   if ((!config.enabled && !isGatewayMode) || activeItems.length === 0) {
     return null;
@@ -172,6 +192,13 @@ export default function VehicleShowcaseBanner({
                         videoRefs.current[item.id] = el;
                         el.muted = isMuted;
                         el.defaultMuted = true;
+                        el.playsInline = true;
+                        el.setAttribute("muted", "");
+                        el.setAttribute("playsinline", "");
+                        el.setAttribute("webkit-playsinline", "");
+                        if (isCurrent) {
+                          el.play().catch(() => {});
+                        }
                       }
                     }}
                     src={item.url}
@@ -180,7 +207,7 @@ export default function VehicleShowcaseBanner({
                     autoPlay={isCurrent}
                     loop={true}
                     playsInline={true}
-                    preload={isCurrent ? "metadata" : "none"}
+                    preload={isCurrent ? "auto" : "metadata"}
                     onLoadedData={() => {
                       setVideoLoaded((prev) => ({ ...prev, [item.id]: true }));
                       const el = videoRefs.current[item.id];

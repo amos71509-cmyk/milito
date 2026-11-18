@@ -64,6 +64,7 @@ import AdminAlertsManager from "./AdminAlertsManager";
 import HomepageDiscoveryCardsManager from "./HomepageDiscoveryCardsManager";
 import AdminAccessoriesManager from "./AdminAccessoriesManager";
 import AdminOrdersManager from "./AdminOrdersManager";
+import AdminImportRequestsManager from "./AdminImportRequestsManager";
 import { useBranding } from "../context/BrandingContext";
 import {
   saveAdminActiveTab,
@@ -171,10 +172,10 @@ export default function AdminDashboard({
 
   // Primary Tabs Navigation
   const [activeTab, setActiveTab] = useState<
-    "dashboard" | "products" | "accessories" | "inventory" | "media" | "orders" | "tradeins" | "tradein-valuations" | "testimonials" | "messages" | "profile" | "branding" | "showcase" | "discovery"
+    "dashboard" | "products" | "accessories" | "inventory" | "media" | "orders" | "import-requests" | "tradeins" | "tradein-valuations" | "testimonials" | "messages" | "profile" | "branding" | "showcase" | "discovery" | "alerts"
   >(() => {
     const saved = getStoredAdminActiveTab();
-    const validTabs = ["dashboard", "products", "accessories", "inventory", "media", "orders", "tradeins", "tradein-valuations", "testimonials", "messages", "profile", "branding", "showcase", "discovery"];
+    const validTabs = ["dashboard", "products", "accessories", "inventory", "media", "orders", "import-requests", "tradeins", "tradein-valuations", "testimonials", "messages", "profile", "branding", "showcase", "discovery", "alerts"];
     if (saved && validTabs.includes(saved)) {
       return saved as any;
     }
@@ -517,6 +518,8 @@ export default function AdminDashboard({
           customBrand: data.customBrand || undefined,
           customModel: data.customModel || undefined,
           series: data.series || undefined,
+          vin: data.vin || undefined,
+          vehicleFeatures: Array.isArray(data.vehicleFeatures) ? data.vehicleFeatures : undefined,
 
           storageOptions: data.storageOptions || data.storage || (isVehicleProduct ? [] : ["128GB"]),
           colorOptions: data.colorOptions || data.color || [],
@@ -1007,6 +1010,7 @@ export default function AdminDashboard({
             { id: "products", label: "Products Catalog", icon: ShoppingBag, badge: metrics.total },
             { id: "accessories", label: "Accessories Manager", icon: Package },
             { id: "orders", label: "Orders & Verification", icon: Clock },
+            { id: "import-requests", label: "Import Requests", icon: Car },
             { id: "discovery", label: "Homepage Discovery Cards", icon: Sparkles },
             { id: "alerts", label: "Notification Alerts", icon: Bell },
             { id: "showcase", label: "Homepage Showcase", icon: Car },
@@ -1103,6 +1107,7 @@ export default function AdminDashboard({
                 {activeTab === "inventory" && "Stock & Inventory Control"}
                 {activeTab === "media" && "Cloudinary Media Library"}
                 {activeTab === "orders" && "Customer Orders & Payment Verification"}
+                {activeTab === "import-requests" && "Vehicle Import Quote Requests"}
                 {activeTab === "tradein-valuations" && "Trade-In Valuation"}
                 {activeTab === "tradeins" && "Device Swap Appraisals"}
                 {activeTab === "testimonials" && "Customer Testimonials & Proofs"}
@@ -1927,6 +1932,11 @@ export default function AdminDashboard({
           {/* TAB 5: ORDERS & PAYMENT VERIFICATION */}
           {activeTab === "orders" && (
             <AdminOrdersManager />
+          )}
+
+          {/* TAB: VEHICLE IMPORT REQUESTS (PHASE 1 AUTOMOBILE ORDERING) */}
+          {activeTab === "import-requests" && (
+            <AdminImportRequestsManager />
           )}
 
           {/* TAB: NOTIFICATION ALERTS & CUSTOMER REACTIVATION */}

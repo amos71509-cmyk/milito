@@ -1,0 +1,138 @@
+{
+  "MIL-CAR-TEST01": {
+    "id": "doc_mil_car_test01",
+    "orderId": "MIL-CAR-TEST01",
+    "orderSource": "automobile_section",
+    "orderType": "vehicle",
+    "productType": "vehicle",
+    "customer": {
+      "name": "Emeka Obi",
+      "email": "mil-car-test01@milito.ng",
+      "phone": "08031234567",
+      "address": "Lekki Phase 1",
+      "state": "Lagos",
+      "city": "Lekki Phase 1",
+      "notes": ""
+    },
+    "items": [
+      {
+        "productId": "veh-lexus-rx350-2022",
+        "productName": "2022 Lexus RX 350 F-Sport",
+        "productImage": "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=800",
+        "selectedSpecification": {
+          "condition": "Foreign Used (Tokunbo)",
+          "specsSummary": "2022 Lexus • Automatic"
+        },
+        "quantity": 1,
+        "unitPrice": 42000000,
+        "totalPrice": 42000000
+      }
+    ],
+    "productId": "veh-lexus-rx350-2022",
+    "productName": "2022 Lexus RX 350 F-Sport",
+    "productImage": "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=800",
+    "selectedSpecification": "Foreign Used (Tokunbo) • Automatic",
+    "quantity": 1,
+    "unitPrice": 42000000,
+    "subtotal": 42000000,
+    "deliveryFee": 0,
+    "totalAmount": 42000000,
+    "totalPurchasePrice": 42000000,
+    "includesShippingClearing": true,
+    "availabilityConfirmed": true,
+    "availabilityStatus": "Confirmed Available",
+    "orderStatus": "protected",
+    "paymentStatus": "paid",
+    "vehicleDetails": {
+      "id": "veh-lexus-rx350-2022",
+      "brand": "Lexus",
+      "name": "RX 350 F-Sport",
+      "year": "2022",
+      "condition": "Foreign Used (Tokunbo)",
+      "transmission": "Automatic",
+      "mileage": "24,000 km",
+      "image": "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=800"
+    },
+    "createdAt": "2026-10-30T00:51:41.757Z",
+    "updatedAt": "2026-10-30T00:52:05.374Z",
+    "availabilityConfirmedAt": "2026-10-30T00:51:52.219Z",
+    "adminNotes": "Transfer verified in MILITO Moniepoint Escrow Account.",
+    "transferNotice": {
+      "senderName": "Emeka Obi",
+      "senderBank": "GTBank",
+      "narration": "Payment for MIL-CAR-TEST01",
+      "transferReference": "GTB-TX-998822",
+      "paymentProofUrl": null,
+      "notifiedAt": "2026-10-30T00:51:58.932Z"
+    },
+    "paidAt": "2026-10-30T00:52:05.374Z"
+  },
+  "doc_mil_car_test01": {
+    "id": "doc_mil_car_test01",
+    "orderId": "MIL-CAR-TEST01",
+    "orderSource": "automobile_section",
+    "orderType": "vehicle",
+    "productType": "vehicle",
+    "customer": {
+      "name": "Emeka Obi",
+      "email": "mil-car-test01@milito.ng",
+      "phone": "08031234567",
+      "address": "Lekki Phase 1",
+      "state": "Lagos",
+      "city": "Lekki Phase 1",
+      "notes": ""
+    },
+    "items": [
+      {
+        "productId": "veh-lexus-rx350-2022",
+        "productName": "2022 Lexus RX 350 F-Sport",
+        "productImage": "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=800",
+        "selectedSpecification": {
+          "condition": "Foreign Used (Tokunbo)",
+          "specsSummary": "2022 Lexus • Automatic"
+        },
+        "quantity": 1,
+        "unitPrice": 42000000,
+        "totalPrice": 42000000
+      }
+    ],
+    "productId": "veh-lexus-rx350-2022",
+    "productName": "2022 Lexus RX 350 F-Sport",
+    "productImage": "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=800",
+    "selectedSpecification": "Foreign Used (Tokunbo) • Automatic",
+    "quantity": 1,
+    "unitPrice": 42000000,
+    "subtotal": 42000000,
+    "deliveryFee": 0,
+    "totalAmount": 42000000,
+    "totalPurchasePrice": 42000000,
+    "includesShippingClearing": true,
+    "availabilityConfirmed": true,
+    "availabilityStatus": "Confirmed Available",
+    "orderStatus": "protected",
+    "paymentStatus": "paid",
+    "vehicleDetails": {
+      "id": "veh-lexus-rx350-2022",
+      "brand": "Lexus",
+      "name": "RX 350 F-Sport",
+      "year": "2022",
+      "condition": "Foreign Used (Tokunbo)",
+      "transmission": "Automatic",
+      "mileage": "24,000 km",
+      "image": "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=800"
+    },
+    "createdAt": "2026-10-30T00:51:41.757Z",
+    "updatedAt": "2026-10-30T00:52:05.374Z",
+    "availabilityConfirmedAt": "2026-10-30T00:51:52.219Z",
+    "adminNotes": "Transfer verified in MILITO Moniepoint Escrow Account.",
+    "transferNotice": {
+      "senderName": "Emeka Obi",
+      "senderBank": "GTBank",
+      "narration": "Payment for MIL-CAR-TEST01",
+      "transferReference": "GTB-TX-998822",
+      "paymentProofUrl": null,
+      "notifiedAt": "2026-10-30T00:51:58.932Z"
+    },
+    "paidAt": "2026-10-30T00:52:05.374Z"
+  }
+}

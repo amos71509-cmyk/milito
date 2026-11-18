@@ -732,6 +732,46 @@ export default function VehicleProductForm({
             </select>
           </div>
         </div>
+
+        {/* Vehicle Features & Optional VIN */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 pt-2 border-t border-gray-800/80">
+          <div className="md:col-span-2">
+            <label className="block text-xs font-bold text-gray-300 mb-1.5 flex items-center gap-1">
+              <Sparkles className="w-3.5 h-3.5 text-[#00B14F]" />
+              Vehicle Key Features (Comma-separated)
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. Reverse Camera, Leather Seats, Sunroof, Keyless Entry, Apple CarPlay, Alloy Wheels"
+              value={Array.isArray(productForm.vehicleFeatures) ? productForm.vehicleFeatures.join(", ") : ""}
+              onChange={e => {
+                const raw = e.target.value;
+                const featuresArr = raw
+                  .split(",")
+                  .map(s => s.trim())
+                  .filter(Boolean);
+                setProductForm(prev => ({
+                  ...prev,
+                  vehicleFeatures: featuresArr
+                }));
+              }}
+              className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3.5 py-2 text-xs text-white placeholder-gray-500 focus:border-[#00B14F] focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-gray-300 mb-1.5">
+              VIN / Chassis Number (Optional)
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. 4T1BF1FK..."
+              value={productForm.vin || ""}
+              onChange={e => setProductForm(prev => ({ ...prev, vin: e.target.value }))}
+              className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white font-mono placeholder-gray-500 focus:border-[#00B14F] focus:outline-none"
+            />
+          </div>
+        </div>
       </div>
 
       {/* SECTION 4: PRICING & LIVE STOCK INVENTORY */}

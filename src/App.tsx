@@ -18,6 +18,7 @@ import SwapDealsPage from "./components/SwapDealsPage";
 import CategoryShoppingPage from "./components/CategoryShoppingPage";
 import PublicProductPage from "./components/PublicProductPage";
 import SwapDealsSection from "./components/SwapDealsSection";
+import EasyBuySection from "./components/EasyBuySection";
 import MilitoQCSection from "./components/MilitoQCSection";
 import PublicTestimonialsSection from "./components/testimonials/PublicTestimonialsSection";
 import FinalCtaSection from "./components/FinalCtaSection";
@@ -76,6 +77,13 @@ const DEFAULT_CONFIG: SiteConfig = {
     motionPattern: "floating",
     motionSpeed: 6,
     ambientColor: "green"
+  },
+  vehicleDepositSettings: {
+    depositPercentage: 30,
+    bankName: "Moniepoint MFB / Zenith Bank",
+    accountName: "MILITO TECH & AUTOMOBILE LTD",
+    accountNumber: "8089456201",
+    termsText: "1. A mandatory deposit (default 30%) is required to lock vehicle availability and initiate port clearing & logistics. 2. Deposits are 100% refundable if vehicle inspection fails or customs documentation is incomplete. 3. Remaining balance is due upon arrival at Lagos port or final delivery location before handover."
   }
 };
 
@@ -342,7 +350,7 @@ export default function App() {
         }, 120);
         return;
       }
-    } else if (id === "hero" || id === "how-it-works" || id === "reviews" || id === "faq") {
+    } else if (id === "hero" || id === "easy-buy" || id === "how-it-works" || id === "reviews" || id === "faq") {
       if (activePage !== "gadgets") {
         saveScrollPosition(activePage);
         setActivePage("gadgets");
@@ -561,15 +569,22 @@ export default function App() {
             galleryPublicIds: galPids,
             year: data.year || undefined,
             mileage: data.mileage || undefined,
+            mileageNumber: data.mileageNumber || undefined,
             transmission: data.transmission || undefined,
             fuelType: data.fuelType || undefined,
-            engineSize: data.engineSize || undefined,
+            engine: data.engine || data.engineSize || undefined,
+            engineSize: data.engineSize || data.engine || undefined,
             driveType: data.driveType || undefined,
+            bodyType: data.bodyType || undefined,
             location: data.location || undefined,
             vehicleStatus: data.vehicleStatus || undefined,
             documentation: data.documentation || undefined,
-            color: data.color || (typeof data.color === "string" ? data.color : undefined),
+            exteriorColor: data.exteriorColor || (typeof data.color === "string" ? data.color : undefined),
+            color: data.exteriorColor || (typeof data.color === "string" ? data.color : undefined),
             interiorColor: data.interiorColor || undefined,
+            series: data.series || undefined,
+            customBrand: data.customBrand || undefined,
+            customModel: data.customModel || undefined,
             vin: data.vin || undefined,
             vehicleFeatures: Array.isArray(data.vehicleFeatures) ? data.vehicleFeatures : (Array.isArray(data.features) ? data.features : undefined),
             storageOptions: data.storageOptions || (Array.isArray(data.storage) ? data.storage : data.storage ? [data.storage] : (isVehicle ? [] : ["128GB"])),
@@ -699,52 +714,57 @@ export default function App() {
 
   const [cart, setCart] = useState<CartItem[]>([]);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [shouldLoadHeroVideo, setShouldLoadHeroVideo] = useState(false);
+  const [shouldLoadHeroVideo, setShouldLoadHeroVideo] = useState(true);
 
-  useEffect(() => {
-    // Skip heavy background MP4 download on 2G / 3G / Data Saver so bandwidth goes 100% to fast browsing
+  // Play hero background video aggressively & handle browser autoplay restrictions
+  const playHeroVideo = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
     try {
-      const conn = typeof navigator !== "undefined" ? (navigator as any).connection : null;
-      if (conn && (conn.saveData || conn.effectiveType === "slow-2g" || conn.effectiveType === "2g" || conn.effectiveType === "3g")) {
-        return;
+      video.muted = true;
+      video.defaultMuted = true;
+      video.playsInline = true;
+      video.setAttribute("muted", "");
+      video.setAttribute("playsinline", "");
+      video.setAttribute("webkit-playsinline", "");
+      const playPromise = video.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {
+          // Autoplay deferred until user gesture; event listeners below will trigger it
+        });
       }
-    } catch {}
-
-    const vidTimer = setTimeout(() => {
-      setShouldLoadHeroVideo(true);
-    }, 300);
-    return () => clearTimeout(vidTimer);
+    } catch (e) {
+      // ignore
+    }
   }, []);
 
   useEffect(() => {
-    if (!shouldLoadHeroVideo) return;
-    const video = videoRef.current;
-    if (video) {
-      video.muted = true;
-      video.playsInline = true;
-      video.autoplay = true;
+    playHeroVideo();
 
-      video.play().catch(() => {});
+    const handleUserInteraction = () => {
+      playHeroVideo();
+    };
 
-      const playVideo = () => {
-        if (video) {
-          video.play().catch(() => {});
-        }
-      };
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        playHeroVideo();
+      }
+    };
 
-      window.addEventListener("click", playVideo, { once: true });
-      window.addEventListener("touchstart", playVideo, { once: true });
-      window.addEventListener("scroll", playVideo, { once: true });
-      window.addEventListener("mousemove", playVideo, { once: true });
+    window.addEventListener("click", handleUserInteraction, { passive: true });
+    window.addEventListener("touchstart", handleUserInteraction, { passive: true });
+    window.addEventListener("scroll", handleUserInteraction, { passive: true });
+    window.addEventListener("mousemove", handleUserInteraction, { passive: true });
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
-      return () => {
-        window.removeEventListener("click", playVideo);
-        window.removeEventListener("touchstart", playVideo);
-        window.removeEventListener("scroll", playVideo);
-        window.removeEventListener("mousemove", playVideo);
-      };
-    }
-  }, [shouldLoadHeroVideo]);
+    return () => {
+      window.removeEventListener("click", handleUserInteraction);
+      window.removeEventListener("touchstart", handleUserInteraction);
+      window.removeEventListener("scroll", handleUserInteraction);
+      window.removeEventListener("mousemove", handleUserInteraction);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [playHeroVideo]);
   const [selectedProductDetails, setSelectedProductDetails] = useState<Product | null>(null);
   
   // Modals state
@@ -814,8 +834,11 @@ export default function App() {
     restoreModalScroll();
   }, []);
 
-  const handleOpenTracker = useCallback(() => {
+  const handleOpenTracker = useCallback((orderId?: string) => {
     saveModalScroll();
+    if (orderId && typeof orderId === "string") {
+      setTrackerInitialOrderId(orderId);
+    }
     setIsTrackerOpen(true);
   }, []);
 
@@ -1115,27 +1138,46 @@ export default function App() {
       }`}
       id="hero"
     >
-      {/* Background video loaded after first paint */}
+      {/* Background cinematic video loaded immediately */}
       <div className="absolute inset-0 z-0 overflow-hidden select-none pointer-events-none">
-        {shouldLoadHeroVideo && (
-          <video
-            ref={videoRef}
-            src="https://res.cloudinary.com/militotech/video/upload/v1782058769/9f6ae906f73ccfec6f37203801e8eb81_720w_l1qwvu.mp4"
-            autoPlay={true}
-            loop={true}
-            muted={true}
-            playsInline={true}
-            preload="metadata"
-            className="w-full h-full object-cover opacity-45 transition-opacity duration-1000"
-          />
-        )}
-        {/* Protecting layer - balanced for high contrast with hero text */}
-        <div className="absolute inset-0 bg-[#1A2025]/30"></div>
+        <video
+          ref={(el) => {
+            videoRef.current = el;
+            if (el) {
+              el.muted = true;
+              el.defaultMuted = true;
+              el.playsInline = true;
+              el.setAttribute("muted", "");
+              el.setAttribute("playsinline", "");
+              el.setAttribute("webkit-playsinline", "");
+              el.play().catch(() => {});
+            }
+          }}
+          src={
+            (config.animationMedia?.useCustomShowcase && config.animationMedia?.url) ||
+            "https://res.cloudinary.com/militotech/video/upload/v1782058769/9f6ae906f73ccfec6f37203801e8eb81_720w_l1qwvu.mp4"
+          }
+          autoPlay={true}
+          loop={true}
+          muted={true}
+          playsInline={true}
+          preload="auto"
+          onCanPlay={(e) => {
+            e.currentTarget.muted = true;
+            e.currentTarget.play().catch(() => {});
+          }}
+          onLoadedData={(e) => {
+            e.currentTarget.muted = true;
+            e.currentTarget.play().catch(() => {});
+          }}
+          className="w-full h-full object-cover opacity-75 sm:opacity-85 transition-opacity duration-700"
+        />
+        {/* Protecting layer - balanced for high contrast with hero text while video plays vividly */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#1A2025]/75 via-[#1A2025]/35 to-[#1A2025]/90"></div>
       </div>
 
       {/* Subtle grid with rich dark background */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff_1px,transparent_1px),linear-gradient(to_bottom,#ffffff_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-[0.03] z-0"></div>
-      <div className="absolute inset-0 bg-gradient-to-b from-[#1A2025] via-transparent to-[#1A2025] opacity-75 z-0"></div>
 
       {/* Soft floating moving gradients / ambient green glow accents */}
       <motion.div
@@ -1367,6 +1409,8 @@ export default function App() {
             onSwapForThis={handleSwapForThis}
             onShare={handleShareProduct}
             onNotifyMe={handleOpenNotifyMe}
+            onOpenTracker={handleOpenTracker}
+            vehicleDepositSettings={config.vehicleDepositSettings}
           />
         ) : activeCategory ? (
           <CategoryShoppingPage
@@ -1511,6 +1555,19 @@ export default function App() {
             <SwapDealsSection
               onSwapClick={() => {
                 handleNavigatePage("swap-deals");
+              }}
+            />
+
+            {/* Easy Buy Installment Section (Can't Pay Once? Pay Small Small) */}
+            <EasyBuySection
+              onExploreStore={() => {
+                setStoreInitialSearch("");
+                setStoreInitialBrand("All");
+                try {
+                  sessionStorage.setItem("milito_store_category", "All");
+                  sessionStorage.setItem("milito_store_search", "");
+                } catch (e) {}
+                handleNavigatePage("store");
               }}
             />
 
@@ -1910,6 +1967,7 @@ export default function App() {
         {isTrackerOpen && (
           <OrderTrackerModal
             initialOrderId={trackerInitialOrderId}
+            vehicleDepositSettings={config.vehicleDepositSettings}
             onClose={() => {
               setTrackerInitialOrderId("");
               handleCloseTracker();

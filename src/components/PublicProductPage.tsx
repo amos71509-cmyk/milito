@@ -30,9 +30,26 @@ import {
   Cpu,
   Layers,
   ShoppingCart,
-  X
+  X,
+  Calendar,
+  Gauge,
+  Settings2,
+  Fuel,
+  MapPin,
+  FileCheck,
+  Palette,
+  User,
+  Phone,
+  Send
 } from "lucide-react";
-import { Product, ProductAccessory, ProductAlertType, resolveImageUrl, extractProductOriginalImages } from "../types";
+import {
+  Product,
+  ProductAccessory,
+  ProductAlertType,
+  VehicleImportRequest,
+  resolveImageUrl,
+  extractProductOriginalImages
+} from "../types";
 import { getStockStatus } from "../utils/stockUtils";
 import { formatNaira, MILITO_WHATSAPP_CLEAN_NUMBER } from "../utils/whatsapp";
 import { 
@@ -40,11 +57,17 @@ import {
   trackFunnelEvent, 
   copyTextToClipboard 
 } from "../utils/productUrl";
+import { calculateEasyBuy, generateEasyBuyWhatsAppUrl } from "../utils/easyBuyUtils";
 import ShareProductModal from "./ShareProductModal";
 import CompletePackageSection from "./CompletePackageSection";
 import { getDynamicDeliveryDate, createAccessoryCartProduct } from "../utils/deliveryDate";
 import { useCustomerAuth } from "../context/CustomerAuthContext";
 import CustomerAuthPromptModal from "./CustomerAuthPromptModal";
+import {
+  generateVehicleImportReference,
+  saveVehicleImportRequest,
+  NIGERIAN_DELIVERY_STATES
+} from "../utils/vehicleImportUtils";
 
 interface PublicProductPageProps {
   product: Product | null;
@@ -59,6 +82,14 @@ interface PublicProductPageProps {
   onSwapForThis: (product: Product) => void;
   onShare?: (product: Product) => void;
   onNotifyMe?: (product: Product, alertType?: ProductAlertType) => void;
+  onOpenTracker?: (orderId?: string) => void;
+  vehicleDepositSettings?: {
+    depositPercentage: number;
+    bankName: string;
+    accountName: string;
+    accountNumber: string;
+    termsText: string;
+  };
 }
 
 export default function PublicProductPage({
@@ -74,6 +105,8 @@ export default function PublicProductPage({
   onSwapForThis,
   onShare,
   onNotifyMe,
+  onOpenTracker,
+  vehicleDepositSettings,
 }: PublicProductPageProps) {
   const { isLoggedIn, isProductLiked, toggleLikeProduct, isAuthPromptOpen, closeAuthPrompt } = useCustomerAuth();
 
@@ -92,8 +125,36 @@ export default function PublicProductPage({
     totalAmount: number;
   } | null>(null);
 
+  // Vehicle Import Quote Modal States
+  const [isImportQuoteModalOpen, setIsImportQuoteModalOpen] = useState(false);
+  const [quoteCustomerName, setQuoteCustomerName] = useState("");
+  const [quoteCustomerPhone, setQuoteCustomerPhone] = useState("");
+  const [quoteDeliveryState, setQuoteDeliveryState] = useState("Lagos");
+  const [quoteDeliveryCity, setQuoteDeliveryCity] = useState("");
+  const [quoteMessage, setQuoteMessage] = useState("");
+  const [isSubmittingQuote, setIsSubmittingQuote] = useState(false);
+  const [quoteFormError, setQuoteFormError] = useState<string | null>(null);
+  const [submittedQuoteRecord, setSubmittedQuoteRecord] = useState<VehicleImportRequest | null>(null);
+  const [copiedRef, setCopiedRef] = useState(false);
+
   // Dynamic estimated delivery date (Next Day calculated automatically from current date)
   const deliveryInfo = useMemo(() => getDynamicDeliveryDate(), []);
+
+  const isVehicle = useMemo(() => {
+    if (!product) return false;
+    return (
+      product.productType === "vehicle" ||
+      Boolean(
+        product.year ||
+          product.transmission ||
+          product.mileage ||
+          product.fuelType ||
+          product.engine ||
+          product.engineSize ||
+          product.bodyType
+      )
+    );
+  }, [product]);
 
   // Sync initial product options without inventing missing fields
   useEffect(() => {
@@ -113,6 +174,9 @@ export default function PublicProductPage({
 
       setActiveImageTab(0);
       setFailedImages({});
+      setIsImportQuoteModalOpen(false);
+      setSubmittedQuoteRecord(null);
+      setQuoteFormError(null);
 
       // Track view
       trackFunnelEvent("product_viewed", {
@@ -194,16 +258,21 @@ export default function PublicProductPage({
     }
   };
 
-  // Find similar products for recommendations
+  // Find similar products for recommendations (matching product type strictly)
   const similarProducts = useMemo(() => {
-    if (!allProducts || allProducts.length === 0) return [];
-    if (product) {
-      return allProducts
-        .filter(p => p.id !== product.id && (p.brand === product.brand || p.productType === product.productType))
-        .slice(0, 4);
-    }
-    return allProducts.slice(0, 4);
-  }, [allProducts, product]);
+    if (!allProducts || allProducts.length === 0 || !product) return [];
+    const targetType = isVehicle ? "vehicle" : "phone";
+    return allProducts
+      .filter((p) => {
+        if (p.id === product.id) return false;
+        const pIsVehicle =
+          p.productType === "vehicle" ||
+          Boolean(p.year || p.transmission || p.mileage || p.fuelType || p.engine || p.bodyType);
+        const pType = pIsVehicle ? "vehicle" : "phone";
+        return pType === targetType;
+      })
+      .slice(0, 4);
+  }, [allProducts, product, isVehicle]);
 
   const handlePrevImage = () => {
     if (galleryList.length <= 1) return;
@@ -244,6 +313,106 @@ export default function PublicProductPage({
     }
   };
 
+  // Handle Opening Request Import Quote Modal
+  const handleOpenImportQuoteModal = () => {
+    setQuoteFormError(null);
+    setSubmittedQuoteRecord(null);
+    setIsImportQuoteModalOpen(true);
+  };
+
+  // Handle Submitting Vehicle Import Quote Request
+  const handleSubmitImportQuote = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!product) return;
+
+    const cleanName = quoteCustomerName.trim();
+    const cleanPhone = quoteCustomerPhone.trim();
+    const cleanState = quoteDeliveryState.trim();
+    const cleanCity = quoteDeliveryCity.trim();
+    const cleanMessage = quoteMessage.trim();
+
+    if (!cleanName) {
+      setQuoteFormError("Please enter your full name.");
+      return;
+    }
+    if (!cleanPhone || cleanPhone.replace(/\D/g, "").length < 7) {
+      setQuoteFormError("Please enter a valid Phone or WhatsApp number.");
+      return;
+    }
+    if (!cleanState) {
+      setQuoteFormError("Please select your Nigerian delivery state.");
+      return;
+    }
+    if (!cleanCity) {
+      setQuoteFormError("Please enter your delivery city or area.");
+      return;
+    }
+
+    setIsSubmittingQuote(true);
+    setQuoteFormError(null);
+
+    try {
+      const refNum = generateVehicleImportReference();
+      const now = new Date().toISOString();
+      const adminUploadedPrimaryImage = galleryList.length > 0 ? galleryList[0] : "";
+
+      const vehiclePrice = Number(product.price) || 0;
+      const depositPct = vehicleDepositSettings?.depositPercentage ?? 30;
+      const reqDeposit = Math.round(vehiclePrice * (depositPct / 100));
+      const remBalance = vehiclePrice - reqDeposit;
+
+      const newRequest: VehicleImportRequest = {
+        id: refNum,
+        referenceNumber: refNum,
+        status: "Pending",
+        customerName: cleanName,
+        customerPhone: cleanPhone,
+        deliveryState: cleanState,
+        deliveryCity: cleanCity,
+        deliveryLocation: `${cleanCity}, ${cleanState}`,
+        message: cleanMessage || undefined,
+        vehicleId: product.id,
+        vehicleName: product.name,
+        vehicleBrand: product.brand,
+        vehicleYear: product.year || undefined,
+        vehicleCondition: product.condition,
+        vehiclePrice,
+        depositPercentage: depositPct,
+        requiredDepositAmount: reqDeposit,
+        remainingBalanceAmount: remBalance,
+        depositPaymentStatus: "unpaid",
+        balancePaymentStatus: "unpaid",
+        vehicleImage: adminUploadedPrimaryImage,
+        vehicleTransmission: product.transmission || undefined,
+        vehicleMileage: product.mileage || undefined,
+        vehicleFuelType: product.fuelType || undefined,
+        vehicleEngine: product.engine || product.engineSize || undefined,
+        vehicleDriveType: product.driveType || undefined,
+        vehicleBodyType: product.bodyType || undefined,
+        vehicleExteriorColor: product.exteriorColor || (typeof product.color === "string" ? product.color : undefined),
+        vehicleInteriorColor: product.interiorColor || undefined,
+        vehicleDocumentation: product.documentation || undefined,
+        vehicleLocation: product.location || undefined,
+        vehicleFeatures: Array.isArray(product.vehicleFeatures) ? product.vehicleFeatures : undefined,
+        createdAt: now,
+        updatedAt: now
+      };
+
+      const saved = await saveVehicleImportRequest(newRequest);
+      setSubmittedQuoteRecord(saved);
+    } catch (err: any) {
+      setQuoteFormError(err?.message || "Could not submit your quote request. Please try again.");
+    } finally {
+      setIsSubmittingQuote(false);
+    }
+  };
+
+  const handleCopyReference = async (refText: string) => {
+    await copyTextToClipboard(refText);
+    setCopiedRef(true);
+    setTimeout(() => setCopiedRef(false), 2500);
+  };
+
   // =========================================================================
   // SCENARIO A: PRODUCT NOT FOUND
   // =========================================================================
@@ -268,15 +437,15 @@ export default function PublicProductPage({
             <div className="w-16 h-16 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center mx-auto text-amber-600">
               <Package className="w-8 h-8" />
             </div>
-            <h2 className="text-2xl sm:text-3xl font-black text-gray-950">Device not found or sold</h2>
+            <h2 className="text-2xl sm:text-3xl font-black text-gray-950">Listing not found or unavailable</h2>
             <p className="text-xs sm:text-sm text-gray-600 max-w-md mx-auto leading-relaxed">
-              This device is currently unavailable or has been purchased. Browse our verified inventory for current live devices.
+              This listing is currently unavailable. Browse our verified catalog for current live inventory.
             </p>
             <button
               onClick={onNavigateStore}
               className="px-6 py-3 rounded-2xl bg-[#00B14F] text-black font-extrabold text-xs uppercase tracking-wider shadow-md hover:brightness-105 active:scale-98 transition"
             >
-              Explore Live Store
+              Explore Live Inventory
             </button>
           </div>
         </div>
@@ -285,7 +454,836 @@ export default function PublicProductPage({
   }
 
   // =========================================================================
-  // SCENARIO B: STANDALONE PRODUCT SPEC PAGE
+  // SCENARIO B: DEDICATED VEHICLE SPEC PAGE (PHASE 1 AUTOMOBILE ORDERING)
+  // =========================================================================
+  if (isVehicle) {
+    const currentImageUrl = galleryList[activeImageTab] || "";
+    const vehicleDisplayTitle = [
+      product.year ? String(product.year) : "",
+      product.brand && !product.name.toLowerCase().startsWith(product.brand.toLowerCase()) ? product.brand : "",
+      product.name
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+
+    const exteriorColorValue =
+      product.exteriorColor || (typeof product.color === "string" ? product.color : undefined);
+    const engineValue = product.engine || product.engineSize;
+    const featuresList = Array.isArray(product.vehicleFeatures)
+      ? product.vehicleFeatures.filter(Boolean)
+      : [];
+
+    // Build clean specification entries strictly from available fields on the vehicle
+    const vehicleSpecEntries: Array<{ label: string; value: string; icon: React.ReactNode }> = [];
+    if (product.price) {
+      vehicleSpecEntries.push({
+        label: "Price",
+        value: formatNaira(product.price),
+        icon: <Tag className="w-3.5 h-3.5 text-[#00B14F]" />
+      });
+    }
+    if (product.year) {
+      vehicleSpecEntries.push({
+        label: "Year",
+        value: String(product.year),
+        icon: <Calendar className="w-3.5 h-3.5 text-[#00B14F]" />
+      });
+    }
+    if (product.mileage) {
+      const mStr = String(product.mileage).trim();
+      const formattedMileage =
+        mStr.toLowerCase().includes("km") || mStr.toLowerCase().includes("mi")
+          ? mStr
+          : `${mStr} km`;
+      vehicleSpecEntries.push({
+        label: "Mileage",
+        value: formattedMileage,
+        icon: <Gauge className="w-3.5 h-3.5 text-[#00B14F]" />
+      });
+    }
+    if (product.condition) {
+      vehicleSpecEntries.push({
+        label: "Condition",
+        value: String(product.condition),
+        icon: <ShieldCheck className="w-3.5 h-3.5 text-[#00B14F]" />
+      });
+    }
+    if (product.transmission) {
+      vehicleSpecEntries.push({
+        label: "Transmission",
+        value: String(product.transmission),
+        icon: <Settings2 className="w-3.5 h-3.5 text-[#00B14F]" />
+      });
+    }
+    if (product.fuelType) {
+      vehicleSpecEntries.push({
+        label: "Fuel Type",
+        value: String(product.fuelType),
+        icon: <Fuel className="w-3.5 h-3.5 text-[#00B14F]" />
+      });
+    }
+    if (engineValue) {
+      vehicleSpecEntries.push({
+        label: "Engine",
+        value: String(engineValue),
+        icon: <Cpu className="w-3.5 h-3.5 text-[#00B14F]" />
+      });
+    }
+    if (product.driveType) {
+      vehicleSpecEntries.push({
+        label: "Drivetrain",
+        value: String(product.driveType),
+        icon: <Layers className="w-3.5 h-3.5 text-[#00B14F]" />
+      });
+    }
+    if (product.bodyType) {
+      vehicleSpecEntries.push({
+        label: "Body Type",
+        value: String(product.bodyType),
+        icon: <Car className="w-3.5 h-3.5 text-[#00B14F]" />
+      });
+    }
+    if (exteriorColorValue) {
+      vehicleSpecEntries.push({
+        label: "Exterior Colour",
+        value: String(exteriorColorValue),
+        icon: <Palette className="w-3.5 h-3.5 text-[#00B14F]" />
+      });
+    }
+    if (product.interiorColor) {
+      vehicleSpecEntries.push({
+        label: "Interior Colour",
+        value: String(product.interiorColor),
+        icon: <Palette className="w-3.5 h-3.5 text-[#00B14F]" />
+      });
+    }
+    if (product.documentation) {
+      vehicleSpecEntries.push({
+        label: "Documentation",
+        value: String(product.documentation),
+        icon: <FileCheck className="w-3.5 h-3.5 text-[#00B14F]" />
+      });
+    }
+    if (product.location) {
+      vehicleSpecEntries.push({
+        label: "Location",
+        value: String(product.location),
+        icon: <MapPin className="w-3.5 h-3.5 text-[#00B14F]" />
+      });
+    }
+    if (product.vin) {
+      vehicleSpecEntries.push({
+        label: "VIN / Chassis",
+        value: String(product.vin),
+        icon: <Info className="w-3.5 h-3.5 text-[#00B14F]" />
+      });
+    }
+
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] text-gray-900 pb-24 md:pb-16 w-full">
+        {/* TOP NAVIGATION BAR */}
+        <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-gray-200 px-3 sm:px-6 py-3 shadow-2xs">
+          <div className="max-w-6xl mx-auto flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <button
+                type="button"
+                onClick={handleBackNavigation}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-250 bg-gray-50 hover:bg-gray-100 text-gray-800 transition text-xs font-bold font-sans cursor-pointer shadow-2xs shrink-0"
+                title="Back to Vehicles"
+              >
+                <ArrowLeft className="w-4 h-4 text-[#00B14F]" />
+                <span>Back to Vehicles</span>
+              </button>
+              <span className="text-[11px] font-bold text-gray-500 truncate hidden sm:inline">
+                {vehicleDisplayTitle}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleShareProduct}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 text-xs font-extrabold transition cursor-pointer"
+                title="Share this vehicle"
+              >
+                <Share2 className="w-3.5 h-3.5 text-[#00B14F]" />
+                <span className="hidden sm:inline">Share Vehicle</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* MAIN VEHICLE SPEC CONTENT */}
+        <div className="max-w-6xl mx-auto px-3 sm:px-6 pt-4 sm:pt-8">
+          <div className="bg-white rounded-2xl sm:rounded-3xl border border-gray-200 shadow-xl overflow-hidden p-3.5 sm:p-8 md:p-10 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 lg:gap-10 items-start">
+              {/* LEFT COLUMN: ADMIN-UPLOADED VEHICLE IMAGES ONLY */}
+              <div className="md:col-span-6 flex flex-col items-center w-full">
+                <div className="w-full aspect-[4/3] max-h-[420px] bg-gray-100 rounded-2xl sm:rounded-3xl border border-gray-200 overflow-hidden relative flex items-center justify-center select-none shadow-inner">
+                  {galleryList.length > 0 && currentImageUrl && !failedImages[activeImageTab] ? (
+                    <img
+                      key={currentImageUrl}
+                      src={resolveImageUrl(currentImageUrl, { width: 1000, brand: product.brand })}
+                      alt={`${vehicleDisplayTitle} photo ${activeImageTab + 1}`}
+                      loading="eager"
+                      referrerPolicy="no-referrer"
+                      onError={() => setFailedImages((prev) => ({ ...prev, [activeImageTab]: true }))}
+                      className="w-full h-full object-cover transition-transform duration-300"
+                    />
+                  ) : (
+                    /* Strictly NO stock or placeholder images if admin did not upload any */
+                    <div className="flex flex-col items-center justify-center text-gray-400 p-6 text-center select-none">
+                      <div className="w-14 h-14 rounded-2xl bg-gray-200/80 flex items-center justify-center mb-2 text-gray-400">
+                        <Car className="w-7 h-7 stroke-[1.5]" />
+                      </div>
+                      <span className="text-xs font-bold text-gray-650">No vehicle photo uploaded by admin</span>
+                    </div>
+                  )}
+
+                  {galleryList.length > 1 && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handlePrevImage}
+                        className="absolute left-2.5 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/90 hover:bg-white text-gray-900 shadow-md transition-transform hover:scale-105 cursor-pointer"
+                        title="Previous Photo"
+                        aria-label="Previous photo"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleNextImage}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/90 hover:bg-white text-gray-900 shadow-md transition-transform hover:scale-105 cursor-pointer"
+                        title="Next Photo"
+                        aria-label="Next photo"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+
+                      <div className="absolute bottom-3 right-3 px-2.5 py-1 rounded-full bg-black/70 text-white text-[10px] font-bold">
+                        {activeImageTab + 1} / {galleryList.length}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Admin-Uploaded Gallery Thumbnails */}
+                {galleryList.length > 1 && (
+                  <div className="flex justify-center gap-2 sm:gap-2.5 flex-wrap w-full mt-3.5 max-h-28 overflow-y-auto p-1">
+                    {galleryList.map((img, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setActiveImageTab(idx)}
+                        className={`w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-gray-100 flex items-center justify-center border-2 transition-all cursor-pointer ${
+                          activeImageTab === idx
+                            ? "border-[#00B14F] ring-2 ring-[#00B14F]/30 scale-105 shadow-xs"
+                            : "border-gray-200 opacity-75 hover:opacity-100"
+                        }`}
+                        aria-label={`View vehicle photo ${idx + 1}`}
+                      >
+                        <img
+                          src={resolveImageUrl(img, { width: 160, brand: product.brand })}
+                          alt={`Thumbnail ${idx + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* RIGHT COLUMN: VEHICLE SPECIFICATIONS & PRIMARY CTA */}
+              <div className="md:col-span-6 space-y-5">
+                {/* Vehicle Header & Price */}
+                <div>
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className="text-xs font-extrabold text-[#00B14F] tracking-wider uppercase flex items-center gap-1.5">
+                      <Car className="w-4 h-4" />
+                      <span>
+                        {product.brand}
+                        {product.series ? ` • ${product.series}` : ""}
+                      </span>
+                    </span>
+                    <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-extrabold">
+                      {product.vehicleStatus || product.availability || "Available"}
+                    </span>
+                  </div>
+
+                  <h1 className="text-2xl sm:text-3xl font-black text-gray-950 mt-1.5 font-sans tracking-tight leading-tight">
+                    {vehicleDisplayTitle}
+                  </h1>
+
+                  <div className="mt-3 space-y-2">
+                    <div className="flex items-baseline gap-3">
+                      <span className="text-2xl sm:text-4xl font-black text-[#00B14F] font-mono">
+                        {formatNaira(product.price)}
+                      </span>
+                      {product.originalPrice && product.originalPrice > product.price && (
+                        <span className="text-xs sm:text-sm font-bold text-gray-400 line-through font-mono">
+                          {formatNaira(product.originalPrice)}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* All-Inclusive Purchase Price Badge */}
+                    <div className="inline-flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-950 text-xs font-extrabold w-full sm:w-fit shadow-2xs">
+                      <div className="flex items-center gap-1.5 text-[#00B14F]">
+                        <ShieldCheck className="w-4 h-4 shrink-0 text-[#00B14F]" />
+                        <span className="text-gray-950 font-black">Total Purchase Price</span>
+                      </div>
+                      <span className="text-emerald-800 text-[11px] font-semibold">
+                        (Includes Shipping &amp; Customs Clearing to Nigeria • No Hidden Fees)
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Quick Highlight Badges */}
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    {product.condition && (
+                      <span className="px-3 py-1 rounded-full bg-amber-50 text-amber-900 text-xs font-extrabold border border-amber-200">
+                        {product.condition}
+                      </span>
+                    )}
+                    {product.year && (
+                      <span className="px-3 py-1 rounded-full bg-gray-100 text-gray-800 text-xs font-bold border border-gray-200">
+                        Year: {product.year}
+                      </span>
+                    )}
+                    {product.transmission && (
+                      <span className="px-3 py-1 rounded-full bg-gray-100 text-gray-800 text-xs font-bold border border-gray-200">
+                        {product.transmission}
+                      </span>
+                    )}
+                    {product.mileage && (
+                      <span className="px-3 py-1 rounded-full bg-gray-100 text-gray-800 text-xs font-bold border border-gray-200">
+                        {String(product.mileage).toLowerCase().includes("km") ||
+                        String(product.mileage).toLowerCase().includes("mi")
+                          ? product.mileage
+                          : `${product.mileage} km`}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* PRIMARY CTA: ORDER THIS CAR */}
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    id="order-this-car-btn"
+                    onClick={handleOpenImportQuoteModal}
+                    className="w-full py-4 px-6 rounded-2xl bg-[#00B14F] hover:bg-[#009944] active:scale-98 text-black font-black text-sm sm:text-base uppercase tracking-wider shadow-lg shadow-[#00B14F]/25 flex items-center justify-center gap-2.5 cursor-pointer transition min-h-[54px]"
+                  >
+                    <Car className="w-5 h-5 text-black stroke-[2.5]" />
+                    <span>Order This Car</span>
+                  </button>
+                  <p className="text-[11px] text-center text-gray-500 mt-2 font-medium">
+                    Admin confirms vehicle availability before customer proceeds to payment. Track order stages from dispatch to delivery.
+                  </p>
+                </div>
+
+                {/* VEHICLE SPECIFICATIONS GRID */}
+                {vehicleSpecEntries.length > 0 && (
+                  <div className="space-y-2.5 pt-2">
+                    <h3 className="text-xs font-extrabold text-gray-950 uppercase tracking-wider flex items-center gap-1.5">
+                      <Info className="w-4 h-4 text-[#00B14F]" />
+                      <span>Vehicle Specifications</span>
+                    </h3>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-2 gap-2.5 bg-gray-50 p-3.5 sm:p-4 rounded-2xl border border-gray-200">
+                      {vehicleSpecEntries.map((spec, idx) => (
+                        <div
+                          key={idx}
+                          className="bg-white p-2.5 sm:p-3 rounded-xl border border-gray-200/80 flex flex-col justify-between"
+                        >
+                          <div className="flex items-center gap-1.5 text-[10px] font-bold text-gray-500 uppercase">
+                            {spec.icon}
+                            <span>{spec.label}</span>
+                          </div>
+                          <span className="text-xs sm:text-sm font-extrabold text-gray-900 mt-1 break-words">
+                            {spec.value}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* VEHICLE FEATURES (If present on vehicle) */}
+                {featuresList.length > 0 && (
+                  <div className="space-y-2 pt-1">
+                    <h3 className="text-xs font-extrabold text-gray-950 uppercase tracking-wider flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-[#00B14F]" />
+                      <span>Features &amp; Equipment</span>
+                    </h3>
+                    <div className="flex flex-wrap gap-2 bg-gray-50 p-3.5 rounded-2xl border border-gray-200">
+                      {featuresList.map((feature, idx) => (
+                        <span
+                          key={idx}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-gray-200 text-xs font-bold text-gray-800 shadow-2xs"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5 text-[#00B14F] shrink-0" />
+                          <span>{feature}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* VEHICLE DESCRIPTION (If present on vehicle) */}
+                {product.description && (
+                  <div className="space-y-1.5 pt-1">
+                    <h3 className="text-xs font-extrabold text-gray-950 uppercase tracking-wider">
+                      Vehicle Overview
+                    </h3>
+                    <div className="p-3.5 sm:p-4 rounded-2xl bg-gray-50 border border-gray-200 text-xs sm:text-sm text-gray-700 leading-relaxed">
+                      {product.description}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* OTHER AVAILABLE VEHICLES */}
+          {similarProducts.length > 0 && (
+            <div className="space-y-4 pt-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-gray-950">More Available Vehicles</h3>
+                  <p className="text-xs text-gray-500">Click any vehicle card to inspect full specifications</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={onNavigateStore}
+                  className="text-xs font-bold text-[#00B14F] hover:underline cursor-pointer"
+                >
+                  View All Vehicles &rarr;
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
+                {similarProducts.map((p) => {
+                  const pImgs = extractProductOriginalImages(p);
+                  const pImg = pImgs.length > 0 ? pImgs[0] : "";
+
+                  return (
+                    <div
+                      key={p.id}
+                      onClick={() => onSelectProduct(p)}
+                      className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 overflow-hidden shadow-2xs hover:shadow-md transition-all cursor-pointer group flex flex-col"
+                    >
+                      <div className="w-full aspect-square bg-gray-100 overflow-hidden relative flex items-center justify-center">
+                        {pImg ? (
+                          <img
+                            src={resolveImageUrl(pImg, { width: 320, brand: p.brand })}
+                            alt={p.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                          />
+                        ) : (
+                          <div className="flex flex-col items-center justify-center text-gray-400 p-2">
+                            <Car className="w-6 h-6 stroke-[1.5]" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-2.5 sm:p-3 flex flex-col flex-1 justify-between">
+                        <div>
+                          <span className="text-[8.5px] sm:text-[10px] font-extrabold text-[#00B14F] uppercase block">
+                            {p.year ? `${p.year} • ` : ""}{p.brand}
+                          </span>
+                          <h4 className="text-[11px] sm:text-xs font-bold text-gray-900 truncate mt-0.5">
+                            {p.name}
+                          </h4>
+                        </div>
+                        <p className="text-xs sm:text-sm font-black text-gray-950 font-mono mt-1">
+                          {formatNaira(p.price)}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* REQUEST IMPORT QUOTE MODAL */}
+        {isImportQuoteModalOpen && (
+          <div className="fixed inset-0 z-[100] bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+            <div className="bg-white rounded-3xl w-full max-w-lg border border-gray-200 shadow-2xl overflow-hidden my-auto animate-fadeIn">
+              {/* Modal Header */}
+              <div className="px-5 py-4 bg-[#111827] text-white flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-[#00B14F]/20 border border-[#00B14F]/40 flex items-center justify-center text-[#00B14F]">
+                    <Car className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm sm:text-base font-black text-white">
+                      {submittedQuoteRecord ? "Vehicle Order Submitted" : "Order This Car"}
+                    </h3>
+                    <p className="text-[11px] text-gray-400">
+                      MILITO Automobile Ordering &amp; Procurement
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsImportQuoteModalOpen(false)}
+                  className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white transition cursor-pointer"
+                  aria-label="Close modal"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {submittedQuoteRecord ? (
+                /* CONFIRMATION VIEW */
+                <div className="p-5 sm:p-6 space-y-4 text-center">
+                  <div className="w-14 h-14 rounded-full bg-emerald-100 border border-emerald-300 flex items-center justify-center mx-auto text-[#00B14F]">
+                    <CheckCircle2 className="w-8 h-8 stroke-[2.5]" />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-[11px] font-black uppercase tracking-wider">
+                      Status: Awaiting Vehicle Availability Confirmation
+                    </span>
+                    <h4 className="text-lg sm:text-xl font-black text-gray-950">
+                      Vehicle Order Received!
+                    </h4>
+                    <p className="text-xs text-gray-600 max-w-md mx-auto leading-relaxed">
+                      Thank you, <strong className="text-gray-900">{submittedQuoteRecord.customerName}</strong>. Your vehicle order has been securely logged with our automotive desk.
+                    </p>
+                  </div>
+
+                  {/* Unique Reference Number Card */}
+                  <div className="p-4 rounded-2xl bg-gray-900 text-white border border-gray-800 space-y-2">
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 block">
+                      Your Unique Vehicle Order Reference
+                    </span>
+                    <div className="flex items-center justify-center gap-2.5">
+                      <span
+                        id="vehicle-order-reference-number"
+                        className="text-lg sm:text-xl font-black font-mono text-[#00B14F] tracking-wider"
+                      >
+                        {submittedQuoteRecord.referenceNumber}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyReference(submittedQuoteRecord.referenceNumber)}
+                        className="px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-bold text-white flex items-center gap-1 cursor-pointer transition"
+                        title="Copy reference number"
+                      >
+                        {copiedRef ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-[#00B14F]" />
+                            <span className="text-[10px] text-[#00B14F]">Copied</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5" />
+                            <span className="text-[10px]">Copy</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-gray-400">
+                      Use this order reference code to track physical verification and payment status.
+                    </p>
+                  </div>
+
+                  {/* Summary of Selected Vehicle & Customer Info */}
+                  <div className="text-left bg-gray-50 p-3.5 rounded-2xl border border-gray-200 space-y-2 text-xs">
+                    <div className="flex items-center gap-3 pb-2.5 border-b border-gray-200">
+                      {submittedQuoteRecord.vehicleImage ? (
+                        <img
+                          src={resolveImageUrl(submittedQuoteRecord.vehicleImage, { width: 120 })}
+                          alt={submittedQuoteRecord.vehicleName}
+                          className="w-12 h-12 rounded-xl object-cover bg-gray-200 shrink-0"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-xl bg-gray-200 flex items-center justify-center text-gray-500 shrink-0">
+                          <Car className="w-5 h-5" />
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="font-extrabold text-gray-900 truncate">
+                          {submittedQuoteRecord.vehicleYear ? `${submittedQuoteRecord.vehicleYear} ` : ""}
+                          {submittedQuoteRecord.vehicleBrand} {submittedQuoteRecord.vehicleName}
+                        </p>
+                        <div className="flex items-baseline gap-2 mt-0.5">
+                          <span className="text-[#00B14F] font-black font-mono">
+                            {formatNaira(submittedQuoteRecord.vehiclePrice)}
+                          </span>
+                          <span className="text-[10px] text-gray-500 font-bold">
+                            (Includes Shipping &amp; Clearing)
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-gray-400 font-mono">
+                          Vehicle ID: {submittedQuoteRecord.vehicleId}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <div>
+                        <span className="text-[10px] text-gray-500 uppercase font-bold block">Phone / WhatsApp</span>
+                        <span className="font-bold text-gray-900">{submittedQuoteRecord.customerPhone}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-gray-500 uppercase font-bold block">Delivery Destination</span>
+                        <span className="font-bold text-gray-900">{submittedQuoteRecord.deliveryLocation}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Availability Notice Card */}
+                  <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-left text-xs text-amber-950 flex items-start gap-2.5">
+                    <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold text-amber-900">Next Step: Vehicle Availability Confirmation</p>
+                      <p className="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
+                        MILITO Admin must confirm physical vehicle availability at our port depot before you can proceed to payment. Once availability is confirmed, payment will unlock in your order tracker.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex flex-col sm:flex-row items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      id="track-vehicle-order-cta-btn"
+                      onClick={() => {
+                        const ref = submittedQuoteRecord.referenceNumber;
+                        setIsImportQuoteModalOpen(false);
+                        if (onOpenTracker) {
+                          onOpenTracker(ref);
+                        }
+                      }}
+                      className="w-full sm:flex-1 py-3.5 px-5 rounded-2xl bg-[#00B14F] hover:bg-[#009944] active:scale-98 text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition shadow-md"
+                    >
+                      <Truck className="w-4 h-4 text-black" />
+                      <span>Track Vehicle Order</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsImportQuoteModalOpen(false)}
+                      className="w-full sm:w-auto py-3 px-5 rounded-2xl bg-gray-150 hover:bg-gray-200 text-gray-800 font-bold text-xs cursor-pointer transition"
+                    >
+                      Done
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* VEHICLE ORDER FORM */
+                <form onSubmit={handleSubmitImportQuote} className="p-5 sm:p-6 space-y-4">
+                  {/* Automatically Attached Vehicle Summary Banner */}
+                  <div className="p-3 rounded-2xl bg-gray-50 border border-gray-200 flex items-center gap-3">
+                    {galleryList[0] ? (
+                      <img
+                        src={resolveImageUrl(galleryList[0], { width: 120, brand: product.brand })}
+                        alt={vehicleDisplayTitle}
+                        className="w-14 h-14 rounded-xl object-cover border border-gray-200 shrink-0"
+                      />
+                    ) : (
+                      <div className="w-14 h-14 rounded-xl bg-gray-200 flex items-center justify-center text-gray-500 shrink-0">
+                        <Car className="w-6 h-6" />
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#00B14F] block">
+                        Selected Vehicle Attached
+                      </span>
+                      <h4 className="text-xs sm:text-sm font-black text-gray-950 truncate">
+                        {vehicleDisplayTitle}
+                      </h4>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        <span className="text-xs font-black text-[#00B14F] font-mono">
+                          {formatNaira(product.price)}
+                        </span>
+                        <span className="text-[10px] text-gray-700 font-bold bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded">
+                          Includes Shipping &amp; Clearing
+                        </span>
+                        <span className="text-[10px] text-gray-500">• {product.condition}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {quoteFormError && (
+                    <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-bold flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      <span>{quoteFormError}</span>
+                    </div>
+                  )}
+
+                  {/* Customer Name */}
+                  <div>
+                    <label className="block text-xs font-extrabold text-gray-800 mb-1">
+                      Full Name <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <User className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Chinedu Okafor"
+                        value={quoteCustomerName}
+                        onChange={(e) => setQuoteCustomerName(e.target.value)}
+                        className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-gray-300 text-xs sm:text-sm text-gray-900 focus:border-[#00B14F] focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Phone / WhatsApp Number */}
+                  <div>
+                    <label className="block text-xs font-extrabold text-gray-800 mb-1">
+                      Phone / WhatsApp Number <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <Phone className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="tel"
+                        required
+                        placeholder="e.g. 0803 123 4567"
+                        value={quoteCustomerPhone}
+                        onChange={(e) => setQuoteCustomerPhone(e.target.value)}
+                        className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-gray-300 text-xs sm:text-sm text-gray-900 focus:border-[#00B14F] focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Nigerian Delivery State & City */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-extrabold text-gray-800 mb-1">
+                        Nigerian Delivery State <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={quoteDeliveryState}
+                        onChange={(e) => setQuoteDeliveryState(e.target.value)}
+                        className="w-full px-3 py-2.5 rounded-xl border border-gray-300 text-xs sm:text-sm text-gray-900 bg-white focus:border-[#00B14F] focus:outline-none"
+                      >
+                        {NIGERIAN_DELIVERY_STATES.map((st) => (
+                          <option key={st} value={st}>
+                            {st}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-extrabold text-gray-800 mb-1">
+                        Delivery City / Area <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Lekki, Ikeja, Wuse 2"
+                        value={quoteDeliveryCity}
+                        onChange={(e) => setQuoteDeliveryCity(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-xs sm:text-sm text-gray-900 focus:border-[#00B14F] focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Optional Message */}
+                  <div>
+                    <label className="block text-xs font-extrabold text-gray-800 mb-1">
+                      Optional Message / Delivery Instructions
+                    </label>
+                    <textarea
+                      rows={3}
+                      placeholder="Any specific delivery instructions or inspection questions?"
+                      value={quoteMessage}
+                      onChange={(e) => setQuoteMessage(e.target.value)}
+                      className="w-full p-3 rounded-xl border border-gray-300 text-xs sm:text-sm text-gray-900 focus:border-[#00B14F] focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Deposit Breakdown & Bank Details Card */}
+                  {(() => {
+                    const depositPct = vehicleDepositSettings?.depositPercentage ?? 30;
+                    const depositAmount = Math.round((Number(product.price) || 0) * (depositPct / 100));
+                    const balanceAmount = (Number(product.price) || 0) - depositAmount;
+                    const bankName = vehicleDepositSettings?.bankName || "Moniepoint MFB / Zenith Bank";
+                    const accountName = vehicleDepositSettings?.accountName || "MILITO TECH & AUTOMOBILE LTD";
+                    const accountNumber = vehicleDepositSettings?.accountNumber || "8089456201";
+                    const termsText = vehicleDepositSettings?.termsText || "1. A mandatory deposit is required to lock vehicle availability and initiate port clearing & logistics. 2. Deposits are 100% refundable if vehicle inspection fails or customs documentation is incomplete. 3. Remaining balance is due upon arrival at Lagos port or final delivery location before handover.";
+
+                    return (
+                      <div className="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-200 text-xs text-gray-900 space-y-2.5">
+                        <div className="flex items-center justify-between border-b border-emerald-200/80 pb-2">
+                          <span className="font-black text-gray-950 uppercase text-[11px]">Milito Automobile Escrow Terms</span>
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-950 text-[10px] font-black">{depositPct}% Deposit System</span>
+                        </div>
+
+                        <div className="space-y-1 font-semibold text-[11px]">
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Total Purchase Price:</span>
+                            <span className="font-mono font-black text-gray-950">{formatNaira(product.price)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Required Deposit ({depositPct}%):</span>
+                            <span className="font-mono font-black text-emerald-700">{formatNaira(depositAmount)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Remaining Balance ({100 - depositPct}%):</span>
+                            <span className="font-mono font-black text-gray-800">{formatNaira(balanceAmount)}</span>
+                          </div>
+                        </div>
+
+                        <div className="pt-2 border-t border-emerald-200/80 space-y-1 text-[10px] text-gray-700">
+                          <p className="font-bold text-gray-900">Official Deposit Account:</p>
+                          <p className="font-mono">Bank: {bankName}</p>
+                          <p className="font-mono">Acct No: <strong className="text-emerald-800 font-black">{accountNumber}</strong> ({accountName})</p>
+                          <p className="text-[10px] text-gray-600 mt-1 leading-relaxed">
+                            {termsText}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  <div className="pt-2 flex items-center gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setIsImportQuoteModalOpen(false)}
+                      disabled={isSubmittingQuote}
+                      className="px-4 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs cursor-pointer transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      id="submit-order-this-car-btn"
+                      disabled={isSubmittingQuote}
+                      className="flex-1 py-3.5 px-6 rounded-xl bg-[#00B14F] hover:bg-[#009944] text-black font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition shadow-lg shadow-[#00B14F]/20 disabled:opacity-50"
+                    >
+                      <Car className="w-4 h-4 text-black stroke-[2.5]" />
+                      <span>{isSubmittingQuote ? "Logging Order..." : "Order This Car"}</span>
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Share Modal */}
+        {isLocalShareModalOpen && product && (
+          <ShareProductModal
+            isOpen={isLocalShareModalOpen}
+            onClose={() => setIsLocalShareModalOpen(false)}
+            product={product}
+          />
+        )}
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // SCENARIO C: STANDALONE GADGET / SMARTPHONE SPEC PAGE (UNCHANGED)
   // =========================================================================
   const isSoldOut = stockInfo.isSoldOut;
   const currentImageUrl = galleryList[activeImageTab] || "";
@@ -374,11 +1372,7 @@ export default function PublicProductPage({
                   /* Strictly NO random or stock fallback photo when none uploaded */
                   <div className="flex flex-col items-center justify-center text-gray-400 p-6 text-center select-none">
                     <div className="w-14 h-14 rounded-2xl bg-gray-200/80 flex items-center justify-center mb-2 text-gray-400">
-                      {product.productType === "vehicle" ? (
-                        <Car className="w-7 h-7 stroke-[1.5]" />
-                      ) : (
-                        <Smartphone className="w-7 h-7 stroke-[1.5]" />
-                      )}
+                      <Smartphone className="w-7 h-7 stroke-[1.5]" />
                     </div>
                     <span className="text-xs font-bold text-gray-650">No photo uploaded by admin</span>
                     <span className="text-[10px] text-gray-400 mt-0.5">Specifications verified by MILITO</span>
@@ -488,6 +1482,33 @@ export default function PublicProductPage({
                     </span>
                   )}
                 </div>
+
+                {/* Easy Buy Installment Banner */}
+                {product.price > 0 && (() => {
+                  const easyBuy = calculateEasyBuy(product.price, 12, 30);
+                  const easyBuyWhatsAppUrl = generateEasyBuyWhatsAppUrl(product.name, product.price, 12, 30);
+                  return (
+                    <div className="mt-2.5 p-2.5 rounded-xl bg-emerald-50 border border-emerald-300 flex flex-wrap items-center justify-between gap-2 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded-md bg-[#00B14F] text-white font-black text-[10px] uppercase tracking-wider">
+                          Easy Buy
+                        </span>
+                        <span className="text-gray-900 font-extrabold text-[11px] sm:text-xs">
+                          {formatNaira(easyBuy.depositAmount)} deposit · {formatNaira(easyBuy.weeklyAmount)}/week (12 wks)
+                        </span>
+                      </div>
+                      <a
+                        href={easyBuyWhatsAppUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-[11px] font-black text-[#009643] hover:underline"
+                      >
+                        <span>Apply on WhatsApp</span>
+                        <ArrowLeftRight className="w-3 h-3" />
+                      </a>
+                    </div>
+                  );
+                })()}
 
                 <div className="mt-2.5 flex flex-wrap items-center gap-2">
                   <span className="px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-800 text-[11px] font-bold border border-gray-250">
@@ -827,16 +1848,14 @@ export default function PublicProductPage({
 
                 {/* Secondary Actions: SWAP & SHARE */}
                 <div className="grid grid-cols-2 gap-2 pt-1">
-                  {product.productType !== "vehicle" && (
-                    <button
-                      type="button"
-                      onClick={() => onSwapForThis(product)}
-                      className="py-2.5 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-300 font-extrabold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs transition active:scale-98"
-                    >
-                      <ArrowLeftRight className="w-3.5 h-3.5 text-[#00B14F] shrink-0" />
-                      <span>Swap For This</span>
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => onSwapForThis(product)}
+                    className="py-2.5 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-300 font-extrabold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs transition active:scale-98"
+                  >
+                    <ArrowLeftRight className="w-3.5 h-3.5 text-[#00B14F] shrink-0" />
+                    <span>Swap For This</span>
+                  </button>
 
                   <button
                     type="button"

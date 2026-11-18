@@ -20,7 +20,8 @@ import {
   X,
   Loader2,
   RefreshCw,
-  FileText
+  FileText,
+  Car
 } from "lucide-react";
 import { ProtectedOrder } from "../types";
 import { formatNaira } from "../utils/whatsapp";
@@ -29,7 +30,7 @@ export default function AdminOrdersManager() {
   const [orders, setOrders] = useState<ProtectedOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"ALL" | "pending_verification" | "paid" | "failed">("ALL");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "vehicles" | "awaiting_availability" | "pending_verification" | "paid" | "failed">("ALL");
 
   // Receipt Modal
   const [viewingReceiptUrl, setViewingReceiptUrl] = useState<string | null>(null);
@@ -57,7 +58,42 @@ export default function AdminOrdersManager() {
     fetchOrders();
   }, []);
 
-  const handleUpdateStatus = async (orderId: string, paymentStatus: "paid" | "pending_verification" | "failed", orderStatus?: string) => {
+  const handleConfirmAvailability = async (orderId: string) => {
+    setUpdatingOrderId(orderId);
+    setActionSuccessMessage(null);
+    try {
+      const res = await fetch(`/api/orders/${encodeURIComponent(orderId)}/update-status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          confirmAvailability: true,
+          orderStatus: "availability_confirmed",
+          paymentStatus: "ready_for_payment",
+          adminNotes: `Vehicle availability physically verified and confirmed by Admin on ${new Date().toLocaleTimeString()}`
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.order) {
+          setOrders(prev => prev.map(o => (o.orderId === orderId ? data.order : o)));
+          setActionSuccessMessage(`Vehicle availability confirmed for order ${orderId}! Customer can now proceed to payment.`);
+          setTimeout(() => setActionSuccessMessage(null), 3500);
+        }
+      }
+    } catch (err) {
+      console.error("[AdminOrdersManager] Confirm availability error:", err);
+    } finally {
+      setUpdatingOrderId(null);
+    }
+  };
+
+  const handleUpdateStatus = async (
+    orderId: string,
+    paymentStatus: "paid" | "pending_verification" | "failed" | "processing",
+    orderStatus?: string,
+    extraParams?: { depositPaymentStatus?: string; balancePaymentStatus?: string }
+  ) => {
     setUpdatingOrderId(orderId);
     setActionSuccessMessage(null);
     try {
@@ -68,7 +104,8 @@ export default function AdminOrdersManager() {
         body: JSON.stringify({
           paymentStatus,
           orderStatus: finalOrderStatus,
-          adminNotes: `Status updated to ${paymentStatus} by Admin on ${new Date().toLocaleTimeString()}`
+          adminNotes: `Status updated to ${paymentStatus} by Admin on ${new Date().toLocaleTimeString()}`,
+          ...extraParams
         })
       });
 
@@ -76,7 +113,7 @@ export default function AdminOrdersManager() {
         const data = await res.json();
         if (data.success && data.order) {
           setOrders(prev => prev.map(o => (o.orderId === orderId ? data.order : o)));
-          setActionSuccessMessage(`Order ${orderId} updated to ${paymentStatus.toUpperCase()}!`);
+          setActionSuccessMessage(`Order ${orderId} status updated successfully!`);
           setTimeout(() => setActionSuccessMessage(null), 3000);
         }
       }
@@ -88,12 +125,15 @@ export default function AdminOrdersManager() {
   };
 
   // Metrics
+  const vehicleOrdersCount = orders.filter(o => o.orderType === "vehicle" || o.productType === "vehicle" || o.orderId?.startsWith("MIL-CAR") || o.orderId?.startsWith("MIL-AUTO")).length;
+  const awaitingAvailabilityCount = orders.filter(o => (o.orderType === "vehicle" || o.productType === "vehicle" || o.orderId?.startsWith("MIL-CAR") || o.orderId?.startsWith("MIL-AUTO")) && (o.orderStatus === "awaiting_availability" || !o.availabilityConfirmed)).length;
   const pendingCount = orders.filter(o => o.paymentStatus === "pending_verification" || o.paymentStatus === "pending").length;
   const verifiedCount = orders.filter(o => o.paymentStatus === "paid").length;
   const totalRevenue = orders.filter(o => o.paymentStatus === "paid").reduce((sum, o) => sum + (o.totalAmount || 0), 0);
 
   // Filtered orders
   const filteredOrders = orders.filter(order => {
+    const isVehicleOrder = order.orderType === "vehicle" || order.productType === "vehicle" || order.orderId?.startsWith("MIL-CAR") || order.orderId?.startsWith("MIL-AUTO");
     const matchesSearch =
       order.orderId.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -102,6 +142,8 @@ export default function AdminOrdersManager() {
 
     const matchesStatus =
       statusFilter === "ALL" ||
+      (statusFilter === "vehicles" && isVehicleOrder) ||
+      (statusFilter === "awaiting_availability" && isVehicleOrder && (order.orderStatus === "awaiting_availability" || !order.availabilityConfirmed)) ||
       (statusFilter === "pending_verification" && (order.paymentStatus === "pending_verification" || order.paymentStatus === "pending")) ||
       (statusFilter === "paid" && order.paymentStatus === "paid") ||
       (statusFilter === "failed" && (order.paymentStatus === "failed" || order.orderStatus === "cancelled"));
@@ -193,8 +235,10 @@ export default function AdminOrdersManager() {
 
         <div className="flex items-center gap-1 bg-gray-900 p-1 rounded-xl border border-gray-800 shrink-0 w-full sm:w-auto overflow-x-auto">
           {[
-            { id: "ALL", label: "All Orders" },
-            { id: "pending_verification", label: `Pending (${pendingCount})` },
+            { id: "ALL", label: `All Orders (${orders.length})` },
+            { id: "vehicles", label: `🚗 Vehicles (${vehicleOrdersCount})` },
+            { id: "awaiting_availability", label: `⚠️ Awaiting Check (${awaitingAvailabilityCount})` },
+            { id: "pending_verification", label: `Pending Transfer (${pendingCount})` },
             { id: "paid", label: `Verified (${verifiedCount})` },
             { id: "failed", label: "Rejected" }
           ].map((tab) => (
@@ -231,6 +275,9 @@ export default function AdminOrdersManager() {
       ) : (
         <div className="space-y-4">
           {filteredOrders.map((order) => {
+            const isVehicleOrder = order.orderType === "vehicle" || order.productType === "vehicle" || order.orderId?.startsWith("MIL-CAR") || order.orderId?.startsWith("MIL-AUTO");
+            const isAwaitingAvailability = isVehicleOrder && (order.orderStatus === "awaiting_availability" || !order.availabilityConfirmed);
+            const isAvailabilityConfirmed = isVehicleOrder && (order.availabilityConfirmed || order.orderStatus === "availability_confirmed" || order.paymentStatus === "ready_for_payment");
             const isPending = order.paymentStatus === "pending_verification" || order.paymentStatus === "pending";
             const isPaid = order.paymentStatus === "paid";
             const isFailed = order.paymentStatus === "failed" || order.orderStatus === "cancelled";
@@ -243,29 +290,60 @@ export default function AdminOrdersManager() {
               <div
                 key={order.orderId}
                 className={`bg-[#111827] rounded-2xl border p-4 sm:p-5 transition shadow-lg space-y-4 ${
-                  isPending
+                  isAwaitingAvailability
+                    ? "border-amber-500/50 bg-gradient-to-r from-[#111827] to-amber-950/20"
+                    : isPending
                     ? "border-amber-500/40 bg-gradient-to-r from-[#111827] to-amber-950/10"
                     : isPaid
                     ? "border-emerald-500/30"
+                    : isAvailabilityConfirmed
+                    ? "border-blue-500/30 bg-gradient-to-r from-[#111827] to-blue-950/10"
                     : "border-gray-800"
                 }`}
               >
                 {/* Header Row */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-800/80 pb-3">
-                  <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-2.5 flex-wrap">
                     <span className="text-sm sm:text-base font-black text-white font-mono tracking-wider">
                       {order.orderId}
                     </span>
+
+                    {/* Order Type Tag */}
+                    {isVehicleOrder ? (
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1">
+                        <Car className="w-3 h-3" />
+                        <span>Vehicle Order</span>
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-500/20 text-blue-300 border border-blue-500/40 flex items-center gap-1">
+                        <Smartphone className="w-3 h-3" />
+                        <span>Gadget Order</span>
+                      </span>
+                    )}
+
+                    {/* Status Badge */}
                     <span
                       className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
                         isPaid
                           ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
+                          : isAwaitingAvailability
+                          ? "bg-amber-500/20 text-amber-300 border-amber-500/40 animate-pulse"
+                          : isAvailabilityConfirmed
+                          ? "bg-blue-500/20 text-blue-300 border-blue-500/40"
                           : isPending
                           ? "bg-amber-500/20 text-amber-300 border-amber-500/40 animate-pulse"
                           : "bg-red-500/20 text-red-300 border-red-500/40"
                       }`}
                     >
-                      {isPaid ? "Payment Verified" : isPending ? "Pending Verification" : "Payment Rejected"}
+                      {isPaid
+                        ? "Payment Verified (Paid)"
+                        : isAwaitingAvailability
+                        ? "⚠️ Awaiting Availability Confirmation"
+                        : isAvailabilityConfirmed
+                        ? "✓ Availability Confirmed • Ready for Payment"
+                        : isPending
+                        ? "Transfer Pending Review"
+                        : "Payment Rejected"}
                     </span>
                   </div>
 
@@ -289,79 +367,296 @@ export default function AdminOrdersManager() {
                         <Phone className="w-3 h-3 text-emerald-400 shrink-0" />
                         <span>{order.customer.phone}</span>
                       </p>
-                      <p className="text-gray-400 flex items-center gap-1.5 truncate">
-                        <Mail className="w-3 h-3 text-emerald-400 shrink-0" />
-                        <span className="truncate">{order.customer.email}</span>
-                      </p>
+                      {order.customer.email && !order.customer.email.includes("@milito.ng") && (
+                        <p className="text-gray-400 flex items-center gap-1.5 truncate">
+                          <Mail className="w-3 h-3 text-emerald-400 shrink-0" />
+                          <span className="truncate">{order.customer.email}</span>
+                        </p>
+                      )}
                       <p className="text-gray-300 flex items-start gap-1.5 pt-1 border-t border-gray-800 mt-1">
                         <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                        <span>{order.customer.address}, {order.customer.state}</span>
+                        <span>
+                          {order.customer.city ? `${order.customer.city}, ` : ""}
+                          {order.customer.address ? `${order.customer.address}, ` : ""}
+                          {order.customer.state}
+                        </span>
                       </p>
+                      {order.customer.notes && (
+                        <p className="text-[11px] text-gray-400 italic pt-1 border-t border-gray-800">
+                          "{order.customer.notes}"
+                        </p>
+                      )}
                     </div>
                   </div>
 
-                  {/* Col 2: Purchased Phone & Accessories */}
-                  <div className="md:col-span-5 space-y-2 bg-gray-900/60 p-3.5 rounded-xl border border-gray-800/80">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
-                        <Smartphone className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>Purchased Items ({items.length})</span>
-                      </span>
-                      <span className="text-xs font-mono font-black text-emerald-400">
-                        {formatNaira(order.totalAmount)}
-                      </span>
-                    </div>
+                  {/* Col 2: Vehicle or Gadget Items */}
+                  {isVehicleOrder ? (
+                    <div className="md:col-span-5 space-y-2.5 bg-gray-900/60 p-3.5 rounded-xl border border-gray-800/80">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                          <Car className="w-3.5 h-3.5" />
+                          <span>Selected Automobile</span>
+                        </span>
+                        <span className="text-xs font-mono font-black text-amber-400">
+                          {formatNaira(order.totalPurchasePrice || order.totalAmount)}
+                        </span>
+                      </div>
 
-                    <div className="divide-y divide-gray-800/80 max-h-[160px] overflow-y-auto pr-1 space-y-2">
-                      {items.map((it, idx) => {
-                        const isAccessory = it.productId?.startsWith("acc_") || it.selectedSpecification?.storage === "Standard" && !it.productName.toLowerCase().includes("iphone") && !it.productName.toLowerCase().includes("samsung");
-                        return (
-                          <div key={idx} className="pt-2 first:pt-0 flex items-center justify-between gap-2 text-xs">
-                            <div className="min-w-0">
-                              <p className="font-bold text-white truncate flex items-center gap-1.5">
-                                {isAccessory ? (
-                                  <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold uppercase bg-purple-500/20 text-purple-300 border border-purple-500/40 shrink-0">
-                                    Accessory
-                                  </span>
-                                ) : (
-                                  <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold uppercase bg-blue-500/20 text-blue-300 border border-blue-500/40 shrink-0">
-                                    Phone
-                                  </span>
-                                )}
-                                <span className="truncate">{it.productName}</span>
-                              </p>
-                              <p className="text-[10px] text-gray-400 mt-0.5">
-                                Qty: {it.quantity} {it.selectedSpecification?.storage ? `• ${it.selectedSpecification.storage}` : ""} {it.selectedSpecification?.color ? `• ${it.selectedSpecification.color}` : ""}
-                              </p>
-                            </div>
-                            <span className="font-mono font-bold text-gray-200 shrink-0 text-xs">
-                              {formatNaira(it.totalPrice || it.unitPrice * it.quantity)}
-                            </span>
+                      <div className="space-y-2">
+                        <div>
+                          <h4 className="text-sm font-black text-white">
+                            {order.vehicleDetails?.brand
+                              ? `${order.vehicleDetails.year ? order.vehicleDetails.year + " " : ""}${order.vehicleDetails.brand} ${order.vehicleDetails.name}`
+                              : order.productName}
+                          </h4>
+                          <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                            {order.vehicleDetails?.condition && (
+                              <span className="px-2 py-0.5 rounded bg-gray-800 text-gray-200 text-[10px] font-bold">
+                                {order.vehicleDetails.condition}
+                              </span>
+                            )}
+                            {order.vehicleDetails?.transmission && (
+                              <span className="px-2 py-0.5 rounded bg-gray-800 text-gray-300 text-[10px] font-bold">
+                                {order.vehicleDetails.transmission}
+                              </span>
+                            )}
+                            {order.vehicleDetails?.mileage && (
+                              <span className="px-2 py-0.5 rounded bg-gray-800 text-gray-300 text-[10px] font-bold">
+                                {order.vehicleDetails.mileage}
+                              </span>
+                            )}
+                            {order.vehicleDetails?.engine && (
+                              <span className="px-2 py-0.5 rounded bg-gray-800 text-gray-300 text-[10px] font-bold">
+                                {order.vehicleDetails.engine}
+                              </span>
+                            )}
+                            {order.vehicleDetails?.fuelType && (
+                              <span className="px-2 py-0.5 rounded bg-gray-800 text-gray-300 text-[10px] font-bold">
+                                {order.vehicleDetails.fuelType}
+                              </span>
+                            )}
                           </div>
-                        );
-                      })}
-                    </div>
+                        </div>
 
-                    <div className="pt-2 border-t border-gray-800 flex justify-between text-[11px] text-gray-400 font-mono">
-                      <span>Delivery ({order.customer.state}):</span>
-                      <span>{formatNaira(order.deliveryFee)}</span>
-                    </div>
-                  </div>
+                        {/* Vehicle Deposit Breakdown */}
+                        {order.depositPercentage !== undefined || order.requiredDepositAmount ? (
+                          <div className="p-2.5 rounded-xl bg-gray-950/80 border border-gray-800 space-y-1.5 text-xs">
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="text-gray-400 font-bold">Total Vehicle Price:</span>
+                              <span className="font-mono font-black text-white">{formatNaira(order.totalPurchasePrice || order.totalAmount)}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-[11px] text-amber-400">
+                              <span className="font-bold flex items-center gap-1">
+                                <span>Required Deposit ({order.depositPercentage || 30}%):</span>
+                                <span className={`px-1.5 py-0.2 rounded text-[9px] uppercase font-black ${
+                                  order.depositPaymentStatus === "paid"
+                                    ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                                    : order.depositPaymentStatus === "pending_verification"
+                                    ? "bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-pulse"
+                                    : "bg-gray-800 text-gray-400"
+                                }`}>
+                                  {order.depositPaymentStatus === "paid" ? "Paid ✓" : order.depositPaymentStatus === "pending_verification" ? "Reviewing Proof" : "Unpaid"}
+                                </span>
+                              </span>
+                              <span className="font-mono font-black">{formatNaira(order.requiredDepositAmount || ((order.totalPurchasePrice || order.totalAmount) * ((order.depositPercentage || 30) / 100)))}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-[11px] text-gray-300 pt-1 border-t border-gray-800/80">
+                              <span className="font-bold flex items-center gap-1">
+                                <span>Remaining Balance:</span>
+                                <span className={`px-1.5 py-0.2 rounded text-[9px] uppercase font-black ${
+                                  order.balancePaymentStatus === "paid"
+                                    ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                                    : order.balancePaymentStatus === "pending_verification"
+                                    ? "bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-pulse"
+                                    : "bg-gray-800 text-gray-400"
+                                }`}>
+                                  {order.balancePaymentStatus === "paid" ? "Paid ✓" : order.balancePaymentStatus === "pending_verification" ? "Reviewing Proof" : "Pay Later"}
+                                </span>
+                              </span>
+                              <span className="font-mono font-black">{formatNaira(order.remainingBalanceAmount || ((order.totalPurchasePrice || order.totalAmount) - (order.requiredDepositAmount || ((order.totalPurchasePrice || order.totalAmount) * ((order.depositPercentage || 30) / 100)))))}</span>
+                            </div>
+                          </div>
+                        ) : null}
 
-                  {/* Col 3: Payment Screenshot & Verification Actions */}
+                        <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-[10.5px] text-emerald-300 space-y-0.5">
+                          <p className="font-black flex items-center gap-1">
+                            <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                            Total Purchase Price: {formatNaira(order.totalPurchasePrice || order.totalAmount)}
+                          </p>
+                          <p className="text-[9.5px] text-emerald-400/90 font-medium">
+                            Includes ocean shipping & port customs clearing to Nigeria • 0 hidden fees
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="md:col-span-5 space-y-2 bg-gray-900/60 p-3.5 rounded-xl border border-gray-800/80">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
+                          <Smartphone className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Purchased Items ({items.length})</span>
+                        </span>
+                        <span className="text-xs font-mono font-black text-emerald-400">
+                          {formatNaira(order.totalAmount)}
+                        </span>
+                      </div>
+
+                      <div className="divide-y divide-gray-800/80 max-h-[160px] overflow-y-auto pr-1 space-y-2">
+                        {items.map((it, idx) => {
+                          const isAccessory = it.productId?.startsWith("acc_") || it.selectedSpecification?.storage === "Standard" && !it.productName.toLowerCase().includes("iphone") && !it.productName.toLowerCase().includes("samsung");
+                          return (
+                            <div key={idx} className="pt-2 first:pt-0 flex items-center justify-between gap-2 text-xs">
+                              <div className="min-w-0">
+                                <p className="font-bold text-white truncate flex items-center gap-1.5">
+                                  {isAccessory ? (
+                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold uppercase bg-purple-500/20 text-purple-300 border border-purple-500/40 shrink-0">
+                                      Accessory
+                                    </span>
+                                  ) : (
+                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold uppercase bg-blue-500/20 text-blue-300 border border-blue-500/40 shrink-0">
+                                      Phone
+                                    </span>
+                                  )}
+                                  <span className="truncate">{it.productName}</span>
+                                </p>
+                                <p className="text-[10px] text-gray-400 mt-0.5">
+                                  Qty: {it.quantity} {it.selectedSpecification?.storage ? `• ${it.selectedSpecification.storage}` : ""} {it.selectedSpecification?.color ? `• ${it.selectedSpecification.color}` : ""}
+                                </p>
+                              </div>
+                              <span className="font-mono font-bold text-gray-200 shrink-0 text-xs">
+                                {formatNaira(it.totalPrice || it.unitPrice * it.quantity)}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <div className="pt-2 border-t border-gray-800 flex justify-between text-[11px] text-gray-400 font-mono">
+                        <span>Delivery ({order.customer.state}):</span>
+                        <span>{formatNaira(order.deliveryFee)}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Col 3: Vehicle Availability & Payment Verification Actions */}
                   <div className="md:col-span-3 space-y-3 flex flex-col justify-between">
+                    {/* Vehicle Availability Confirmation Block */}
+                    {isVehicleOrder && isAwaitingAvailability && (
+                      <div className="p-3 rounded-xl bg-amber-500/15 border border-amber-500/40 space-y-2">
+                        <div className="flex items-center gap-1.5 text-amber-300 font-black text-xs">
+                          <AlertCircle className="w-4 h-4 shrink-0 text-amber-400" />
+                          <span>Availability Check Required</span>
+                        </div>
+                        <p className="text-[10px] text-gray-300 leading-relaxed">
+                          Verify this vehicle is in stock and physically available before the customer can proceed to payment.
+                        </p>
+                        <button
+                          type="button"
+                          disabled={updatingOrderId === order.orderId}
+                          onClick={() => handleConfirmAvailability(order.orderId)}
+                          className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:scale-95 text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/20 cursor-pointer transition disabled:opacity-50"
+                        >
+                          {updatingOrderId === order.orderId ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Check className="w-3.5 h-3.5 stroke-[3]" />
+                          )}
+                          <span>Confirm Vehicle Availability</span>
+                        </button>
+                      </div>
+                    )}
+
+                    {isVehicleOrder && isAvailabilityConfirmed && !isPaid && !isPending && (
+                      <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/30 text-[10.5px] text-blue-300 space-y-1">
+                        <div className="flex items-center gap-1.5 font-bold text-blue-200">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-blue-400" />
+                          <span>Vehicle Confirmed Available</span>
+                        </div>
+                        <p className="text-[10px] text-gray-400">
+                          Customer can now view Escrow bank details and submit transfer proof in the Tracker.
+                        </p>
+                      </div>
+                    )}
+
                     {/* Payment Proof Preview Box */}
                     <div className="bg-gray-900/60 p-3 rounded-xl border border-gray-800/80 space-y-2">
                       <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 flex items-center justify-between">
-                        <span>Payment Proof</span>
-                        {proofUrl ? (
+                        <span>Payment Receipts</span>
+                        {(order.depositPaymentProofUrl || order.balancePaymentProofUrl || proofUrl) ? (
                           <span className="text-emerald-400 text-[9px] font-bold">Uploaded</span>
                         ) : (
                           <span className="text-gray-500 text-[9px]">None</span>
                         )}
                       </span>
 
-                      {proofUrl ? (
+                      {/* Deposit Receipt Preview */}
+                      {(order.depositPaymentProofUrl || (isVehicleOrder && proofUrl && !order.balancePaymentProofUrl)) && (
+                        <div className="flex items-center gap-2 p-1.5 rounded-lg bg-gray-950/70 border border-gray-800">
+                          <button
+                            type="button"
+                            onClick={() => setViewingReceiptUrl(order.depositPaymentProofUrl || proofUrl!)}
+                            className="w-12 h-12 rounded-lg bg-black border border-gray-700 overflow-hidden relative group shrink-0 cursor-pointer"
+                            title="Click to view deposit receipt"
+                          >
+                            <img
+                              src={order.depositPaymentProofUrl || proofUrl!}
+                              alt="Deposit Proof"
+                              className="w-full h-full object-cover group-hover:scale-110 transition"
+                            />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
+                              <Eye className="w-3.5 h-3.5 text-white" />
+                            </div>
+                          </button>
+                          <div className="min-w-0 flex-1">
+                            <span className="text-[9.5px] font-black uppercase tracking-wider text-amber-400 block">
+                              Deposit Receipt
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setViewingReceiptUrl(order.depositPaymentProofUrl || proofUrl!)}
+                              className="text-xs font-bold text-emerald-400 hover:text-emerald-300 underline block truncate cursor-pointer"
+                            >
+                              Inspect Deposit
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Balance Receipt Preview */}
+                      {order.balancePaymentProofUrl && (
+                        <div className="flex items-center gap-2 p-1.5 rounded-lg bg-gray-950/70 border border-gray-800">
+                          <button
+                            type="button"
+                            onClick={() => setViewingReceiptUrl(order.balancePaymentProofUrl!)}
+                            className="w-12 h-12 rounded-lg bg-black border border-gray-700 overflow-hidden relative group shrink-0 cursor-pointer"
+                            title="Click to view balance receipt"
+                          >
+                            <img
+                              src={order.balancePaymentProofUrl}
+                              alt="Balance Proof"
+                              className="w-full h-full object-cover group-hover:scale-110 transition"
+                            />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
+                              <Eye className="w-3.5 h-3.5 text-white" />
+                            </div>
+                          </button>
+                          <div className="min-w-0 flex-1">
+                            <span className="text-[9.5px] font-black uppercase tracking-wider text-emerald-400 block">
+                              Balance Receipt
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setViewingReceiptUrl(order.balancePaymentProofUrl!)}
+                              className="text-xs font-bold text-emerald-400 hover:text-emerald-300 underline block truncate cursor-pointer"
+                            >
+                              Inspect Balance
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Gadget receipt or fallback */}
+                      {!isVehicleOrder && proofUrl && (
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
@@ -394,7 +689,9 @@ export default function AdminOrdersManager() {
                             )}
                           </div>
                         </div>
-                      ) : (
+                      )}
+
+                      {!proofUrl && !order.depositPaymentProofUrl && !order.balancePaymentProofUrl && (
                         <div className="p-2 text-center rounded-lg bg-gray-950/60 border border-dashed border-gray-800 text-[10px] text-gray-500">
                           Customer has not attached a screenshot
                         </div>
@@ -403,19 +700,73 @@ export default function AdminOrdersManager() {
 
                     {/* Verification Actions */}
                     <div className="space-y-1.5">
-                      <button
-                        type="button"
-                        disabled={updatingOrderId === order.orderId}
-                        onClick={() => handleUpdateStatus(order.orderId, "paid")}
-                        className="w-full py-2 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/20 cursor-pointer transition disabled:opacity-50"
-                      >
-                        {updatingOrderId === order.orderId ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <Check className="w-3.5 h-3.5 stroke-[3]" />
-                        )}
-                        <span>Mark Verified (Paid)</span>
-                      </button>
+                      {isVehicleOrder ? (
+                        <>
+                          {/* Deposit Verification Action */}
+                          {order.depositPaymentStatus !== "paid" && (
+                            <button
+                              type="button"
+                              disabled={updatingOrderId === order.orderId}
+                              onClick={() =>
+                                handleUpdateStatus(order.orderId, "processing", "processing", {
+                                  depositPaymentStatus: "paid"
+                                })
+                              }
+                              className="w-full py-2 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/20 cursor-pointer transition disabled:opacity-50"
+                            >
+                              {updatingOrderId === order.orderId ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Check className="w-3.5 h-3.5 stroke-[3]" />
+                              )}
+                              <span>Verify Deposit as Paid</span>
+                            </button>
+                          )}
+
+                          {/* Balance Verification Action */}
+                          {order.depositPaymentStatus === "paid" && order.balancePaymentStatus !== "paid" && (
+                            <button
+                              type="button"
+                              disabled={updatingOrderId === order.orderId}
+                              onClick={() =>
+                                handleUpdateStatus(order.orderId, "paid", "protected", {
+                                  depositPaymentStatus: "paid",
+                                  balancePaymentStatus: "paid"
+                                })
+                              }
+                              className="w-full py-2 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/20 cursor-pointer transition disabled:opacity-50"
+                            >
+                              {updatingOrderId === order.orderId ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Check className="w-3.5 h-3.5 stroke-[3]" />
+                              )}
+                              <span>Verify Balance Paid (100%)</span>
+                            </button>
+                          )}
+
+                          {order.depositPaymentStatus === "paid" && order.balancePaymentStatus === "paid" && (
+                            <div className="py-2 px-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-center text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5">
+                              <CheckCircle2 className="w-4 h-4" />
+                              <span>100% Paid & Verified</span>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={updatingOrderId === order.orderId}
+                          onClick={() => handleUpdateStatus(order.orderId, "paid")}
+                          className="w-full py-2 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/20 cursor-pointer transition disabled:opacity-50"
+                        >
+                          {updatingOrderId === order.orderId ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Check className="w-3.5 h-3.5 stroke-[3]" />
+                          )}
+                          <span>Mark Verified (Paid)</span>
+                        </button>
+                      )}
 
                       <div className="grid grid-cols-2 gap-1.5">
                         <button

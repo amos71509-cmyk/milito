@@ -30,6 +30,13 @@ export interface SiteConfig {
     motionSpeed: number; // 1 to 10 seconds
     ambientColor: string; // e.g., "green", "emerald", "blue", "purple", "gold"
   };
+  vehicleDepositSettings?: {
+    depositPercentage: number;
+    bankName: string;
+    accountName: string;
+    accountNumber: string;
+    termsText: string;
+  };
 }
 
 interface CustomizerDashboardProps {
@@ -47,7 +54,7 @@ export default function CustomizerDashboard({
   onChangeConfig,
   onResetToDefault,
 }: CustomizerDashboardProps) {
-  const [activeTab, setActiveTab] = useState<"sections" | "products" | "motion">("sections");
+  const [activeTab, setActiveTab] = useState<"sections" | "products" | "motion" | "deposits">("sections");
   
   // Image URL master tester states
   const [pasteUrlInput, setPasteUrlInput] = useState("");
@@ -285,6 +292,16 @@ export default function CustomizerDashboard({
                 <Sparkles className="w-4 h-4 text-purple-400 animate-pulse" />
                 <span>Motion & Media Engine</span>
               </button>
+
+              <button
+                onClick={() => { setActiveTab("deposits"); setIsEditingProduct(false); setIsAddingNewProduct(false); }}
+                className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold transition flex items-center gap-2.5 ${
+                  activeTab === "deposits" ? "bg-white/[0.06] text-white border-l-2 border-milito-green" : "text-gray-400 hover:bg-white/[0.02]"
+                }`}
+              >
+                <span className="text-sm">💳</span>
+                <span>Automobile Deposit Settings</span>
+              </button>
             </div>
           </div>
 
@@ -313,6 +330,7 @@ export default function CustomizerDashboard({
                 {activeTab === "sections" && "🔧 Page Sections Customizer"}
                 {activeTab === "products" && "📱 Smartphone Inventory Configurations"}
                 {activeTab === "motion" && "🎬 Advanced Motion, Images & Video Animators"}
+                {activeTab === "deposits" && "💳 Automobile Deposit & Bank Payment Settings"}
               </h2>
               <p className="text-[10px] text-gray-500 mt-0.5">
                 Updates will save permanently using zero-latency base64 sandbox structures.
@@ -330,6 +348,130 @@ export default function CustomizerDashboard({
           {/* Scrolling Panel View wrapper */}
           <div className="flex-1 p-6 overflow-y-auto space-y-8">
             
+            {/* TAB: DEPOSITS SETTINGS */}
+            {activeTab === "deposits" && (
+              <div className="space-y-6">
+                <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-5 space-y-4">
+                  <h4 className="text-white text-xs font-extrabold tracking-wider uppercase flex items-center gap-1.5 border-b border-white/[0.04] pb-2.5">
+                    <span>💳</span>
+                    Vehicle Deposit Percentage &amp; Bank Details
+                  </h4>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-[10px] text-gray-400 font-extrabold uppercase mb-1.5">
+                        Deposit Percentage (%) — e.g. 30%
+                      </label>
+                      <input
+                        type="number"
+                        min="10"
+                        max="100"
+                        value={config.vehicleDepositSettings?.depositPercentage ?? 30}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value, 10) || 30;
+                          onChangeConfig({
+                            ...config,
+                            vehicleDepositSettings: {
+                              ...(config.vehicleDepositSettings || {
+                                bankName: "Moniepoint MFB / Zenith Bank",
+                                accountName: "MILITO TECH & AUTOMOBILE LTD",
+                                accountNumber: "8089456201",
+                                termsText: "1. A mandatory deposit is required to lock vehicle availability. 2. Deposits are 100% refundable if inspection fails. 3. Remaining balance is due upon arrival."
+                              }),
+                              depositPercentage: val
+                            }
+                          });
+                        }}
+                        className="w-full bg-[#0f1115] border border-white/[0.1] rounded-lg p-2.5 text-xs text-white font-bold focus:outline-none focus:border-milito-green"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[10px] text-gray-400 font-extrabold uppercase mb-1.5">
+                          Bank Name
+                        </label>
+                        <input
+                          type="text"
+                          value={config.vehicleDepositSettings?.bankName ?? "Moniepoint MFB / Zenith Bank"}
+                          onChange={(e) => {
+                            onChangeConfig({
+                              ...config,
+                              vehicleDepositSettings: {
+                                ...(config.vehicleDepositSettings || { depositPercentage: 30, accountName: "", accountNumber: "", termsText: "" }),
+                                bankName: e.target.value
+                              }
+                            });
+                          }}
+                          className="w-full bg-[#0f1115] border border-white/[0.1] rounded-lg p-2.5 text-xs text-white font-bold focus:outline-none focus:border-milito-green"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] text-gray-400 font-extrabold uppercase mb-1.5">
+                          Account Number
+                        </label>
+                        <input
+                          type="text"
+                          value={config.vehicleDepositSettings?.accountNumber ?? "8089456201"}
+                          onChange={(e) => {
+                            onChangeConfig({
+                              ...config,
+                              vehicleDepositSettings: {
+                                ...(config.vehicleDepositSettings || { depositPercentage: 30, bankName: "", accountName: "", termsText: "" }),
+                                accountNumber: e.target.value
+                              }
+                            });
+                          }}
+                          className="w-full bg-[#0f1115] border border-white/[0.1] rounded-lg p-2.5 text-xs text-white font-mono font-bold text-milito-green focus:outline-none focus:border-milito-green"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] text-gray-400 font-extrabold uppercase mb-1.5">
+                        Account Name
+                      </label>
+                      <input
+                        type="text"
+                        value={config.vehicleDepositSettings?.accountName ?? "MILITO TECH & AUTOMOBILE LTD"}
+                        onChange={(e) => {
+                          onChangeConfig({
+                            ...config,
+                            vehicleDepositSettings: {
+                              ...(config.vehicleDepositSettings || { depositPercentage: 30, bankName: "", accountNumber: "", termsText: "" }),
+                              accountName: e.target.value
+                            }
+                          });
+                        }}
+                        className="w-full bg-[#0f1115] border border-white/[0.1] rounded-lg p-2.5 text-xs text-white font-bold focus:outline-none focus:border-milito-green"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] text-gray-400 font-extrabold uppercase mb-1.5">
+                        Deposit, Refund &amp; Balance Payment Terms
+                      </label>
+                      <textarea
+                        rows={4}
+                        value={config.vehicleDepositSettings?.termsText ?? ""}
+                        onChange={(e) => {
+                          onChangeConfig({
+                            ...config,
+                            vehicleDepositSettings: {
+                              ...(config.vehicleDepositSettings || { depositPercentage: 30, bankName: "", accountName: "", accountNumber: "" }),
+                              termsText: e.target.value
+                            }
+                          });
+                        }}
+                        className="w-full bg-[#0f1115] border border-white/[0.1] rounded-lg p-2.5 text-xs text-gray-300 font-semibold focus:outline-none focus:border-milito-green leading-relaxed"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* TAB 1: SECTIONS EDITING CARD */}
             {activeTab === "sections" && (
               <div className="space-y-6">

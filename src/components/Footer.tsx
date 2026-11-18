@@ -217,7 +217,7 @@ export default function Footer({
                 <div>
                   <strong className="text-white font-bold">Lagos Desk Office:</strong>
                   <p className="text-gray-300 mt-1">
-                    No 14, Otigba Street, Ikeja, Lagos State.
+                    Olayeni Street, Computer Village, Ikeja, Lagos.
                   </p>
                 </div>
               </li>
@@ -243,7 +243,7 @@ export default function Footer({
               </li>
               <li className="flex items-center gap-2.5 text-gray-300">
                 <Phone className="w-4 h-4 text-milito-green" />
-                <span>+234 802 000 0000 (Abuja Support)</span>
+                <span>+234 816 201 7129 (Abuja Support)</span>
               </li>
               <li className="flex items-center gap-2.5 text-gray-300">
                 <Mail className="w-4 h-4 text-milito-green" />

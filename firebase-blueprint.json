@@ -120,6 +120,32 @@
         "error": { "type": "string", "description": "Error details if failed" }
       },
       "required": ["id", "customerId", "productId", "alertId", "notificationType", "channel", "title", "message", "status", "attempts", "createdAt"]
+    },
+    "VehicleImportRequest": {
+      "title": "VehicleImportRequest",
+      "description": "Customer vehicle import quote request linked to a selected vehicle",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Firestore document ID matching referenceNumber" },
+        "referenceNumber": { "type": "string", "description": "Unique customer reference number (e.g., MIL-AUTO-XXXXXX)" },
+        "status": { "type": "string", "enum": ["Pending", "Contacted", "Quote Sent", "Completed", "Cancelled"], "description": "Enquiry status" },
+        "customerName": { "type": "string", "description": "Customer full name" },
+        "customerPhone": { "type": "string", "description": "Customer phone / WhatsApp number" },
+        "deliveryState": { "type": "string", "description": "Nigerian delivery state" },
+        "deliveryCity": { "type": "string", "description": "Nigerian delivery city / area" },
+        "deliveryLocation": { "type": "string", "description": "Combined delivery city and state" },
+        "message": { "type": "string", "description": "Optional customer message or notes" },
+        "vehicleId": { "type": "string", "description": "Selected vehicle ID" },
+        "vehicleName": { "type": "string", "description": "Selected vehicle model name" },
+        "vehicleBrand": { "type": "string", "description": "Selected vehicle make / brand" },
+        "vehicleYear": { "type": "string", "description": "Selected vehicle year" },
+        "vehicleCondition": { "type": "string", "description": "Selected vehicle condition" },
+        "vehiclePrice": { "type": "number", "description": "Selected vehicle price in NGN" },
+        "vehicleImage": { "type": "string", "description": "Selected vehicle admin-uploaded cover image URL" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Submission timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last update timestamp" }
+      },
+      "required": ["id", "referenceNumber", "status", "customerName", "customerPhone", "deliveryState", "deliveryCity", "vehicleId", "vehicleName", "vehicleBrand", "vehiclePrice", "createdAt"]
     }
   },
   "firestore": {
@@ -146,6 +172,10 @@
     "/notificationQueue/{notificationId}": {
       "schema": "NotificationJob",
       "description": "Queue of notification tasks prepared for notification processing"
+    },
+    "/vehicle_import_requests/{requestId}": {
+      "schema": "VehicleImportRequest",
+      "description": "Collection of customer vehicle import quote requests"
     }
   }
 }

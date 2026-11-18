@@ -430,6 +430,7 @@ export default function Header({
         { label: "Home", sectionId: "hero", page: "gadgets" },
         { label: "Store", sectionId: "store", page: "store" },
         { label: "Trade-In", sectionId: "trade-in", page: "swap-deals" },
+        { label: "Easy Buy", sectionId: "easy-buy", page: "gadgets" },
         { label: "Quality Check", sectionId: "how-it-works", page: "gadgets" },
       ];
 

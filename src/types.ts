@@ -140,8 +140,8 @@ export interface CartItem {
   selectedColor: { name: string; hex: string };
 }
 
-export type PaymentStatus = "pending" | "pending_verification" | "paid" | "failed" | "refunded";
-export type OrderStatus = "created" | "payment_verification_pending" | "protected" | "confirmed" | "processing" | "in_transit" | "delivered" | "cancelled";
+export type PaymentStatus = "pending" | "pending_verification" | "paid" | "failed" | "refunded" | "awaiting_availability" | "ready_for_payment";
+export type OrderStatus = "created" | "payment_verification_pending" | "protected" | "confirmed" | "processing" | "in_transit" | "delivered" | "cancelled" | "awaiting_availability" | "availability_confirmed";
 
 export interface CustomerInfo {
   name: string;
@@ -170,8 +170,10 @@ export interface OrderItem {
 
 export interface ProtectedOrder {
   id: string; // Firestore document ID
-  orderId: string; // Customer-facing unique Order ID, e.g., MIL-20260820-XXXX
+  orderId: string; // Customer-facing unique Order ID, e.g., MIL-20260820-XXXX or MIL-CAR-XXXXXX
   orderSource?: string; // e.g. "whatsapp", "instagram", "facebook", "tiktok", "qr", "direct"
+  orderType?: ProductType; // "phone" | "vehicle"
+  productType?: ProductType; // "phone" | "vehicle"
   customer: CustomerInfo;
   items: OrderItem[];
   // Summary for single-product checkout compatibility
@@ -184,19 +186,54 @@ export interface ProtectedOrder {
   subtotal: number;
   deliveryFee: number;
   totalAmount: number;
+  totalPurchasePrice?: number; // Total price including shipping & clearing
+  includesShippingClearing?: boolean; // Always true for vehicle orders
   paymentStatus: PaymentStatus;
   orderStatus: OrderStatus;
+  availabilityConfirmed?: boolean;
+  availabilityConfirmedAt?: string;
+  availabilityStatus?: "Pending Confirmation" | "Confirmed Available" | "Unavailable";
+  vehicleDetails?: {
+    id: string;
+    brand: string;
+    name: string;
+    year?: string | number;
+    condition?: string;
+    transmission?: string;
+    mileage?: string;
+    fuelType?: string;
+    engine?: string;
+    location?: string;
+    image?: string;
+  };
   paymentProvider?: string; // e.g., "manual_bank_transfer" | "paystack"
   paymentReference?: string;
   paymentTransactionId?: string;
+  paymentProofUrl?: string;
   transferNotice?: {
     senderName?: string;
     senderBank?: string;
     narration?: string;
     transferReference?: string | null;
+    paymentProofUrl?: string;
     notifiedAt?: string;
   };
   adminNotes?: string;
+  depositPercentage?: number;
+  requiredDepositAmount?: number;
+  remainingBalanceAmount?: number;
+  depositPaymentStatus?: "unpaid" | "pending_verification" | "paid";
+  depositPaymentProofUrl?: string;
+  balancePaymentStatus?: "unpaid" | "pending_verification" | "paid";
+  balancePaymentProofUrl?: string;
+  balanceTransferNotice?: {
+    senderName?: string;
+    senderBank?: string;
+    narration?: string;
+    transferReference?: string | null;
+    paymentProofUrl?: string;
+    notifiedAt?: string;
+  };
   paidAt?: string;
   createdAt: string;
   updatedAt: string;
@@ -894,6 +931,59 @@ export interface ProductAlertStats {
     email?: string | null;
     createdAt: string;
   }[];
+}
+
+// ----------------------------------------------------
+// MILITO AUTOMOBILE ORDERING SYSTEM (PHASE 1)
+// ----------------------------------------------------
+
+export type VehicleImportStatus =
+  | "Pending"
+  | "Availability Confirmed"
+  | "Payment Pending"
+  | "Paid"
+  | "Contacted"
+  | "Quote Sent"
+  | "Completed"
+  | "Cancelled";
+
+export interface VehicleImportRequest {
+  id: string; // Firestore document ID (matches referenceNumber)
+  referenceNumber: string; // Unique customer reference e.g. MIL-CAR-849201 or MIL-AUTO-849201
+  orderId?: string; // Corresponds to unified ProtectedOrder orderId
+  status: VehicleImportStatus; // Initial status: "Pending"
+  customerName: string;
+  customerPhone: string;
+  deliveryState: string;
+  deliveryCity: string;
+  deliveryLocation: string; // Combined "City, State"
+  message?: string;
+  vehicleId: string;
+  vehicleName: string;
+  vehicleBrand: string;
+  vehicleYear?: string | number;
+  vehicleCondition: string;
+  vehiclePrice: number;
+  vehicleImage: string;
+  vehicleTransmission?: string;
+  vehicleMileage?: string;
+  vehicleFuelType?: string;
+  vehicleEngine?: string;
+  vehicleDriveType?: string;
+  vehicleBodyType?: string;
+  vehicleExteriorColor?: string;
+  vehicleInteriorColor?: string;
+  vehicleDocumentation?: string;
+  vehicleLocation?: string;
+  vehicleFeatures?: string[];
+  adminNotes?: string;
+  depositPercentage?: number;
+  requiredDepositAmount?: number;
+  remainingBalanceAmount?: number;
+  depositPaymentStatus?: string;
+  balancePaymentStatus?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 
